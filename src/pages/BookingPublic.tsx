@@ -20,9 +20,13 @@ import {
   Mail,
   User,
   CheckCircle,
-  Loader2
+  Loader2,
+  X
 } from "lucide-react";
 import { getLocalTimeZone, today, parseDate } from "@internationalized/date";
+import { formatInTimeZone } from "date-fns-tz";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import type { DateValue } from "react-aria-components";
 
 const BookingPublic = () => {
@@ -38,6 +42,8 @@ const BookingPublic = () => {
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<DateValue | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [availableSlots, setAvailableSlots] = useState<any[]>([]);
+  const [occupiedSlots, setOccupiedSlots] = useState<any[]>([]);
+  const [allTimeSlots, setAllTimeSlots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -145,7 +151,31 @@ const BookingPublic = () => {
       }
       
       console.log('Received slots data:', data);
-      setAvailableSlots(data.available_slots || []);
+      
+      // Separate available and occupied slots
+      const available = data.available_slots || [];
+      const occupied = data.occupied_slots || [];
+      
+      setAvailableSlots(available);
+      setOccupiedSlots(occupied);
+      
+      // Create combined list for display
+      const allSlots = [...available.map((slot: any) => ({ ...slot, available: true }))];
+      
+      // Add occupied slots if they exist
+      if (occupied.length > 0) {
+        occupied.forEach((occupiedSlot: any) => {
+          const isAlreadyInList = allSlots.some(slot => slot.time === occupiedSlot.time);
+          if (!isAlreadyInList) {
+            allSlots.push({ ...occupiedSlot, available: false });
+          }
+        });
+      }
+      
+      // Sort all slots by time
+      allSlots.sort((a, b) => a.time.localeCompare(b.time));
+      setAllTimeSlots(allSlots);
+      
     } catch (error) {
       console.error('Error loading slots:', error);
       toast({
@@ -162,6 +192,8 @@ const BookingPublic = () => {
     setSelectedService(serviceId);
     setSelectedTime(null);
     setAvailableSlots([]);
+    setOccupiedSlots([]);
+    setAllTimeSlots([]);
     
     // Set default date to tomorrow if today is too late
     const tomorrow = new Date();
@@ -177,6 +209,8 @@ const BookingPublic = () => {
     setSelectedStaff(staffId === "any" ? null : staffId);
     setSelectedTime(null);
     setAvailableSlots([]);
+    setOccupiedSlots([]);
+    setAllTimeSlots([]);
     
     // Set default date if not already set
     if (!selectedDate) {
@@ -198,6 +232,8 @@ const BookingPublic = () => {
     }
     setSelectedTime(null);
     setAvailableSlots([]);
+    setOccupiedSlots([]);
+    setAllTimeSlots([]);
   };
 
   const handleTimeSelect = (time: string) => {
@@ -274,33 +310,61 @@ const BookingPublic = () => {
     }
   };
 
+  // Format dates and times consistently with timezone
+  const TIMEZONE = 'America/Bahia';
+  
+  const formatDateForDisplay = (dateString: string) => {
+    if (!dateString) return 'Data não disponível';
+    
+    try {
+      const date = new Date(dateString + 'T00:00:00');
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+      
+      if (date.toDateString() === today.toDateString()) {
+        return 'Hoje';
+      } else if (date.toDateString() === tomorrow.toDateString()) {
+        return 'Amanhã';
+      } else {
+        return formatInTimeZone(date, TIMEZONE, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR });
+      }
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Data inválida';
+    }
+  };
+
+  const formatTimeForDisplay = (time: string) => {
+    if (!time) return 'Horário não disponível';
+    return time;
+  };
+
   const formatBookingDateTime = (booking: any) => {
     if (!booking?.starts_at) return { date: 'Data não disponível', time: 'Horário não disponível' };
     
-    const startDate = new Date(booking.starts_at);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    
-    let dateText = '';
-    if (startDate.toDateString() === today.toDateString()) {
-      dateText = 'Hoje';
-    } else if (startDate.toDateString() === tomorrow.toDateString()) {
-      dateText = 'Amanhã';
-    } else {
-      dateText = startDate.toLocaleDateString('pt-BR', { 
-        weekday: 'long', 
-        day: 'numeric', 
-        month: 'long' 
-      });
+    try {
+      const startDate = new Date(booking.starts_at);
+      const bahiaTime = formatInTimeZone(startDate, TIMEZONE, "yyyy-MM-dd HH:mm", { locale: ptBR });
+      const [datePart, timePart] = bahiaTime.split(' ');
+      
+      const dateFormatted = formatDateForDisplay(datePart);
+      const timeFormatted = timePart;
+      
+      return { date: dateFormatted, time: timeFormatted };
+    } catch (error) {
+      console.error('Error formatting booking date time:', error);
+      return { date: 'Data não disponível', time: 'Horário não disponível' };
     }
+  };
+
+  const formatSelectedDateTime = () => {
+    if (!selectedDate || !selectedTime) return 'Data e horário não selecionados';
     
-    const timeText = startDate.toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    const dateFormatted = formatDateForDisplay(selectedDate);
+    const timeFormatted = formatTimeForDisplay(selectedTime);
     
-    return { date: dateText, time: timeText };
+    return `${dateFormatted} às ${timeFormatted}`;
   };
 
   const generateCalendarFile = (booking: any) => {
@@ -487,12 +551,7 @@ END:VCALENDAR`;
                     <div>
                       <p className="text-sm text-muted-foreground">Data</p>
                       <p className="font-medium">
-                        {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
+                        {formatDateForDisplay(selectedDate)}
                       </p>
                     </div>
                   </div>
@@ -702,29 +761,41 @@ END:VCALENDAR`;
                     />
                   </div>
                   
-                  {slotsLoading ? (
-                    <div className="text-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-                      <p className="text-muted-foreground">Carregando horários disponíveis...</p>
-                    </div>
-                  ) : availableSlots.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      {selectedDate ? "Nenhum horário disponível para esta data." : "Selecione uma data para ver os horários."}
-                    </div>
-                  ) : (
-                     <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                       {availableSlots.map((slot) => (
-                         <Button
-                           key={slot.time}
-                           variant="outline"
-                           onClick={() => handleTimeSelect(slot.time)}
-                           className="h-12 hover:border-primary hover:bg-primary/5"
-                         >
-                           {slot.time}
-                         </Button>
-                       ))}
+                   {slotsLoading ? (
+                     <div className="text-center py-8">
+                       <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+                       <p className="text-muted-foreground">Carregando horários disponíveis...</p>
                      </div>
-                  )}
+                   ) : allTimeSlots.length === 0 ? (
+                     <div className="text-center py-8 text-muted-foreground">
+                       {selectedDate ? "Nenhum horário disponível para esta data." : "Selecione uma data para ver os horários."}
+                     </div>
+                   ) : (
+                      <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                        {allTimeSlots.map((slot) => (
+                          <Button
+                            key={slot.time}
+                            variant={slot.available ? "outline" : "secondary"}
+                            onClick={slot.available ? () => handleTimeSelect(slot.time) : undefined}
+                            disabled={!slot.available}
+                            className={`h-12 relative ${
+                              slot.available 
+                                ? "hover:border-primary hover:bg-primary/5 cursor-pointer" 
+                                : "bg-destructive/10 border-destructive/20 text-destructive cursor-not-allowed opacity-75"
+                            }`}
+                          >
+                            {slot.available ? (
+                              slot.time
+                            ) : (
+                              <div className="flex items-center space-x-1">
+                                <X className="h-3 w-3" />
+                                <span className="text-xs">{slot.time}</span>
+                              </div>
+                            )}
+                          </Button>
+                        ))}
+                      </div>
+                   )}
                 </CardContent>
               </Card>
             </div>
@@ -809,20 +880,26 @@ END:VCALENDAR`;
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Serviço:</span>
-                        <span className="font-medium">Corte + Barba</span>
+                        <span className="font-medium">
+                          {services.find(s => s.id === selectedService)?.name || 'Não selecionado'}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Profissional:</span>
-                        <span className="font-medium">Carlos Silva</span>
+                        <span className="font-medium">
+                          {selectedStaff ? staff.find(s => s.id === selectedStaff)?.name : 'Qualquer disponível'}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Data e hora:</span>
-                        <span className="font-medium">Hoje, 15:30</span>
+                        <span className="font-medium">{formatSelectedDateTime()}</span>
                       </div>
                       <Separator />
                       <div className="flex justify-between font-semibold">
                         <span>Total:</span>
-                        <span className="text-accent">R$ 40,00</span>
+                        <span className="text-accent">
+                          R$ {((services.find(s => s.id === selectedService)?.price_cents || 0) / 100).toFixed(2)}
+                        </span>
                       </div>
                     </div>
                   </CardContent>
