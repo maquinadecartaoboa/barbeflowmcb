@@ -33,7 +33,7 @@ const BookingPublic = () => {
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -118,6 +118,12 @@ const BookingPublic = () => {
 
     try {
       setSlotsLoading(true);
+      console.log('Loading slots for:', {
+        tenant_id: tenant.id,
+        service_id: selectedService,
+        staff_id: selectedStaff || null,
+        date: selectedDate
+      });
       
       const { data, error } = await supabase.functions.invoke('get-available-slots', {
         body: {
@@ -128,9 +134,13 @@ const BookingPublic = () => {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error from function:', error);
+        throw error;
+      }
       
-      setAvailableSlots(data.slots || []);
+      console.log('Received slots data:', data);
+      setAvailableSlots(data.available_slots || []);
     } catch (error) {
       console.error('Error loading slots:', error);
       toast({
@@ -288,6 +298,103 @@ const BookingPublic = () => {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Booking Summary - Show after step 1 */}
+        {step > 1 && (
+          <Card className="mb-8 border-primary/20 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center">
+                <CheckCircle className="h-5 w-5 mr-2" />
+                Resumo do Agendamento
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid md:grid-cols-2 gap-4">
+                {selectedService && (
+                  <div className="flex items-center space-x-3">
+                    <div 
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
+                      style={{ 
+                        backgroundColor: `${services.find(s => s.id === selectedService)?.color}20`,
+                        color: services.find(s => s.id === selectedService)?.color 
+                      }}
+                    >
+                      <Scissors className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Serviço</p>
+                      <p className="font-medium">{services.find(s => s.id === selectedService)?.name}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {(selectedStaff || step >= 3) && (
+                  <div className="flex items-center space-x-3">
+                    <div 
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
+                      style={{ 
+                        backgroundColor: selectedStaff ? `${staff.find(s => s.id === selectedStaff)?.color}20` : '#f3f4f620',
+                        color: selectedStaff ? staff.find(s => s.id === selectedStaff)?.color : '#6b7280'
+                      }}
+                    >
+                      <User className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Profissional</p>
+                      <p className="font-medium">
+                        {selectedStaff ? staff.find(s => s.id === selectedStaff)?.name : 'Qualquer disponível'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                {selectedDate && step >= 3 && (
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Data</p>
+                      <p className="font-medium">
+                        {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                {selectedTime && (
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Horário</p>
+                      <p className="font-medium">{selectedTime}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {selectedService && (
+                <Separator />
+              )}
+              
+              {selectedService && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Valor do serviço:</span>
+                  <span className="text-lg font-bold text-primary">
+                    R$ {((services.find(s => s.id === selectedService)?.price_cents || 0) / 100).toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Progress Indicator */}
         <div className="flex items-center justify-center mb-8">
           <div className="flex items-center space-x-4">
@@ -472,18 +579,18 @@ const BookingPublic = () => {
                       {selectedDate ? "Nenhum horário disponível para esta data." : "Selecione uma data para ver os horários."}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                      {availableSlots.map((time) => (
-                        <Button
-                          key={time}
-                          variant="outline"
-                          onClick={() => handleTimeSelect(time)}
-                          className="h-12 hover:border-primary hover:bg-primary/5"
-                        >
-                          {time}
-                        </Button>
-                      ))}
-                    </div>
+                     <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                       {availableSlots.map((slot) => (
+                         <Button
+                           key={slot.time}
+                           variant="outline"
+                           onClick={() => handleTimeSelect(slot.time)}
+                           className="h-12 hover:border-primary hover:bg-primary/5"
+                         >
+                           {slot.time}
+                         </Button>
+                       ))}
+                     </div>
                   )}
                 </CardContent>
               </Card>
