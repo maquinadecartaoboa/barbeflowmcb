@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { useDateRange } from "@/contexts/DateRangeContext";
+import { DateRangeSelector } from "@/components/DateRangeSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +23,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   BarChart,
@@ -49,7 +50,7 @@ import {
   Clock,
   Target
 } from "lucide-react";
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface FinanceData {
@@ -63,24 +64,15 @@ interface FinanceData {
   staff_performance: { name: string; revenue: number; bookings: number; }[];
 }
 
-const periodOptions = [
-  { value: 'today', label: 'Hoje' },
-  { value: 'week', label: 'Esta Semana' },
-  { value: 'month', label: 'Este Mês' },
-  { value: 'custom', label: 'Personalizado' },
-];
-
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
 export default function Finance() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const { dateRange } = useDateRange();
   const [data, setData] = useState<FinanceData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState('month');
   const [staffFilter, setStaffFilter] = useState<string>('');
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
   const [staff, setStaff] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
 
@@ -89,37 +81,7 @@ export default function Finance() {
       loadFinanceData();
       loadStaff();
     }
-  }, [currentTenant, period, staffFilter, customStartDate, customEndDate]);
-
-  const getDateRange = () => {
-    const now = new Date();
-    let startDate, endDate;
-
-    switch (period) {
-      case 'today':
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        endDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000);
-        break;
-      case 'week':
-        startDate = startOfWeek(now, { locale: ptBR });
-        endDate = endOfWeek(now, { locale: ptBR });
-        break;
-      case 'month':
-        startDate = startOfMonth(now);
-        endDate = endOfMonth(now);
-        break;
-      case 'custom':
-        if (!customStartDate || !customEndDate) return null;
-        startDate = new Date(customStartDate);
-        endDate = new Date(customEndDate);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      default:
-        return null;
-    }
-
-    return { startDate, endDate };
-  };
+  }, [currentTenant, dateRange, staffFilter]);
 
   const loadStaff = async () => {
     if (!currentTenant) return;
@@ -139,12 +101,8 @@ export default function Finance() {
 
     try {
       setLoading(true);
-      const dateRange = getDateRange();
-      if (!dateRange) return;
 
-      const { startDate, endDate } = dateRange;
-
-      // Build query filters
+      // Build query filters using global date range
       let query = supabase
         .from('bookings')
         .select(`
@@ -154,10 +112,11 @@ export default function Finance() {
           customer:customers(name, phone)
         `)
         .eq('tenant_id', currentTenant.id)
-        .gte('starts_at', startDate.toISOString())
-        .lte('starts_at', endDate.toISOString());
+        .eq('status', 'confirmed') // Only confirmed bookings for financial calculations
+        .gte('starts_at', dateRange.from.toISOString())
+        .lte('starts_at', dateRange.to.toISOString());
 
-      if (staffFilter) {
+      if (staffFilter && staffFilter !== 'all') {
         query = query.eq('staff_id', staffFilter);
       }
 
@@ -166,7 +125,7 @@ export default function Finance() {
       if (error) throw error;
 
       setBookings(bookingsData || []);
-      calculateFinanceMetrics(bookingsData || [], dateRange);
+      calculateFinanceMetrics(bookingsData || []);
     } catch (error) {
       console.error('Error loading finance data:', error);
     } finally {
@@ -174,9 +133,24 @@ export default function Finance() {
     }
   };
 
-  const calculateFinanceMetrics = (bookingsData: any[], dateRange: { startDate: Date; endDate: Date }) => {
-    const confirmedBookings = bookingsData.filter(b => b.status === 'confirmed');
-    const noShowBookings = bookingsData.filter(b => b.status === 'no_show');
+  const calculateFinanceMetrics = (bookingsData: any[]) => {
+    // All bookings are already confirmed (filtered in query)
+    const confirmedBookings = bookingsData;
+    
+    // Load all bookings in period to calculate no-show rate
+    const loadAllBookingsForNoShow = async () => {
+      const { data: allBookings } = await supabase
+        .from('bookings')
+        .select('status')
+        .eq('tenant_id', currentTenant!.id)
+        .gte('starts_at', dateRange.from.toISOString())
+        .lte('starts_at', dateRange.to.toISOString());
+        
+      const noShowBookings = allBookings?.filter(b => b.status === 'no_show') || [];
+      const totalBookings = allBookings?.length || 0;
+      
+      return totalBookings > 0 ? (noShowBookings.length / totalBookings) * 100 : 0;
+    };
 
     // Revenue metrics
     const revenueExpected = confirmedBookings.reduce((sum, booking) => 
@@ -187,13 +161,10 @@ export default function Finance() {
     const revenueReceived = Math.round(revenueExpected * 0.8);
 
     const bookingsCount = confirmedBookings.length;
-    const noShowRate = bookingsData.length > 0 
-      ? (noShowBookings.length / bookingsData.length) * 100 
-      : 0;
     const avgTicket = bookingsCount > 0 ? revenueExpected / bookingsCount : 0;
 
     // Daily revenue chart
-    const dailyRevenue = generateDailyRevenue(confirmedBookings, dateRange);
+    const dailyRevenue = generateDailyRevenue(confirmedBookings);
 
     // Top services
     const serviceStats = confirmedBookings.reduce((acc, booking) => {
@@ -232,23 +203,26 @@ export default function Finance() {
     const staffPerformance = Object.values(staffStats)
       .sort((a: any, b: any) => b.revenue - a.revenue);
 
-    setData({
-      revenue_expected: revenueExpected,
-      revenue_received: revenueReceived,
-      bookings_count: bookingsCount,
-      no_show_rate: noShowRate,
-      avg_ticket: avgTicket,
-      daily_revenue: dailyRevenue,
-      top_services: topServices as any,
-      staff_performance: staffPerformance as any,
+    // Load no-show rate asynchronously
+    loadAllBookingsForNoShow().then(noShowRate => {
+      setData({
+        revenue_expected: revenueExpected,
+        revenue_received: revenueReceived,
+        bookings_count: bookingsCount,
+        no_show_rate: noShowRate,
+        avg_ticket: avgTicket,
+        daily_revenue: dailyRevenue,
+        top_services: topServices as any,
+        staff_performance: staffPerformance as any,
+      });
     });
   };
 
-  const generateDailyRevenue = (bookings: any[], dateRange: { startDate: Date; endDate: Date }) => {
+  const generateDailyRevenue = (bookings: any[]) => {
     const days = [];
-    const current = new Date(dateRange.startDate);
+    const current = new Date(dateRange.from);
     
-    while (current <= dateRange.endDate) {
+    while (current <= dateRange.to) {
       const dayString = format(current, 'yyyy-MM-dd');
       const dayBookings = bookings.filter(b => 
         format(new Date(b.starts_at), 'yyyy-MM-dd') === dayString
@@ -322,6 +296,9 @@ export default function Finance() {
 
   return (
     <div className="space-y-6">
+      {/* Date Range Selector */}
+      <DateRangeSelector />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -339,69 +316,34 @@ export default function Finance() {
         </div>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Filtros</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <Label>Período</Label>
-              <Select value={period} onValueChange={setPeriod}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {periodOptions.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+      {/* Additional Filters */}
+      {staff.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Filtros Adicionais</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <Label>Profissional</Label>
+                <Select value={staffFilter} onValueChange={setStaffFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todos</SelectItem>
+                    {staff.map(member => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-
-            {period === 'custom' && (
-              <>
-                <div>
-                  <Label>Data Inicial</Label>
-                  <Input 
-                    type="date" 
-                    value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>Data Final</Label>
-                  <Input 
-                    type="date" 
-                    value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-
-            <div>
-              <Label>Profissional</Label>
-              <Select value={staffFilter} onValueChange={setStaffFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {staff.map(member => (
-                    <SelectItem key={member.id} value={member.id}>
-                      {member.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { useDateRange } from "@/contexts/DateRangeContext";
+import { DateRangeSelector } from "@/components/DateRangeSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -20,8 +22,8 @@ import {
 import { NewServiceModal, NewStaffModal, BlockTimeModal } from "@/components/modals/QuickActions";
 
 const Dashboard = () => {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [todayBookings, setTodayBookings] = useState<any[]>([]);
+  const [periodBookings, setPeriodBookings] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +35,7 @@ const Dashboard = () => {
   
   const { user, signOut, loading: authLoading } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
+  const { dateRange } = useDateRange();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -41,7 +44,7 @@ const Dashboard = () => {
       console.log('Loading dashboard data...', { user: !!user, currentTenant: !!currentTenant });
       loadDashboardData();
     }
-  }, [user, currentTenant, tenantLoading]);
+  }, [user, currentTenant, tenantLoading, dateRange]);
 
   const loadDashboardData = async () => {
     try {
@@ -51,7 +54,8 @@ const Dashboard = () => {
       // If no tenant, still load what we can
       if (!currentTenant) {
         console.log('No current tenant available');
-        setBookings([]);
+        setTodayBookings([]);
+        setPeriodBookings([]);
         setServices([]);
         setStaff([]);
         setLoading(false);
@@ -63,12 +67,13 @@ const Dashboard = () => {
       const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
       const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
       
-      const [bookingsRes, servicesRes, staffRes] = await Promise.all([
+      // Load period bookings for financial calculations
+      const [todayBookingsRes, periodBookingsRes, servicesRes, staffRes] = await Promise.all([
         supabase
           .from('bookings')
           .select(`
             *,
-            service:services(name, color),
+            service:services(name, color, price_cents),
             staff:staff(name),
             customer:customers(name, phone)
           `)
@@ -76,6 +81,17 @@ const Dashboard = () => {
           .gte('starts_at', startOfDay.toISOString())
           .lt('starts_at', endOfDay.toISOString())
           .order('starts_at'),
+        
+        supabase
+          .from('bookings')
+          .select(`
+            *,
+            service:services(name, price_cents)
+          `)
+          .eq('tenant_id', currentTenant.id)
+          .eq('status', 'confirmed')
+          .gte('starts_at', dateRange.from.toISOString())
+          .lte('starts_at', dateRange.to.toISOString()),
         
         supabase
           .from('services')
@@ -91,17 +107,20 @@ const Dashboard = () => {
       ]);
 
       console.log('Dashboard data loaded:', {
-        bookings: bookingsRes.data?.length || 0,
+        todayBookings: todayBookingsRes.data?.length || 0,
+        periodBookings: periodBookingsRes.data?.length || 0,
         services: servicesRes.data?.length || 0,
         staff: staffRes.data?.length || 0,
-        errors: [bookingsRes.error, servicesRes.error, staffRes.error].filter(Boolean)
+        errors: [todayBookingsRes.error, periodBookingsRes.error, servicesRes.error, staffRes.error].filter(Boolean)
       });
 
-      if (bookingsRes.error) throw bookingsRes.error;
+      if (todayBookingsRes.error) throw todayBookingsRes.error;
+      if (periodBookingsRes.error) throw periodBookingsRes.error;
       if (servicesRes.error) throw servicesRes.error;
       if (staffRes.error) throw staffRes.error;
 
-      setBookings(bookingsRes.data || []);
+      setTodayBookings(todayBookingsRes.data || []);
+      setPeriodBookings(periodBookingsRes.data || []);
       setServices(servicesRes.data || []);
       setStaff(staffRes.data || []);
     } catch (error) {
@@ -111,8 +130,18 @@ const Dashboard = () => {
     }
   };
 
+  // Calculate revenue from confirmed bookings only
+  const calculateRevenue = () => {
+    return periodBookings.reduce((sum, booking) => {
+      return sum + (booking.service?.price_cents || 0);
+    }, 0);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Date Range Selector */}
+      <DateRangeSelector />
+
       {/* Welcome Section */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-foreground mb-2">
@@ -121,7 +150,7 @@ const Dashboard = () => {
         <p className="text-muted-foreground">
           {loading 
             ? "Carregando dados..." 
-            : `Você tem ${bookings.length} agendamentos hoje. Vamos começar!`
+            : `Você tem ${todayBookings.length} agendamentos hoje. Vamos começar!`
           }
         </p>
       </div>
@@ -137,7 +166,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Agendamentos Hoje</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {loading ? "..." : bookings.length}
+                  {loading ? "..." : todayBookings.length}
                 </p>
                 <div className="flex items-center mt-2">
                   <Badge variant="secondary" className="text-xs px-2 py-1">
@@ -207,9 +236,9 @@ const Dashboard = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Faturamento</p>
+                <p className="text-sm text-muted-foreground mb-1">Faturamento (Período)</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {loading ? "..." : `R$ ${(bookings.reduce((sum, b) => sum + (b.service?.price_cents || 0), 0) / 100).toFixed(2)}`}
+                  {loading ? "..." : `R$ ${(calculateRevenue() / 100).toFixed(2)}`}
                 </p>
                 <div className="flex items-center mt-2">
                   <Badge variant="secondary" className="text-xs px-2 py-1">
@@ -246,12 +275,12 @@ const Dashboard = () => {
                     <div className="text-center text-muted-foreground py-8">
                       Carregando agendamentos...
                     </div>
-                  ) : bookings.length === 0 ? (
+                  ) : todayBookings.length === 0 ? (
                     <div className="text-center text-muted-foreground py-8">
                       Nenhum agendamento para hoje
                     </div>
                   ) : (
-                    bookings.slice(0, 3).map((booking) => (
+                    todayBookings.slice(0, 3).map((booking) => (
                       <div key={booking.id} className="flex items-center justify-between p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors">
                         <div className="flex items-center space-x-4">
                           <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">

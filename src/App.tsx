@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { DateRangeProvider } from "@/contexts/DateRangeContext";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -36,7 +37,9 @@ const App = () => (
           {/* Protected App Routes */}
           <Route path="/app" element={
             <ProtectedRoute>
-              <AppShell />
+              <DateRangeProvider>
+                <AppShell />
+              </DateRangeProvider>
             </ProtectedRoute>
           }>
             <Route path="dashboard" element={<Dashboard />} />
