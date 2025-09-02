@@ -225,7 +225,7 @@ const BookingPublic = () => {
       startsAt.setHours(parseInt(hours), parseInt(minutes), 0, 0);
       
       console.log('Submitting booking with:', {
-        tenant_id: tenant.id,
+        slug: slug,
         service_id: selectedService,
         staff_id: selectedStaff,
         customer_name: customerName,
@@ -235,7 +235,7 @@ const BookingPublic = () => {
       
       const { data, error } = await supabase.functions.invoke('create-booking', {
         body: {
-          tenant_id: tenant.id,
+          slug: slug,
           service_id: selectedService,
           staff_id: selectedStaff,
           customer_name: customerName,
