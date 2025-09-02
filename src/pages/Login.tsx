@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Scissors, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 
@@ -16,10 +16,12 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
+  const hasNavigated = useRef(false);
 
   useEffect(() => {
-    if (user) {
+    if (user && !hasNavigated.current) {
       console.log('User detected, navigating to dashboard:', user);
+      hasNavigated.current = true;
       navigate('/app/dashboard', { replace: true });
     }
   }, [user, navigate]);
