@@ -51,6 +51,7 @@ import { NavLink } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useBookingModal } from "@/hooks/useBookingModal";
+import { BookingModal } from "@/components/modals/BookingModal";
 
 const navigationItems = [
   { title: "Dashboard", url: "/app/dashboard", icon: Home },
@@ -252,101 +253,38 @@ export default function AppShell() {
 
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-background">
-        {/* Mobile Header */}
-        <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
-          <div className="flex items-center justify-between px-4 h-14">
-            <div className="flex items-center space-x-3">
-              <MobileDrawer />
-              <div className="flex items-center space-x-2">
-                <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center">
-                  <Scissors className="h-3 w-3 text-primary-foreground" />
-                </div>
-                <div>
-                  <h1 className="text-sm font-semibold text-foreground">
-                    {currentTenant?.name || 'BarberSync'}
-                  </h1>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <span className="text-xs text-muted-foreground">
-                {format(new Date(), "dd/MM", { locale: ptBR })}
-              </span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <Avatar className="h-6 w-6">
-                      <AvatarImage src={user?.user_metadata?.avatar_url} />
-                      <AvatarFallback>
-                        {user?.email?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
-                    <User className="h-4 w-4 mr-2" />
-                    Perfil
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={signOut}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sair
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </header>
-
-        {/* Mobile Content */}
-        <main className="pb-20">
-          <Outlet />
-        </main>
-
-        {/* Mobile Bottom Navigation */}
-        <BottomTabs />
-        <FloatingActionButton />
-      </div>
-    );
-  }
-
-  return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AppSidebar />
-        
-        <div className="flex-1 flex flex-col">
-          {/* Desktop Header */}
+      <>
+        <div className="min-h-screen bg-background">
+          {/* Mobile Header */}
           <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
-            <div className="flex items-center justify-between px-6 h-14">
-              <div className="flex items-center space-x-4">
-                <SidebarTrigger />
-                <div className="text-sm text-muted-foreground">
-                  {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+            <div className="flex items-center justify-between px-4 h-14">
+              <div className="flex items-center space-x-3">
+                <MobileDrawer />
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center">
+                    <Scissors className="h-3 w-3 text-primary-foreground" />
+                  </div>
+                  <div>
+                    <h1 className="text-sm font-semibold text-foreground">
+                      {currentTenant?.name || 'BarberSync'}
+                    </h1>
+                  </div>
                 </div>
               </div>
               
-              <div className="flex items-center space-x-3">
-                <Button variant="default" size="sm" onClick={openBookingModal}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Agendamento
-                </Button>
-                
+              <div className="flex items-center space-x-2">
+                <span className="text-xs text-muted-foreground">
+                  {format(new Date(), "dd/MM", { locale: ptBR })}
+                </span>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm">
-                      <Avatar className="h-6 w-6 mr-2">
+                      <Avatar className="h-6 w-6">
                         <AvatarImage src={user?.user_metadata?.avatar_url} />
                         <AvatarFallback>
                           {user?.email?.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="hidden sm:inline">
-                        {user?.user_metadata?.name || 'Usuário'}
-                      </span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -365,12 +303,85 @@ export default function AppShell() {
             </div>
           </header>
 
-          {/* Desktop Content */}
-          <main className="flex-1 p-6">
+          {/* Mobile Content */}
+          <main className="pb-20">
             <Outlet />
           </main>
+
+          {/* Mobile Bottom Navigation */}
+          <BottomTabs />
+          <FloatingActionButton />
         </div>
-      </div>
-    </SidebarProvider>
+        
+        {/* Global Booking Modal */}
+        <BookingModal />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full">
+          <AppSidebar />
+          
+          <div className="flex-1 flex flex-col">
+            {/* Desktop Header */}
+            <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+              <div className="flex items-center justify-between px-6 h-14">
+                <div className="flex items-center space-x-4">
+                  <SidebarTrigger />
+                  <div className="text-sm text-muted-foreground">
+                    {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <Button variant="default" size="sm" onClick={openBookingModal}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Agendamento
+                  </Button>
+                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <Avatar className="h-6 w-6 mr-2">
+                          <AvatarImage src={user?.user_metadata?.avatar_url} />
+                          <AvatarFallback>
+                            {user?.email?.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="hidden sm:inline">
+                          {user?.user_metadata?.name || 'Usuário'}
+                        </span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem>
+                        <User className="h-4 w-4 mr-2" />
+                        Perfil
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={signOut}>
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Sair
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            </header>
+
+            {/* Desktop Content */}
+            <main className="flex-1 p-6">
+              <Outlet />
+            </main>
+          </div>
+        </div>
+      </SidebarProvider>
+      
+      {/* Global Booking Modal */}
+      <BookingModal />
+    </>
   );
 }
