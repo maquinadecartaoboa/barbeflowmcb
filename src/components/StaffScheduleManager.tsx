@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Clock, Plus, Edit, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Schedule {
   id: string;
@@ -52,7 +53,7 @@ export const StaffScheduleManager = ({ staffId, staffName }: StaffScheduleManage
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formData, setFormData] = useState({
-    weekday: 0,
+    weekdays: [] as number[],
     start_time: "09:00",
     end_time: "18:00",
     break_start: "",
@@ -131,32 +132,39 @@ export const StaffScheduleManager = ({ staffId, staffName }: StaffScheduleManage
         }
       }
 
-      // Check if schedule already exists for this weekday
-      const existingSchedule = schedules.find(s => 
-        s.weekday === formData.weekday && s.id !== editingSchedule?.id
-      );
+      // Check if schedule already exists for any of the selected weekdays
+      const conflictingDays = [];
+      for (const weekday of formData.weekdays) {
+        const existingSchedule = schedules.find(s => 
+          s.weekday === weekday && s.id !== editingSchedule?.id
+        );
+        if (existingSchedule) {
+          conflictingDays.push(WEEKDAYS[weekday]);
+        }
+      }
 
-      if (existingSchedule) {
+      if (conflictingDays.length > 0) {
         toast({
           title: "Erro",
-          description: `Já existe um horário para ${WEEKDAYS[formData.weekday]}`,
+          description: `Já existem horários para: ${conflictingDays.join(', ')}`,
           variant: "destructive",
         });
         return;
       }
 
-      const scheduleData = {
-        tenant_id: currentTenant.id,
-        staff_id: staffId,
-        weekday: formData.weekday,
-        start_time: formData.start_time,
-        end_time: formData.end_time,
-        break_start: formData.break_start || null,
-        break_end: formData.break_end || null,
-        active: formData.active
-      };
-
+      // If editing, update single schedule
       if (editingSchedule) {
+        const scheduleData = {
+          tenant_id: currentTenant.id,
+          staff_id: staffId,
+          weekday: formData.weekdays[0], // editing only affects one day
+          start_time: formData.start_time,
+          end_time: formData.end_time,
+          break_start: formData.break_start || null,
+          break_end: formData.break_end || null,
+          active: formData.active
+        };
+
         const { error } = await supabase
           .from('schedules')
           .update(scheduleData)
@@ -169,22 +177,35 @@ export const StaffScheduleManager = ({ staffId, staffName }: StaffScheduleManage
           description: "Horário atualizado com sucesso",
         });
       } else {
+        // If creating new, create for all selected weekdays
+        const schedulesToInsert = formData.weekdays.map(weekday => ({
+          tenant_id: currentTenant.id,
+          staff_id: staffId,
+          weekday,
+          start_time: formData.start_time,
+          end_time: formData.end_time,
+          break_start: formData.break_start || null,
+          break_end: formData.break_end || null,
+          active: formData.active
+        }));
+
         const { error } = await supabase
           .from('schedules')
-          .insert(scheduleData);
+          .insert(schedulesToInsert);
 
         if (error) throw error;
 
+        const dayNames = formData.weekdays.map(w => WEEKDAYS[w]).join(', ');
         toast({
           title: "Sucesso",
-          description: "Horário adicionado com sucesso",
+          description: `Horários adicionados para: ${dayNames}`,
         });
       }
 
       setShowForm(false);
       setEditingSchedule(null);
       setFormData({
-        weekday: 0,
+        weekdays: [],
         start_time: "09:00",
         end_time: "18:00",
         break_start: "",
@@ -206,7 +227,7 @@ export const StaffScheduleManager = ({ staffId, staffName }: StaffScheduleManage
   const handleEdit = (schedule: Schedule) => {
     setEditingSchedule(schedule);
     setFormData({
-      weekday: schedule.weekday,
+      weekdays: [schedule.weekday], // editing only one day
       start_time: schedule.start_time,
       end_time: schedule.end_time,
       break_start: schedule.break_start || "",
@@ -297,7 +318,7 @@ export const StaffScheduleManager = ({ staffId, staffName }: StaffScheduleManage
               onClick={() => {
                 setEditingSchedule(null);
                 setFormData({
-                  weekday: 0,
+                  weekdays: [],
                   start_time: "09:00",
                   end_time: "18:00",
                   break_start: "",
@@ -381,19 +402,81 @@ export const StaffScheduleManager = ({ staffId, staffName }: StaffScheduleManage
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="weekday">Dia da Semana</Label>
-              <select
-                id="weekday"
-                className="w-full mt-1 p-2 border border-border rounded-md bg-background"
-                value={formData.weekday}
-                onChange={(e) => setFormData({ ...formData, weekday: parseInt(e.target.value) })}
-              >
-                {WEEKDAYS.map((day, index) => (
-                  <option key={index} value={index}>
-                    {day}
-                  </option>
-                ))}
-              </select>
+              <Label className="text-sm font-medium">
+                {editingSchedule ? 'Dia da Semana' : 'Dias da Semana'}
+              </Label>
+              <p className="text-xs text-muted-foreground mb-3">
+                {editingSchedule 
+                  ? 'Dia que será editado' 
+                  : 'Selecione os dias que terão o mesmo horário'
+                }
+              </p>
+              
+              {editingSchedule ? (
+                // Single day selector for editing
+                <select
+                  className="w-full mt-1 p-2 border border-border rounded-md bg-background"
+                  value={formData.weekdays[0] || 0}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    weekdays: [parseInt(e.target.value)] 
+                  })}
+                >
+                  {WEEKDAYS.map((day, index) => (
+                    <option key={index} value={index}>
+                      {day}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                // Multiple day checkboxes for creating
+                <div className="grid grid-cols-2 gap-3">
+                  {WEEKDAYS.map((day, index) => {
+                    const hasExistingSchedule = schedules.some(s => s.weekday === index);
+                    return (
+                      <div key={index} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`weekday-${index}`}
+                          checked={formData.weekdays.includes(index)}
+                          disabled={hasExistingSchedule}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setFormData({
+                                ...formData,
+                                weekdays: [...formData.weekdays, index]
+                              });
+                            } else {
+                              setFormData({
+                                ...formData,
+                                weekdays: formData.weekdays.filter(w => w !== index)
+                              });
+                            }
+                          }}
+                        />
+                        <label 
+                          htmlFor={`weekday-${index}`}
+                          className={`text-sm cursor-pointer ${
+                            hasExistingSchedule 
+                              ? 'text-muted-foreground line-through' 
+                              : ''
+                          }`}
+                        >
+                          {day}
+                          {hasExistingSchedule && (
+                            <span className="ml-1 text-xs">(já configurado)</span>
+                          )}
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              
+              {!editingSchedule && formData.weekdays.length === 0 && (
+                <p className="text-xs text-destructive mt-2">
+                  Selecione pelo menos um dia da semana
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -455,7 +538,7 @@ export const StaffScheduleManager = ({ staffId, staffName }: StaffScheduleManage
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={formLoading}>
+              <Button type="submit" disabled={formLoading || (!editingSchedule && formData.weekdays.length === 0)}>
                 {formLoading ? "Salvando..." : editingSchedule ? "Atualizar" : "Adicionar"}
               </Button>
             </DialogFooter>
