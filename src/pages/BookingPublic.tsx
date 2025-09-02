@@ -536,21 +536,21 @@ END:VCALENDAR`;
   return (
     <div className="min-h-screen bg-background">
       {/* Header Premium */}
-      <header className="relative h-72 sm:h-64 bg-gradient-hero overflow-hidden">
+      <header className="relative h-48 sm:h-64 bg-gradient-hero overflow-hidden">
         <div className="absolute inset-0 bg-black/30" />
-        <div className="relative max-w-4xl mx-auto px-6 sm:px-8 lg:px-8 h-full flex items-end pb-10">
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-8 lg:px-8 h-full flex items-end pb-6 sm:pb-10">
           <div className="text-primary-foreground w-full">
-            <h1 className="text-3xl sm:text-4xl font-bold mb-4 tracking-tight">{tenant?.name || "Carregando..."}</h1>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-6 space-y-2 sm:space-y-0 text-sm opacity-95">
+            <h1 className="text-2xl sm:text-4xl font-bold mb-2 sm:mb-4 tracking-tight">{tenant?.name || "Carregando..."}</h1>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-6 space-y-1 sm:space-y-0 text-xs sm:text-sm opacity-95">
               {tenant?.address && (
                 <div className="flex items-center">
-                  <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
-                  <span>{tenant.address}</span>
+                  <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                  <span className="truncate">{tenant.address}</span>
                 </div>
               )}
               {tenant?.phone && (
                 <div className="flex items-center">
-                  <Phone className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <Phone className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
                   <span>{tenant.phone}</span>
                 </div>
               )}
@@ -559,7 +559,7 @@ END:VCALENDAR`;
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-6 sm:px-8 lg:px-8 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Booking Summary Premium - Show after step 1 */}
         {step > 1 && (
           <Card className="mb-10 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5 shadow-medium rounded-2xl overflow-hidden">
@@ -654,11 +654,11 @@ END:VCALENDAR`;
         )}
 
         {/* Progress Indicator Premium */}
-        <div className="flex items-center justify-center mb-12">
-          <div className="flex items-center space-x-6 px-6 py-4 bg-background border rounded-2xl shadow-soft">
+        <div className="flex items-center justify-center mb-8 px-4">
+          <div className="flex items-center space-x-3 sm:space-x-6 px-4 py-3 bg-background border rounded-2xl shadow-soft">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="flex items-center">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 shadow-soft ${
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-300 shadow-soft ${
                   step >= i 
                     ? 'bg-gradient-primary text-primary-foreground scale-110' 
                     : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -666,7 +666,7 @@ END:VCALENDAR`;
                   {i}
                 </div>
                 {i < 4 && (
-                  <div className={`w-16 h-1 mx-3 rounded-full transition-all duration-300 ${
+                  <div className={`w-8 sm:w-16 h-1 mx-1 sm:mx-3 rounded-full transition-all duration-300 ${
                     step > i 
                       ? 'bg-gradient-primary shadow-accent' 
                       : 'bg-muted'
@@ -689,46 +689,46 @@ END:VCALENDAR`;
               </p>
             </div>
             
-            <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 max-w-3xl mx-auto">
               {loading ? (
-                <div className="col-span-2 text-center py-12">
+                <div className="col-span-full text-center py-12">
                   <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
                   <p className="text-muted-foreground text-lg">Carregando serviços...</p>
                 </div>
               ) : services.length === 0 ? (
-                <div className="col-span-2 text-center py-12">
+                <div className="col-span-full text-center py-12">
                   <p className="text-muted-foreground text-lg">Nenhum serviço disponível no momento.</p>
                 </div>
               ) : (
                 services.map((service) => (
                   <Card 
                     key={service.id} 
-                    className="cursor-pointer border-border/50 hover:border-primary/50 hover:shadow-large transition-all duration-500 rounded-2xl overflow-hidden bg-gradient-to-br from-background to-background/80 hover:scale-[1.02] active:scale-[0.98]"
+                    className="cursor-pointer border-border/50 hover:border-primary/50 hover:shadow-large transition-all duration-500 rounded-2xl overflow-hidden bg-gradient-to-br from-background to-background/80 hover:scale-[1.02] active:scale-[0.98] w-full"
                     onClick={() => handleServiceSelect(service.id)}
                   >
-                    <CardContent className="p-8">
-                      <div className="flex items-start justify-between mb-6">
+                    <CardContent className="p-4 sm:p-6 lg:p-8">
+                      <div className="flex items-start justify-between mb-4 sm:mb-6">
                         <div 
-                          className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-soft"
+                          className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-soft flex-shrink-0"
                           style={{ 
                             backgroundColor: `${service.color}20`,
                             color: service.color 
                           }}
                         >
-                          <Scissors className="h-8 w-8" />
+                          <Scissors className="h-6 w-6 sm:h-8 sm:w-8" />
                         </div>
-                        <div className="bg-gradient-accent px-4 py-2 rounded-full">
-                          <span className="text-accent-foreground font-bold text-lg">
+                        <div className="bg-gradient-accent px-3 py-1 sm:px-4 sm:py-2 rounded-full ml-2">
+                          <span className="text-accent-foreground font-bold text-sm sm:text-lg">
                             R$ {(service.price_cents / 100).toFixed(2)}
                           </span>
                         </div>
                       </div>
-                      <h3 className="font-bold text-xl text-foreground mb-3 leading-tight">{service.name}</h3>
-                      <p className="text-base text-muted-foreground mb-6 leading-relaxed">{service.description}</p>
-                      <div className="flex items-center text-sm text-muted-foreground bg-muted/30 px-3 py-2 rounded-xl w-fit">
-                        <Clock className="h-4 w-4 mr-2" />
+                      <h3 className="font-bold text-lg sm:text-xl text-foreground mb-2 sm:mb-3 leading-tight">{service.name}</h3>
+                      <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6 leading-relaxed">{service.description}</p>
+                      <div className="flex items-center text-xs sm:text-sm text-muted-foreground bg-muted/30 px-3 py-2 rounded-xl w-fit">
+                        <Clock className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                         <span className="font-medium">{service.duration_minutes} minutos</span>
                       </div>
                     </CardContent>
@@ -741,28 +741,28 @@ END:VCALENDAR`;
 
         {/* Step 2: Select Staff Premium */}
         {step === 2 && (
-          <div className="px-4 sm:px-0">
-            <div className="text-center mb-10">
-              <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 tracking-tight">
+          <div className="px-2 sm:px-0">
+            <div className="text-center mb-8 sm:mb-10">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-3 sm:mb-4 tracking-tight">
                 Escolha o profissional
               </h2>
-              <p className="text-lg text-muted-foreground leading-relaxed max-w-md mx-auto">
+              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-md mx-auto px-2">
                 Selecione quem você prefere que faça o atendimento
               </p>
             </div>
             
-            <div className="max-w-2xl mx-auto space-y-6">
-              <Card className="border-accent/30 bg-gradient-to-br from-accent/10 to-accent/5 shadow-medium rounded-2xl overflow-hidden">
-                <CardContent className="p-6">
+            <div className="max-w-xl mx-auto space-y-4 sm:space-y-6">
+              <Card className="border-accent/30 bg-gradient-to-br from-accent/10 to-accent/5 shadow-medium rounded-2xl overflow-hidden mx-2 sm:mx-0">
+                <CardContent className="p-4 sm:p-6">
                   <div className="text-center">
-                    <div className="w-12 h-12 bg-accent/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Star className="h-6 w-6 text-accent" />
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-accent/20 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                      <Star className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />
                     </div>
-                    <h3 className="font-semibold text-foreground mb-3">Sem preferência?</h3>
+                    <h3 className="font-semibold text-foreground mb-3 text-sm sm:text-base">Sem preferência?</h3>
                     <Button 
                       variant="hero" 
                       onClick={() => handleStaffSelect("any")}
-                      className="h-12 px-8 rounded-xl font-semibold"
+                      className="h-10 sm:h-12 px-6 sm:px-8 rounded-xl font-semibold text-sm sm:text-base w-full sm:w-auto"
                     >
                       Qualquer profissional disponível
                     </Button>
@@ -770,44 +770,44 @@ END:VCALENDAR`;
                 </CardContent>
               </Card>
 
-              <div className="relative py-4">
+              <div className="relative py-3 sm:py-4 mx-4">
                 <Separator className="absolute top-1/2 left-0 right-0" />
                 <div className="relative flex justify-center">
-                  <span className="bg-background px-4 text-sm text-muted-foreground font-medium">
+                  <span className="bg-background px-3 sm:px-4 text-xs sm:text-sm text-muted-foreground font-medium">
                     ou escolha um profissional específico
                   </span>
                 </div>
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4 mx-2 sm:mx-0">
                 {loading ? (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <div className="text-center py-8 sm:py-12">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                      <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
                     </div>
-                    <p className="text-muted-foreground text-lg">Carregando profissionais...</p>
+                    <p className="text-muted-foreground text-base sm:text-lg">Carregando profissionais...</p>
                   </div>
                 ) : (
                   staff.map((member) => (
                     <Card 
                       key={member.id}
-                      className="cursor-pointer border-border/50 hover:border-primary/50 hover:shadow-large transition-all duration-500 rounded-2xl overflow-hidden bg-gradient-to-br from-background to-background/80 hover:scale-[1.02] active:scale-[0.98]"
+                      className="cursor-pointer border-border/50 hover:border-primary/50 hover:shadow-large transition-all duration-500 rounded-xl sm:rounded-2xl overflow-hidden bg-gradient-to-br from-background to-background/80 hover:scale-[1.01] active:scale-[0.99] w-full"
                       onClick={() => handleStaffSelect(member.id)}
                     >
-                      <CardContent className="p-6">
-                        <div className="flex items-center space-x-6">
+                      <CardContent className="p-4 sm:p-6">
+                        <div className="flex items-center space-x-3 sm:space-x-6">
                           <div 
-                            className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-soft flex-shrink-0"
+                            className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-soft flex-shrink-0"
                             style={{ 
                               backgroundColor: `${member.color}20`,
                               color: member.color 
                             }}
                           >
-                            <User className="h-10 w-10" />
+                            <User className="h-7 w-7 sm:h-10 sm:w-10" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-xl text-foreground mb-2">{member.name}</h3>
-                            <p className="text-base text-muted-foreground leading-relaxed">{member.bio}</p>
+                            <h3 className="font-bold text-lg sm:text-xl text-foreground mb-1 sm:mb-2 truncate">{member.name}</h3>
+                            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed line-clamp-2">{member.bio}</p>
                           </div>
                         </div>
                       </CardContent>
@@ -818,12 +818,12 @@ END:VCALENDAR`;
             </div>
             
             {/* Navigation Buttons Premium */}
-            <div className="flex justify-center mt-12 px-4">
-              <div className="flex space-x-4 w-full max-w-sm">
+            <div className="flex justify-center mt-8 sm:mt-12 px-4">
+              <div className="flex space-x-3 sm:space-x-4 w-full max-w-xs sm:max-w-sm">
                 <Button 
                   variant="outline" 
                   onClick={goToPreviousStep}
-                  className="flex-1 h-12 rounded-xl font-semibold"
+                  className="flex-1 h-11 sm:h-12 rounded-xl font-semibold text-sm sm:text-base"
                 >
                   Voltar
                 </Button>
@@ -831,7 +831,7 @@ END:VCALENDAR`;
                   variant="hero" 
                   onClick={goToNextStep}
                   disabled={!selectedService}
-                  className="flex-1 h-12 rounded-xl font-semibold"
+                  className="flex-1 h-11 sm:h-12 rounded-xl font-semibold text-sm sm:text-base"
                 >
                   Continuar
                 </Button>
@@ -842,74 +842,74 @@ END:VCALENDAR`;
 
         {/* Step 3: Select Time Premium */}
         {step === 3 && (
-          <div className="px-4 sm:px-0">
-            <div className="text-center mb-10">
-              <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 tracking-tight">
+          <div className="px-2 sm:px-0">
+            <div className="text-center mb-8 sm:mb-10">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-3 sm:mb-4 tracking-tight">
                 Escolha data e horário
               </h2>
-              <p className="text-lg text-muted-foreground leading-relaxed max-w-md mx-auto">
+              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-md mx-auto px-2">
                 Selecione o melhor horário para você
               </p>
             </div>
             
-            <div className="max-w-3xl mx-auto">
-              <Card className="shadow-large rounded-2xl overflow-hidden border-border/50">
-                <CardHeader className="pb-6">
-                  <CardTitle className="text-2xl font-bold flex items-center text-foreground">
-                    <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center mr-4">
-                      <Calendar className="h-6 w-6 text-primary" />
+            <div className="max-w-2xl mx-auto">
+              <Card className="shadow-large rounded-2xl overflow-hidden border-border/50 mx-2 sm:mx-0">
+                <CardHeader className="pb-4 sm:pb-6">
+                  <CardTitle className="text-xl sm:text-2xl font-bold flex items-center text-foreground">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/10 rounded-xl flex items-center justify-center mr-3 sm:mr-4">
+                      <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                     </div>
                     Selecione a data
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-6 pb-8">
-                  <div className="mb-8">
+                <CardContent className="px-4 sm:px-6 pb-6 sm:pb-8">
+                  <div className="mb-6 sm:mb-8">
                     <CalendarRac
                       value={selectedCalendarDate}
                       onChange={handleDateSelect}
                       minValue={today(getLocalTimeZone())}
-                      className="rounded-2xl border border-border/50 p-4 mx-auto w-fit shadow-soft"
+                      className="rounded-xl sm:rounded-2xl border border-border/50 p-2 sm:p-4 mx-auto w-fit shadow-soft"
                     />
                   </div>
                   
                    {slotsLoading ? (
-                     <div className="text-center py-12">
-                       <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                     <div className="text-center py-8 sm:py-12">
+                       <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                         <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
                        </div>
-                       <p className="text-muted-foreground text-lg">Carregando horários disponíveis...</p>
+                       <p className="text-muted-foreground text-base sm:text-lg">Carregando horários disponíveis...</p>
                      </div>
                    ) : allTimeSlots.length === 0 ? (
-                     <div className="text-center py-12 text-muted-foreground">
-                       <div className="w-16 h-16 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-6">
-                         <Clock className="h-8 w-8" />
+                     <div className="text-center py-8 sm:py-12 text-muted-foreground">
+                       <div className="w-12 h-12 sm:w-16 sm:h-16 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                         <Clock className="h-6 w-6 sm:h-8 sm:w-8" />
                        </div>
-                       <p className="text-lg">
+                       <p className="text-base sm:text-lg">
                          {selectedDate ? "Nenhum horário disponível para esta data." : "Selecione uma data para ver os horários."}
                        </p>
                      </div>
                    ) : (
                       <div>
-                        <h3 className="text-lg font-semibold text-foreground mb-6 text-center">Horários disponíveis</h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                        <h3 className="text-base sm:text-lg font-semibold text-foreground mb-4 sm:mb-6 text-center">Horários disponíveis</h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
                           {allTimeSlots.map((slot) => (
                             <Button
                               key={slot.time}
                               variant={slot.available ? "outline" : "secondary"}
                               onClick={slot.available ? () => handleTimeSelect(slot.time) : undefined}
                               disabled={!slot.available}
-                              className={`h-14 relative rounded-xl font-semibold transition-all duration-300 ${
+                              className={`h-12 sm:h-14 relative rounded-xl font-semibold transition-all duration-300 text-sm sm:text-base ${
                                 slot.available 
                                   ? "border-border/50 hover:border-primary hover:bg-primary/10 hover:scale-105 active:scale-95 shadow-soft hover:shadow-medium" 
                                   : "bg-destructive/10 border-destructive/30 text-destructive/80 cursor-not-allowed opacity-75"
                               }`}
                             >
                               {slot.available ? (
-                                <span className="text-base">{slot.time}</span>
+                                <span>{slot.time}</span>
                               ) : (
-                                <div className="flex items-center space-x-2">
-                                  <X className="h-4 w-4" />
-                                  <span className="text-sm">{slot.time}</span>
+                                <div className="flex items-center space-x-1 sm:space-x-2">
+                                  <X className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  <span className="text-xs sm:text-sm">{slot.time}</span>
                                 </div>
                               )}
                             </Button>
@@ -922,12 +922,12 @@ END:VCALENDAR`;
             </div>
             
             {/* Navigation Buttons Premium */}
-            <div className="flex justify-center mt-12 px-4">
-              <div className="flex space-x-4 w-full max-w-sm">
+            <div className="flex justify-center mt-8 sm:mt-12 px-4">
+              <div className="flex space-x-3 sm:space-x-4 w-full max-w-xs sm:max-w-sm">
                 <Button 
                   variant="outline" 
                   onClick={goToPreviousStep}
-                  className="flex-1 h-12 rounded-xl font-semibold"
+                  className="flex-1 h-11 sm:h-12 rounded-xl font-semibold text-sm sm:text-base"
                 >
                   Voltar
                 </Button>
@@ -935,7 +935,7 @@ END:VCALENDAR`;
                   variant="hero" 
                   onClick={goToNextStep}
                   disabled={!selectedDate || !selectedTime}
-                  className="flex-1 h-12 rounded-xl font-semibold"
+                  className="flex-1 h-11 sm:h-12 rounded-xl font-semibold text-sm sm:text-base"
                 >
                   Continuar
                 </Button>
@@ -946,42 +946,42 @@ END:VCALENDAR`;
 
         {/* Step 4: Contact Information Premium */}
         {step === 4 && (
-          <div className="px-4 sm:px-0">
-            <div className="text-center mb-10">
-              <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 tracking-tight">
+          <div className="px-2 sm:px-0">
+            <div className="text-center mb-8 sm:mb-10">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-3 sm:mb-4 tracking-tight">
                 Seus dados de contato
               </h2>
-              <p className="text-lg text-muted-foreground leading-relaxed max-w-md mx-auto">
+              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-md mx-auto px-2">
                 Precisamos dessas informações para confirmar seu agendamento
               </p>
             </div>
             
-            <div className="max-w-2xl mx-auto">
-              <form onSubmit={handleSubmit} className="space-y-8">
-                <Card className="shadow-large rounded-2xl overflow-hidden border-border/50">
-                  <CardHeader>
-                    <CardTitle className="text-xl font-bold flex items-center text-foreground">
-                      <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center mr-3">
-                        <User className="h-5 w-5 text-primary" />
+            <div className="max-w-xl mx-auto">
+              <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+                <Card className="shadow-large rounded-2xl overflow-hidden border-border/50 mx-2 sm:mx-0">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg sm:text-xl font-bold flex items-center text-foreground">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary/10 rounded-lg flex items-center justify-center mr-3">
+                        <User className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                       </div>
                       Informações de contato
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-8 space-y-6">
-                    <div className="space-y-3">
-                      <Label htmlFor="name" className="text-base font-semibold">Nome completo *</Label>
+                  <CardContent className="p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
+                    <div className="space-y-2 sm:space-y-3">
+                      <Label htmlFor="name" className="text-sm sm:text-base font-semibold">Nome completo *</Label>
                       <Input
                         id="name"
                         placeholder="Seu nome completo"
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
                         required
-                        className="h-14 text-base rounded-xl border-border/50 focus:border-primary"
+                        className="h-12 sm:h-14 text-sm sm:text-base rounded-xl border-border/50 focus:border-primary"
                       />
                     </div>
                     
-                    <div className="space-y-3">
-                      <Label htmlFor="phone" className="text-base font-semibold">WhatsApp *</Label>
+                    <div className="space-y-2 sm:space-y-3">
+                      <Label htmlFor="phone" className="text-sm sm:text-base font-semibold">WhatsApp *</Label>
                       <Input
                         id="phone"
                         type="tel"
@@ -989,75 +989,75 @@ END:VCALENDAR`;
                         value={customerPhone}
                         onChange={(e) => setCustomerPhone(e.target.value)}
                         required
-                        className="h-14 text-base rounded-xl border-border/50 focus:border-primary"
+                        className="h-12 sm:h-14 text-sm sm:text-base rounded-xl border-border/50 focus:border-primary"
                       />
-                      <p className="text-sm text-muted-foreground pl-1">
+                      <p className="text-xs sm:text-sm text-muted-foreground pl-1">
                         📱 Enviaremos a confirmação por WhatsApp
                       </p>
                     </div>
                     
-                    <div className="space-y-3">
-                      <Label htmlFor="email" className="text-base font-semibold">E-mail (opcional)</Label>
+                    <div className="space-y-2 sm:space-y-3">
+                      <Label htmlFor="email" className="text-sm sm:text-base font-semibold">E-mail (opcional)</Label>
                       <Input
                         id="email"
                         type="email"
                         placeholder="seu@email.com"
                         value={customerEmail}
                         onChange={(e) => setCustomerEmail(e.target.value)}
-                        className="h-14 text-base rounded-xl border-border/50 focus:border-primary"
+                        className="h-12 sm:h-14 text-sm sm:text-base rounded-xl border-border/50 focus:border-primary"
                       />
                     </div>
                     
-                    <div className="space-y-3">
-                      <Label htmlFor="notes" className="text-base font-semibold">Observações (opcional)</Label>
+                    <div className="space-y-2 sm:space-y-3">
+                      <Label htmlFor="notes" className="text-sm sm:text-base font-semibold">Observações (opcional)</Label>
                       <Textarea
                         id="notes"
                         placeholder="Alguma observação especial?"
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        rows={4}
-                        className="text-base rounded-xl border-border/50 focus:border-primary resize-none"
+                        rows={3}
+                        className="text-sm sm:text-base rounded-xl border-border/50 focus:border-primary resize-none"
                       />
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Summary Premium */}
-                <Card className="border-primary/30 bg-gradient-to-br from-primary/10 to-accent/5 shadow-large rounded-2xl overflow-hidden">
-                  <CardHeader>
-                    <CardTitle className="text-xl font-bold flex items-center text-foreground">
-                      <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center mr-3">
-                        <CheckCircle className="h-5 w-5 text-primary" />
+                <Card className="border-primary/30 bg-gradient-to-br from-primary/10 to-accent/5 shadow-large rounded-2xl overflow-hidden mx-2 sm:mx-0">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg sm:text-xl font-bold flex items-center text-foreground">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary/20 rounded-lg flex items-center justify-center mr-3">
+                        <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                       </div>
                       Resumo do agendamento
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-8">
-                    <div className="space-y-5">
-                      <div className="flex justify-between items-center py-2">
-                        <span className="text-base text-muted-foreground font-medium">Serviço</span>
-                        <span className="font-bold text-foreground text-right">
+                  <CardContent className="p-4 sm:p-6 lg:p-8">
+                    <div className="space-y-4 sm:space-y-5">
+                      <div className="flex justify-between items-center py-1 sm:py-2">
+                        <span className="text-sm sm:text-base text-muted-foreground font-medium">Serviço</span>
+                        <span className="font-bold text-foreground text-right text-sm sm:text-base">
                           {services.find(s => s.id === selectedService)?.name || 'Não selecionado'}
                         </span>
                       </div>
                       <Separator className="opacity-30" />
-                      <div className="flex justify-between items-center py-2">
-                        <span className="text-base text-muted-foreground font-medium">Profissional</span>
-                        <span className="font-bold text-foreground text-right">
+                      <div className="flex justify-between items-center py-1 sm:py-2">
+                        <span className="text-sm sm:text-base text-muted-foreground font-medium">Profissional</span>
+                        <span className="font-bold text-foreground text-right text-sm sm:text-base">
                           {selectedStaff ? staff.find(s => s.id === selectedStaff)?.name : 'Qualquer disponível'}
                         </span>
                       </div>
                       <Separator className="opacity-30" />
-                      <div className="flex justify-between items-center py-2">
-                        <span className="text-base text-muted-foreground font-medium">Data e hora</span>
+                      <div className="flex justify-between items-center py-1 sm:py-2">
+                        <span className="text-sm sm:text-base text-muted-foreground font-medium">Data e hora</span>
                         <div className="text-right">
-                          <div className="font-bold text-foreground">{formatSelectedDateTime()}</div>
+                          <div className="font-bold text-foreground text-sm sm:text-base">{formatSelectedDateTime()}</div>
                         </div>
                       </div>
                       <Separator className="opacity-30" />
-                      <div className="flex justify-between items-center py-3 px-4 bg-accent/10 rounded-xl">
-                        <span className="text-lg font-bold text-foreground">Total</span>
-                        <span className="text-2xl font-bold bg-gradient-accent bg-clip-text text-transparent">
+                      <div className="flex justify-between items-center py-2 sm:py-3 px-3 sm:px-4 bg-accent/10 rounded-xl">
+                        <span className="text-base sm:text-lg font-bold text-foreground">Total</span>
+                        <span className="text-xl sm:text-2xl font-bold bg-gradient-accent bg-clip-text text-transparent">
                           R$ {((services.find(s => s.id === selectedService)?.price_cents || 0) / 100).toFixed(2)}
                         </span>
                       </div>
@@ -1065,31 +1065,33 @@ END:VCALENDAR`;
                   </CardContent>
                 </Card>
 
-                <div className="flex space-x-4 pt-4">
+                <div className="flex space-x-3 sm:space-x-4 pt-4 px-2 sm:px-0">
                   <Button 
                     type="button" 
                     variant="outline" 
                     onClick={goToPreviousStep}
-                    className="flex-1 h-14 rounded-xl font-semibold text-base"
+                    className="flex-1 h-12 sm:h-14 rounded-xl font-semibold text-sm sm:text-base"
                     disabled={submitting}
                   >
                     Voltar
                   </Button>
                   <Button 
                     type="submit" 
-                    className="flex-1 h-14 rounded-xl font-bold text-base" 
+                    className="flex-1 h-12 sm:h-14 rounded-xl font-bold text-sm sm:text-base" 
                     variant="hero" 
                     disabled={submitting}
                   >
                     {submitting ? (
                       <>
-                        <Loader2 className="h-5 w-5 mr-3 animate-spin" />
-                        Processando...
+                        <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 mr-2 sm:mr-3 animate-spin" />
+                        <span className="hidden sm:inline">Processando...</span>
+                        <span className="sm:hidden">...</span>
                       </>
                     ) : (
                       <>
-                        <CheckCircle className="h-5 w-5 mr-3" />
-                        Confirmar Agendamento
+                        <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 mr-2 sm:mr-3" />
+                        <span className="hidden sm:inline">Confirmar Agendamento</span>
+                        <span className="sm:hidden">Confirmar</span>
                       </>
                     )}
                   </Button>
