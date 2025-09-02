@@ -68,6 +68,22 @@ serve(async (req) => {
       );
     }
 
+    // Check rate limiting to prevent abuse (max 3 bookings per phone per tenant per hour)
+    const { data: rateLimitOk, error: rateLimitError } = await supabase
+      .rpc('check_booking_rate_limit', { 
+        customer_phone: customer_phone, 
+        tenant_uuid: tenant_id 
+      });
+
+    if (rateLimitError) {
+      console.error('Rate limit check error:', rateLimitError);
+    } else if (!rateLimitOk) {
+      return new Response(
+        JSON.stringify({ error: 'Muitas tentativas de agendamento. Tente novamente mais tarde.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Start a transaction-like operation by checking conflicts first
     const startsAtDate = new Date(starts_at);
     

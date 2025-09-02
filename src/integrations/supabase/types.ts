@@ -542,6 +542,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_booking_rate_limit: {
+        Args: { customer_phone: string; tenant_uuid: string }
+        Returns: boolean
+      }
       user_belongs_to_tenant: {
         Args: { tenant_uuid: string }
         Returns: boolean

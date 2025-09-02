@@ -34,9 +34,14 @@ export const useTenant = () => {
 
   const fetchUserTenants = async () => {
     try {
+      // Fetch only tenants where the user has legitimate access via users_tenant table
       const { data, error } = await supabase
         .from('tenants')
-        .select('*')
+        .select(`
+          *,
+          users_tenant!inner(role)
+        `)
+        .eq('users_tenant.user_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -47,6 +52,8 @@ export const useTenant = () => {
       }
     } catch (error) {
       console.error('Error fetching tenants:', error);
+      setTenants([]);
+      setCurrentTenant(null);
     } finally {
       setLoading(false);
     }
