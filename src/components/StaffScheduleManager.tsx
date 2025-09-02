@@ -61,14 +61,22 @@ export const StaffScheduleManager = ({ staffId, staffName }: StaffScheduleManage
   });
 
   useEffect(() => {
-    loadSchedules();
-  }, [staffId]);
+    if (staffId && currentTenant) {
+      loadSchedules();
+    }
+  }, [staffId, currentTenant]);
 
   const loadSchedules = async () => {
-    if (!currentTenant || !staffId) return;
+    if (!currentTenant || !staffId) {
+      console.log('Missing tenant or staffId:', { currentTenant: !!currentTenant, staffId });
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
+      console.log('Loading schedules for staff:', staffId, 'tenant:', currentTenant.id);
+      
       const { data, error } = await supabase
         .from('schedules')
         .select('*')
@@ -76,7 +84,12 @@ export const StaffScheduleManager = ({ staffId, staffName }: StaffScheduleManage
         .eq('staff_id', staffId)
         .order('weekday');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Loaded schedules:', data);
       setSchedules(data || []);
     } catch (error) {
       console.error('Error loading schedules:', error);
