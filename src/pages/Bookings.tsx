@@ -49,6 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useBookingModal } from "@/hooks/useBookingModal";
 import {
   Form,
   FormControl,
@@ -74,6 +75,7 @@ type BookingFormData = z.infer<typeof bookingSchema>;
 export default function Bookings() {
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  const { isOpen: showBookingForm, openBookingModal, closeBookingModal } = useBookingModal();
   const [bookings, setBookings] = useState<any[]>([]);
   const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
@@ -84,7 +86,6 @@ export default function Bookings() {
   const [dateFilter, setDateFilter] = useState("");
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [showDetails, setShowDetails] = useState(false);
-  const [showBookingForm, setShowBookingForm] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
 
   const form = useForm<BookingFormData>({
@@ -281,7 +282,7 @@ export default function Bookings() {
       });
 
       form.reset();
-      setShowBookingForm(false);
+      closeBookingModal();
       loadData();
     } catch (error: any) {
       toast({
@@ -337,7 +338,7 @@ export default function Bookings() {
         <Button
           onClick={() => {
             form.reset();
-            setShowBookingForm(true);
+            openBookingModal();
           }}
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -621,7 +622,7 @@ export default function Bookings() {
       </Dialog>
 
       {/* New Booking Form Dialog */}
-      <Dialog open={showBookingForm} onOpenChange={setShowBookingForm}>
+      <Dialog open={showBookingForm} onOpenChange={closeBookingModal}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Novo Agendamento</DialogTitle>
@@ -791,7 +792,7 @@ export default function Bookings() {
                 <Button 
                   type="button" 
                   variant="outline" 
-                  onClick={() => setShowBookingForm(false)}
+                  onClick={() => closeBookingModal()}
                   disabled={formLoading}
                 >
                   Cancelar

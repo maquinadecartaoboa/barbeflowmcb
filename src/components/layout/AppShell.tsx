@@ -50,6 +50,7 @@ import {
 import { NavLink } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useBookingModal } from "@/hooks/useBookingModal";
 
 const navigationItems = [
   { title: "Dashboard", url: "/app/dashboard", icon: Home },
@@ -247,6 +248,7 @@ export default function AppShell() {
   const isMobile = useIsMobile();
   const { user, signOut } = useAuth();
   const { currentTenant } = useTenant();
+  const { openBookingModal } = useBookingModal();
 
   if (isMobile) {
     return (
@@ -328,7 +330,7 @@ export default function AppShell() {
               </div>
               
               <div className="flex items-center space-x-3">
-                <Button variant="default" size="sm">
+                <Button variant="default" size="sm" onClick={openBookingModal}>
                   <Plus className="h-4 w-4 mr-2" />
                   Novo Agendamento
                 </Button>
