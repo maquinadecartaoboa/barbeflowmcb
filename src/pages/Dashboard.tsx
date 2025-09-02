@@ -32,19 +32,12 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Wait for auth to complete loading before redirecting
-    if (!authLoading && !user) {
-      console.log('No user found after auth loading completed, redirecting to login');
-      navigate('/app/login');
-      return;
-    }
-    
     // Load data when we have both user and tenant, or when tenant loading is complete
     if (user && !tenantLoading) {
       console.log('Loading dashboard data...', { user: !!user, currentTenant: !!currentTenant });
       loadDashboardData();
     }
-  }, [user, currentTenant, navigate, authLoading, tenantLoading]);
+  }, [user, currentTenant, tenantLoading]);
 
   const loadDashboardData = async () => {
     try {

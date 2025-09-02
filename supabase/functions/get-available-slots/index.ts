@@ -1,10 +1,22 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+);
+
+interface GetSlotsRequest {
+  tenant_id: string;
+  date: string; // YYYY-MM-DD format
+  service_id?: string;
+  staff_id?: string;
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -13,35 +25,19 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    );
+    const { tenant_id, date, service_id, staff_id }: GetSlotsRequest = await req.json();
+    
+    console.log('Get available slots request:', { tenant_id, date, service_id, staff_id });
 
-    const { tenant_id, service_id, staff_id, date } = await req.json();
-
-    if (!tenant_id || !service_id || !date) {
+    // Validate required fields
+    if (!tenant_id || !date) {
       return new Response(
-        JSON.stringify({ error: 'Missing required parameters' }),
+        JSON.stringify({ error: 'tenant_id and date are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get service details
-    const { data: service, error: serviceError } = await supabase
-      .from('services')
-      .select('duration_minutes')
-      .eq('id', service_id)
-      .single();
-
-    if (serviceError || !service) {
-      return new Response(
-        JSON.stringify({ error: 'Service not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Get tenant settings
+    // Get tenant settings (including timezone and buffer)
     const { data: tenant, error: tenantError } = await supabase
       .from('tenants')
       .select('settings')
@@ -49,6 +45,7 @@ serve(async (req) => {
       .single();
 
     if (tenantError || !tenant) {
+      console.error('Tenant not found:', tenantError);
       return new Response(
         JSON.stringify({ error: 'Tenant not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -56,171 +53,212 @@ serve(async (req) => {
     }
 
     const settings = tenant.settings || {};
-    const slotDuration = settings.slot_duration || 15; // minutes
+    const timezone = settings.timezone || 'America/Bahia';
     const bufferTime = settings.buffer_time || 10; // minutes
+    const slotDuration = settings.slot_duration || 15; // minutes
 
-    // Get schedules for the specified date
-    const targetDate = new Date(date);
-    const weekday = targetDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    // Parse target date and ensure it's not in the past
+    const targetDate = new Date(date + 'T00:00:00');
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    if (targetDate < today) {
+      return new Response(
+        JSON.stringify({ available_slots: [] }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    const schedulesQuery = supabase
-      .from('schedules')
-      .select('*')
+    // Get day of week (0 = Sunday, 1 = Monday, etc.)
+    const dayOfWeek = targetDate.getDay();
+
+    // Build staff filter
+    let staffQuery = supabase
+      .from('staff')
+      .select('id, name')
       .eq('tenant_id', tenant_id)
-      .eq('weekday', weekday)
       .eq('active', true);
 
     if (staff_id) {
-      schedulesQuery.eq('staff_id', staff_id);
+      staffQuery = staffQuery.eq('id', staff_id);
     }
 
-    const { data: schedules, error: schedulesError } = await schedulesQuery;
+    const { data: availableStaff, error: staffError } = await staffQuery;
 
-    if (schedulesError) {
+    if (staffError) {
+      console.error('Error fetching staff:', staffError);
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch schedules' }),
+        JSON.stringify({ error: 'Error fetching staff' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (!schedules || schedules.length === 0) {
+    if (!availableStaff?.length) {
       return new Response(
-        JSON.stringify({ slots: [] }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ available_slots: [] }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get existing bookings for the date
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Get service duration if service_id is provided
+    let serviceDuration = slotDuration;
+    if (service_id) {
+      const { data: service, error: serviceError } = await supabase
+        .from('services')
+        .select('duration_minutes')
+        .eq('id', service_id)
+        .eq('tenant_id', tenant_id)
+        .eq('active', true)
+        .single();
 
-    const bookingsQuery = supabase
-      .from('bookings')
-      .select('starts_at, ends_at, staff_id')
-      .eq('tenant_id', tenant_id)
-      .gte('starts_at', startOfDay.toISOString())
-      .lte('starts_at', endOfDay.toISOString())
-      .in('status', ['confirmed', 'pending']);
+      if (serviceError) {
+        console.error('Error fetching service:', serviceError);
+        return new Response(
+          JSON.stringify({ error: 'Service not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-    if (staff_id) {
-      bookingsQuery.eq('staff_id', staff_id);
+      serviceDuration = service.duration_minutes;
     }
 
-    const { data: bookings, error: bookingsError } = await bookingsQuery;
+    const availableSlots: any[] = [];
 
-    if (bookingsError) {
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch bookings' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Process each staff member
+    for (const staff of availableStaff) {
+      // Get staff schedule for the day
+      const { data: schedules, error: scheduleError } = await supabase
+        .from('schedules')
+        .select('*')
+        .eq('tenant_id', tenant_id)
+        .eq('staff_id', staff.id)
+        .eq('weekday', dayOfWeek)
+        .eq('active', true);
 
-    // Get blocks for the date
-    const { data: blocks, error: blocksError } = await supabase
-      .from('blocks')
-      .select('starts_at, ends_at, staff_id')
-      .eq('tenant_id', tenant_id)
-      .lte('starts_at', endOfDay.toISOString())
-      .gte('ends_at', startOfDay.toISOString());
+      if (scheduleError || !schedules?.length) {
+        console.log(`No schedule found for staff ${staff.id} on day ${dayOfWeek}`);
+        continue;
+      }
 
-    if (blocksError) {
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch blocks' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+      for (const schedule of schedules) {
+        // Convert schedule times to date objects for the target date
+        const startTime = new Date(`${date}T${schedule.start_time}`);
+        const endTime = new Date(`${date}T${schedule.end_time}`);
 
-    // Generate available slots
-    const slots: string[] = [];
-    const serviceDurationWithBuffer = service.duration_minutes + bufferTime;
+        // Get existing bookings for this staff on this date
+        const { data: bookings, error: bookingsError } = await supabase
+          .from('bookings')
+          .select('starts_at, ends_at')
+          .eq('tenant_id', tenant_id)
+          .eq('staff_id', staff.id)
+          .gte('starts_at', `${date}T00:00:00`)
+          .lt('starts_at', `${date}T23:59:59`)
+          .in('status', ['confirmed', 'pending']);
 
-    for (const schedule of schedules) {
-      const startTime = parseTime(schedule.start_time);
-      const endTime = parseTime(schedule.end_time);
-      const breakStart = schedule.break_start ? parseTime(schedule.break_start) : null;
-      const breakEnd = schedule.break_end ? parseTime(schedule.break_end) : null;
-
-      let currentTime = startTime;
-      
-      while (currentTime + serviceDurationWithBuffer <= endTime) {
-        const slotStart = new Date(targetDate);
-        slotStart.setHours(Math.floor(currentTime / 60), currentTime % 60, 0, 0);
-        
-        const slotEnd = new Date(slotStart);
-        slotEnd.setMinutes(slotEnd.getMinutes() + service.duration_minutes);
-
-        // Skip if slot is in the past
-        if (slotStart <= new Date()) {
-          currentTime += slotDuration;
+        if (bookingsError) {
+          console.error('Error fetching bookings:', bookingsError);
           continue;
         }
 
-        // Check if slot conflicts with break time
-        if (breakStart && breakEnd) {
-          const slotStartMinutes = slotStart.getHours() * 60 + slotStart.getMinutes();
-          const slotEndMinutes = slotEnd.getHours() * 60 + slotEnd.getMinutes();
+        // Get blocks for this staff on this date
+        const { data: blocks, error: blocksError } = await supabase
+          .from('blocks')
+          .select('starts_at, ends_at')
+          .eq('tenant_id', tenant_id)
+          .or(`staff_id.eq.${staff.id},staff_id.is.null`)
+          .gte('starts_at', `${date}T00:00:00`)
+          .lt('starts_at', `${date}T23:59:59`);
+
+        if (blocksError) {
+          console.error('Error fetching blocks:', blocksError);
+          continue;
+        }
+
+        // Generate time slots
+        const currentSlot = new Date(startTime);
+        
+        while (currentSlot.getTime() + (serviceDuration * 60 * 1000) <= endTime.getTime()) {
+          const slotEnd = new Date(currentSlot.getTime() + (serviceDuration * 60 * 1000));
           
-          if (!(slotEndMinutes <= breakStart || slotStartMinutes >= breakEnd)) {
-            currentTime += slotDuration;
+          // Skip if slot is in the past
+          if (currentSlot <= now) {
+            currentSlot.setMinutes(currentSlot.getMinutes() + slotDuration);
             continue;
           }
-        }
 
-        // Check if slot conflicts with existing bookings
-        const hasBookingConflict = (bookings || []).some((booking) => {
-          const bookingStart = new Date(booking.starts_at);
-          const bookingEnd = new Date(booking.ends_at);
-          
-          return !(slotEnd <= bookingStart || slotStart >= bookingEnd);
-        });
-
-        if (hasBookingConflict) {
-          currentTime += slotDuration;
-          continue;
-        }
-
-        // Check if slot conflicts with blocks
-        const hasBlockConflict = (blocks || []).some((block) => {
-          if (staff_id && block.staff_id && block.staff_id !== staff_id) {
-            return false;
+          // Check if slot conflicts with break time
+          if (schedule.break_start && schedule.break_end) {
+            const breakStart = new Date(`${date}T${schedule.break_start}`);
+            const breakEnd = new Date(`${date}T${schedule.break_end}`);
+            
+            if (currentSlot < breakEnd && slotEnd > breakStart) {
+              currentSlot.setMinutes(currentSlot.getMinutes() + slotDuration);
+              continue;
+            }
           }
-          
-          const blockStart = new Date(block.starts_at);
-          const blockEnd = new Date(block.ends_at);
-          
-          return !(slotEnd <= blockStart || slotStart >= blockEnd);
-        });
 
-        if (hasBlockConflict) {
-          currentTime += slotDuration;
-          continue;
+          // Check conflicts with existing bookings (with buffer)
+          let hasConflict = false;
+          for (const booking of bookings || []) {
+            const bookingStart = new Date(booking.starts_at);
+            const bookingEnd = new Date(booking.ends_at);
+            
+            // Add buffer time
+            const bufferedStart = new Date(bookingStart.getTime() - (bufferTime * 60 * 1000));
+            const bufferedEnd = new Date(bookingEnd.getTime() + (bufferTime * 60 * 1000));
+            
+            if (currentSlot < bufferedEnd && slotEnd > bufferedStart) {
+              hasConflict = true;
+              break;
+            }
+          }
+
+          if (hasConflict) {
+            currentSlot.setMinutes(currentSlot.getMinutes() + slotDuration);
+            continue;
+          }
+
+          // Check conflicts with blocks
+          for (const block of blocks || []) {
+            const blockStart = new Date(block.starts_at);
+            const blockEnd = new Date(block.ends_at);
+            
+            if (currentSlot < blockEnd && slotEnd > blockStart) {
+              hasConflict = true;
+              break;
+            }
+          }
+
+          if (!hasConflict) {
+            availableSlots.push({
+              staff_id: staff.id,
+              staff_name: staff.name,
+              starts_at: currentSlot.toISOString(),
+              ends_at: slotEnd.toISOString(),
+              time: currentSlot.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            });
+          }
+
+          currentSlot.setMinutes(currentSlot.getMinutes() + slotDuration);
         }
-
-        // Slot is available
-        slots.push(slotStart.toTimeString().substring(0, 5));
-        currentTime += slotDuration;
       }
     }
 
+    // Sort slots by time
+    availableSlots.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+
+    console.log(`Generated ${availableSlots.length} available slots for ${date}`);
+
     return new Response(
-      JSON.stringify({ slots: slots.sort() }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ available_slots: availableSlots }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error generating slots:', error);
+    console.error('Error in get-available-slots:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

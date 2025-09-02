@@ -14,16 +14,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signUp, user } = useAuth();
-  const navigate = useNavigate();
-
-  // Only redirect if user is already logged in when component mounts
-  useEffect(() => {
-    if (user) {
-      console.log('User already logged in, redirecting...');
-      window.location.href = '/app/dashboard';
-    }
-  }, []); // Empty dependency array - only runs once on mount
+  const { signIn, signUp } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,10 +28,10 @@ const Login = () => {
 
       console.log('Login result:', { error });
 
-      if (!error && !isSignUp) {
-        console.log('Login successful, redirecting to dashboard');
-        // Use window.location.href for a hard redirect
-        window.location.href = '/app/dashboard';
+      if (error) {
+        console.error('Login failed:', error);
+      } else {
+        console.log('Login successful - AuthWatcher will handle redirect');
       }
     } catch (err) {
       console.error('Auth error:', err);

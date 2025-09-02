@@ -1,10 +1,26 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+);
+
+interface CreateBookingRequest {
+  tenant_id: string;
+  service_id: string;
+  staff_id: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email?: string;
+  starts_at: string;
+  notes?: string;
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -13,108 +29,158 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    );
+    const {
+      tenant_id,
+      service_id,
+      staff_id,
+      customer_name,
+      customer_phone,
+      customer_email,
+      starts_at,
+      notes
+    }: CreateBookingRequest = await req.json();
 
-    const { 
-      tenant_id, 
-      service_id, 
-      staff_id, 
-      customer_name, 
-      customer_phone, 
-      customer_email, 
-      date, 
-      time, 
-      notes 
-    } = await req.json();
+    console.log('Create booking request:', {
+      tenant_id,
+      service_id,
+      staff_id,
+      customer_name,
+      customer_phone,
+      starts_at
+    });
 
     // Validate required fields
-    if (!tenant_id || !service_id || !customer_name || !customer_phone || !date || !time) {
+    if (!tenant_id || !service_id || !staff_id || !customer_name || !customer_phone || !starts_at) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+        JSON.stringify({ 
+          error: 'Missing required fields: tenant_id, service_id, staff_id, customer_name, customer_phone, starts_at' 
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get service details
+    // Validate phone format (basic Brazilian phone validation)
+    const phoneRegex = /^\(\d{2}\)\s\d{4,5}-\d{4}$/;
+    if (!phoneRegex.test(customer_phone)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid phone format. Use: (XX) XXXX-XXXX or (XX) XXXXX-XXXX' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Start a transaction-like operation by checking conflicts first
+    const startsAtDate = new Date(starts_at);
+    
+    // Get service duration to calculate end time
     const { data: service, error: serviceError } = await supabase
       .from('services')
       .select('duration_minutes, name')
       .eq('id', service_id)
       .eq('tenant_id', tenant_id)
+      .eq('active', true)
       .single();
 
     if (serviceError || !service) {
+      console.error('Service not found:', serviceError);
       return new Response(
-        JSON.stringify({ error: 'Service not found' }),
+        JSON.stringify({ error: 'Service not found or inactive' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Parse date and time
-    const bookingDate = new Date(date);
-    const [hours, minutes] = time.split(':').map(Number);
-    
-    const startTime = new Date(bookingDate);
-    startTime.setHours(hours, minutes, 0, 0);
-    
-    const endTime = new Date(startTime);
-    endTime.setMinutes(endTime.getMinutes() + service.duration_minutes);
+    const endsAtDate = new Date(startsAtDate.getTime() + (service.duration_minutes * 60 * 1000));
+    const ends_at = endsAtDate.toISOString();
 
-    // Check if the time slot is still available
-    const { data: existingBookings, error: bookingCheckError } = await supabase
+    // Get tenant settings for buffer time
+    const { data: tenant, error: tenantError } = await supabase
+      .from('tenants')
+      .select('settings')
+      .eq('id', tenant_id)
+      .single();
+
+    const settings = tenant?.settings || {};
+    const bufferTime = settings.buffer_time || 10; // minutes
+
+    // Check for conflicts with existing bookings (with buffer)
+    const bufferedStart = new Date(startsAtDate.getTime() - (bufferTime * 60 * 1000));
+    const bufferedEnd = new Date(endsAtDate.getTime() + (bufferTime * 60 * 1000));
+
+    const { data: conflictingBookings, error: conflictError } = await supabase
       .from('bookings')
-      .select('id')
+      .select('id, starts_at, ends_at')
       .eq('tenant_id', tenant_id)
-      .gte('starts_at', startTime.toISOString())
-      .lt('starts_at', endTime.toISOString())
-      .in('status', ['confirmed', 'pending']);
+      .eq('staff_id', staff_id)
+      .in('status', ['confirmed', 'pending'])
+      .or(`and(starts_at.lt.${bufferedEnd.toISOString()},ends_at.gt.${bufferedStart.toISOString()})`);
 
-    if (bookingCheckError) {
+    if (conflictError) {
+      console.error('Error checking conflicts:', conflictError);
       return new Response(
-        JSON.stringify({ error: 'Failed to check availability' }),
+        JSON.stringify({ error: 'Error checking booking conflicts' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (existingBookings && existingBookings.length > 0) {
+    if (conflictingBookings && conflictingBookings.length > 0) {
+      console.log('Booking conflict detected:', conflictingBookings);
       return new Response(
-        JSON.stringify({ error: 'Time slot is no longer available' }),
+        JSON.stringify({ 
+          error: 'Horário não disponível. Já existe um agendamento neste período.',
+          conflicting_bookings: conflictingBookings 
+        }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Create or get customer
-    let customerId: string;
+    // Check for blocks
+    const { data: blocks, error: blocksError } = await supabase
+      .from('blocks')
+      .select('id, starts_at, ends_at, reason')
+      .eq('tenant_id', tenant_id)
+      .or(`staff_id.eq.${staff_id},staff_id.is.null`)
+      .or(`and(starts_at.lt.${ends_at},ends_at.gt.${starts_at})`);
 
-    // First, try to find existing customer by phone
+    if (blocksError) {
+      console.error('Error checking blocks:', blocksError);
+      return new Response(
+        JSON.stringify({ error: 'Error checking schedule blocks' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (blocks && blocks.length > 0) {
+      console.log('Schedule block detected:', blocks);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Horário bloqueado para agendamentos.',
+          blocks: blocks 
+        }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Find or create customer
+    let customer_id: string;
+    
+    // First try to find existing customer by phone
     const { data: existingCustomer, error: customerSearchError } = await supabase
       .from('customers')
       .select('id')
       .eq('tenant_id', tenant_id)
       .eq('phone', customer_phone)
-      .maybeSingle();
+      .single();
 
-    if (customerSearchError) {
+    if (customerSearchError && customerSearchError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Error searching customer:', customerSearchError);
       return new Response(
-        JSON.stringify({ error: 'Failed to search for customer' }),
+        JSON.stringify({ error: 'Error searching customer database' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     if (existingCustomer) {
-      customerId = existingCustomer.id;
-      
-      // Update customer info if provided
-      await supabase
-        .from('customers')
-        .update({
-          name: customer_name,
-          email: customer_email || null,
-        })
-        .eq('id', customerId);
+      customer_id = existingCustomer.id;
+      console.log('Using existing customer:', customer_id);
     } else {
       // Create new customer
       const { data: newCustomer, error: customerCreateError } = await supabase
@@ -123,34 +189,36 @@ serve(async (req) => {
           tenant_id,
           name: customer_name,
           phone: customer_phone,
-          email: customer_email || null,
+          email: customer_email
         })
         .select('id')
         .single();
 
       if (customerCreateError || !newCustomer) {
+        console.error('Error creating customer:', customerCreateError);
         return new Response(
-          JSON.stringify({ error: 'Failed to create customer' }),
+          JSON.stringify({ error: 'Error creating customer record' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      customerId = newCustomer.id;
+      customer_id = newCustomer.id;
+      console.log('Created new customer:', customer_id);
     }
 
-    // Create booking
+    // Create the booking
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .insert({
         tenant_id,
         service_id,
-        staff_id: staff_id || null,
-        customer_id: customerId,
-        starts_at: startTime.toISOString(),
-        ends_at: endTime.toISOString(),
+        staff_id,
+        customer_id,
+        starts_at,
+        ends_at,
         status: 'confirmed',
-        notes: notes || null,
-        created_via: 'public',
+        notes,
+        created_via: 'public'
       })
       .select(`
         *,
@@ -161,41 +229,29 @@ serve(async (req) => {
       .single();
 
     if (bookingError || !booking) {
+      console.error('Error creating booking:', bookingError);
       return new Response(
-        JSON.stringify({ error: 'Failed to create booking' }),
+        JSON.stringify({ error: 'Error creating booking record' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Booking created:', booking);
+    console.log('Booking created successfully:', booking.id);
 
     return new Response(
       JSON.stringify({ 
-        success: true, 
-        booking: {
-          id: booking.id,
-          service_name: booking.service?.name,
-          staff_name: booking.staff?.name,
-          customer_name: booking.customer?.name,
-          date: startTime.toLocaleDateString('pt-BR'),
-          time: startTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-          price: booking.service?.price_cents ? (booking.service.price_cents / 100) : 0,
-        }
+        success: true,
+        booking: booking,
+        message: 'Agendamento criado com sucesso!'
       }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error creating booking:', error);
+    console.error('Error in create-booking:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
