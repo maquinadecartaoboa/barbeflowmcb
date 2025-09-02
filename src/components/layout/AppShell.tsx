@@ -55,7 +55,7 @@ import { BookingModal } from "@/components/modals/BookingModal";
 
 const navigationItems = [
   { title: "Dashboard", url: "/app/dashboard", icon: Home },
-  { title: "Agenda", url: "/app/agenda", icon: Calendar },
+  { title: "Calendário", url: "/app/agenda", icon: Calendar },
   { title: "Agendamentos", url: "/app/bookings", icon: FileText },
   { title: "Serviços", url: "/app/services", icon: Scissors },
   { title: "Profissionais", url: "/app/staff", icon: Users },
@@ -66,7 +66,7 @@ const navigationItems = [
 
 const bottomTabItems = [
   { title: "Home", url: "/app/dashboard", icon: Home },
-  { title: "Agenda", url: "/app/agenda", icon: Calendar },
+  { title: "Calendário", url: "/app/agenda", icon: Calendar },
   { title: "Financeiro", url: "/app/finance", icon: Wallet },
   { title: "Mais", url: "/app/settings", icon: Menu },
 ];

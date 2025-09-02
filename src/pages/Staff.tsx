@@ -25,7 +25,8 @@ import {
   User, 
   Palette,
   Scissors,
-  Settings
+  Settings,
+  Clock
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,6 +39,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { StaffScheduleManager } from "@/components/StaffScheduleManager";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const staffSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -58,6 +61,8 @@ export default function Staff() {
   const [editingStaff, setEditingStaff] = useState<any>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [selectedStaffForSchedule, setSelectedStaffForSchedule] = useState<any>(null);
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
 
   const form = useForm<StaffFormData>({
     resolver: zodResolver(staffSchema),
@@ -387,6 +392,17 @@ export default function Staff() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => {
+                          setSelectedStaffForSchedule(staffMember);
+                          setShowScheduleDialog(true);
+                        }}
+                        title="Configurar horários"
+                      >
+                        <Clock className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleEdit(staffMember)}
                       >
                         <Edit className="h-4 w-4" />
@@ -431,6 +447,27 @@ export default function Staff() {
           </Card>
         )}
       </div>
+
+      {/* Schedule Management Dialog */}
+      <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+        <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Horários de Trabalho - {selectedStaffForSchedule?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Configure os horários de trabalho do profissional
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedStaffForSchedule && (
+            <StaffScheduleManager 
+              staffId={selectedStaffForSchedule.id}
+              staffName={selectedStaffForSchedule.name}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Staff Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
