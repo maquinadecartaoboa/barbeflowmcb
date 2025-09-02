@@ -231,11 +231,11 @@ function BottomTabs() {
 }
 
 function FloatingActionButton() {
-  const navigate = useNavigate();
+  const { openBookingModal } = useBookingModal();
 
   return (
     <Button
-      onClick={() => navigate('/app/bookings/new')}
+      onClick={openBookingModal}
       size="lg"
       className="md:hidden fixed bottom-20 right-4 rounded-full w-14 h-14 shadow-large z-50"
     >
