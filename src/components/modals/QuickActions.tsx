@@ -557,7 +557,7 @@ export function BlockTimeModal({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Todos os profissionais</SelectItem>
+                      <SelectItem value="all">Todos os profissionais</SelectItem>
                       {staff.map((member) => (
                         <SelectItem key={member.id} value={member.id}>
                           {member.name}

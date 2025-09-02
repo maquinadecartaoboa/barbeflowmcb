@@ -390,7 +390,7 @@ export default function Finance() {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   {staff.map(member => (
                     <SelectItem key={member.id} value={member.id}>
                       {member.name}
