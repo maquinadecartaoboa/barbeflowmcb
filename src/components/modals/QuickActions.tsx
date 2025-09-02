@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -43,14 +43,14 @@ const serviceSchema = z.object({
   duration_minutes: z.number().min(15, "Duração mínima de 15 minutos"),
   price_cents: z.number().min(0, "Preço deve ser positivo"),
   color: z.string().min(1, "Cor é obrigatória"),
-  active: z.boolean().default(true),
+  active: z.boolean(),
 });
 
 const staffSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   bio: z.string().optional(),
   color: z.string().min(1, "Cor é obrigatória"),
-  active: z.boolean().default(true),
+  active: z.boolean(),
 });
 
 const blockSchema = z.object({
@@ -59,6 +59,10 @@ const blockSchema = z.object({
   ends_at: z.string().min(1, "Data/hora final é obrigatória"),
   staff_id: z.string().optional(),
 });
+
+type ServiceFormData = z.infer<typeof serviceSchema>;
+type StaffFormData = z.infer<typeof staffSchema>;
+type BlockFormData = z.infer<typeof blockSchema>;
 
 interface QuickActionsProps {
   onSuccess?: () => void;
@@ -78,7 +82,7 @@ export function NewServiceModal({
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  const form = useForm<z.infer<typeof serviceSchema>>({
+  const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
     defaultValues: {
       name: "",
@@ -90,7 +94,7 @@ export function NewServiceModal({
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof serviceSchema>) => {
+  const onSubmit = async (values: ServiceFormData) => {
     if (!currentTenant) return;
 
     try {
@@ -285,7 +289,7 @@ export function NewStaffModal({
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  const form = useForm<z.infer<typeof staffSchema>>({
+  const form = useForm<StaffFormData>({
     resolver: zodResolver(staffSchema),
     defaultValues: {
       name: "",
@@ -295,7 +299,7 @@ export function NewStaffModal({
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof staffSchema>) => {
+  const onSubmit = async (values: StaffFormData) => {
     if (!currentTenant) return;
 
     try {
@@ -447,7 +451,7 @@ export function BlockTimeModal({
   const [loading, setLoading] = useState(false);
   const [staff, setStaff] = useState<any[]>([]);
 
-  const form = useForm<z.infer<typeof blockSchema>>({
+  const form = useForm<BlockFormData>({
     resolver: zodResolver(blockSchema),
     defaultValues: {
       reason: "",
@@ -476,7 +480,7 @@ export function BlockTimeModal({
     setStaff(data || []);
   };
 
-  const onSubmit = async (values: z.infer<typeof blockSchema>) => {
+  const onSubmit = async (values: BlockFormData) => {
     if (!currentTenant) return;
 
     try {

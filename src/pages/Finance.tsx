@@ -506,9 +506,8 @@ export default function Finance() {
                 <YAxis />
                 <Tooltip 
                   formatter={(value: number) => [`R$ ${value.toFixed(2)}`, '']}
-                  labelStyle={{ color: 'hsl(var(--foreground))' }}
                 />
-                <Line 
+                <Line
                   type="monotone" 
                   dataKey="expected" 
                   stroke="hsl(var(--primary))" 
@@ -545,9 +544,8 @@ export default function Finance() {
                 <YAxis />
                 <Tooltip 
                   formatter={(value: number) => [`R$ ${(value / 100).toFixed(2)}`, 'Faturamento']}
-                  labelStyle={{ color: 'hsl(var(--foreground))' }}
                 />
-                <Bar 
+                <Bar
                   dataKey="revenue" 
                   fill="hsl(var(--accent))"
                   radius={[4, 4, 0, 0]}
