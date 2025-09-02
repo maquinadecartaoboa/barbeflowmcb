@@ -89,7 +89,7 @@ const Dashboard = () => {
             service:services(name, price_cents)
           `)
           .eq('tenant_id', currentTenant.id)
-          .eq('status', 'confirmed')
+          .in('status', ['confirmed', 'completed'])
           .gte('starts_at', dateRange.from.toISOString())
           .lte('starts_at', dateRange.to.toISOString()),
         

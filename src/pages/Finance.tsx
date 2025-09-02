@@ -112,7 +112,7 @@ export default function Finance() {
           customer:customers(name, phone)
         `)
         .eq('tenant_id', currentTenant.id)
-        .eq('status', 'confirmed') // Only confirmed bookings for financial calculations
+        .in('status', ['confirmed', 'completed']) // Confirmed and completed bookings for financial calculations
         .gte('starts_at', dateRange.from.toISOString())
         .lte('starts_at', dateRange.to.toISOString());
 
@@ -254,6 +254,7 @@ export default function Finance() {
         booking.service?.name || '',
         booking.staff?.name || '',
         `R$ ${((booking.service?.price_cents || 0) / 100).toFixed(2)}`,
+        booking.status === 'completed' ? 'Concluído' :
         booking.status === 'confirmed' ? 'Confirmado' : 
         booking.status === 'cancelled' ? 'Cancelado' : 
         booking.status === 'no_show' ? 'Faltou' : booking.status
@@ -401,7 +402,7 @@ export default function Finance() {
                 </p>
                 <div className="flex items-center mt-1">
                   <Calendar className="h-3 w-3 text-primary mr-1" />
-                  <span className="text-xs text-primary">Confirmados</span>
+                  <span className="text-xs text-primary">Confirmados e Concluídos</span>
                 </div>
               </div>
               <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
@@ -576,7 +577,8 @@ export default function Finance() {
                           booking.status === 'cancelled' ? 'destructive' :
                           'secondary'
                         } className="text-xs">
-                          {booking.status === 'confirmed' ? 'Confirmado' :
+                          {booking.status === 'completed' ? 'Concluído' :
+                           booking.status === 'confirmed' ? 'Confirmado' :
                            booking.status === 'cancelled' ? 'Cancelado' :
                            booking.status === 'no_show' ? 'Faltou' : booking.status}
                         </Badge>
