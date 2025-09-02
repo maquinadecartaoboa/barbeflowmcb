@@ -5,16 +5,37 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Scissors, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { signIn, signUp, user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate('/app/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // TODO: Implement login logic with Supabase
-    setTimeout(() => setIsLoading(false), 2000);
+
+    const { error } = isSignUp 
+      ? await signUp(email, password)
+      : await signIn(email, password);
+
+    if (!error && !isSignUp) {
+      navigate('/app/dashboard');
+    }
+    
+    setIsLoading(false);
   };
 
   return (
@@ -37,9 +58,14 @@ const Login = () => {
 
         <Card className="border-border shadow-large">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-xl text-center">Fazer login</CardTitle>
+            <CardTitle className="text-xl text-center">
+              {isSignUp ? "Criar conta" : "Fazer login"}
+            </CardTitle>
             <CardDescription className="text-center">
-              Entre com seus dados para acessar o painel
+              {isSignUp 
+                ? "Crie sua conta para gerenciar sua barbearia" 
+                : "Entre com seus dados para acessar o painel"
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -50,6 +76,8 @@ const Login = () => {
                   id="email"
                   type="email"
                   placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                   className="h-11"
                 />
@@ -60,6 +88,8 @@ const Login = () => {
                   id="password"
                   type="password"
                   placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                   className="h-11"
                 />
@@ -78,7 +108,10 @@ const Login = () => {
                 size="lg"
                 disabled={isLoading}
               >
-                {isLoading ? "Entrando..." : "Entrar"}
+                {isLoading 
+                  ? (isSignUp ? "Criando conta..." : "Entrando...") 
+                  : (isSignUp ? "Criar conta" : "Entrar")
+                }
               </Button>
             </form>
 
@@ -86,13 +119,14 @@ const Login = () => {
               <Separator className="mb-6" />
               <div className="text-center">
                 <p className="text-sm text-muted-foreground">
-                  Ainda não tem uma conta?{" "}
-                  <Link
-                    to="/app/register"
+                  {isSignUp ? "Já tem uma conta?" : "Ainda não tem uma conta?"}{" "}
+                  <button
+                    type="button"
+                    onClick={() => setIsSignUp(!isSignUp)}
                     className="text-primary hover:text-primary-hover font-medium transition-colors"
                   >
-                    Criar conta
-                  </Link>
+                    {isSignUp ? "Fazer login" : "Criar conta"}
+                  </button>
                 </p>
               </div>
             </div>

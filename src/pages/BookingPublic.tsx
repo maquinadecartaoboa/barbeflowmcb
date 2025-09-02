@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,94 +18,148 @@ import {
   Phone, 
   Mail,
   User,
-  CheckCircle
+  CheckCircle,
+  Loader2
 } from "lucide-react";
 
 const BookingPublic = () => {
+  const { slug } = useParams<{ slug: string }>();
+  const { toast } = useToast();
+  
+  const [tenant, setTenant] = useState<any>(null);
+  const [services, setServices] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [step, setStep] = useState(1);
+  
+  // Form data
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [notes, setNotes] = useState('');
 
-  // Mock data
-  const barbershop = {
-    name: "Barbearia Premium",
-    slug: "barbearia-premium",
-    rating: 4.8,
-    reviews: 127,
-    address: "Rua das Flores, 123 - Centro",
-    phone: "(11) 99999-9999",
-    image: "/api/placeholder/800/400"
+  useEffect(() => {
+    if (slug) {
+      loadTenantData();
+    }
+  }, [slug]);
+
+  useEffect(() => {
+    if (selectedService && selectedDate) {
+      loadAvailableSlots();
+    }
+  }, [selectedService, selectedStaff, selectedDate]);
+
+  const loadTenantData = async () => {
+    try {
+      setLoading(true);
+      
+      // Get tenant by slug
+      const { data: tenantData, error: tenantError } = await supabase
+        .from('tenants')
+        .select('*')
+        .eq('slug', slug)
+        .single();
+
+      if (tenantError || !tenantData) {
+        toast({
+          title: "Barbearia não encontrada",
+          description: "Verifique o link e tente novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setTenant(tenantData);
+
+      // Load services and staff
+      const [servicesRes, staffRes] = await Promise.all([
+        supabase
+          .from('services')
+          .select('*')
+          .eq('tenant_id', tenantData.id)
+          .eq('active', true)
+          .order('name'),
+        
+        supabase
+          .from('staff')
+          .select('*')
+          .eq('tenant_id', tenantData.id)
+          .eq('active', true)
+          .order('name')
+      ]);
+
+      if (servicesRes.error) throw servicesRes.error;
+      if (staffRes.error) throw staffRes.error;
+
+      setServices(servicesRes.data || []);
+      setStaff(staffRes.data || []);
+    } catch (error) {
+      console.error('Error loading tenant data:', error);
+      toast({
+        title: "Erro ao carregar dados",
+        description: "Tente novamente em alguns instantes.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const services = [
-    { 
-      id: 1, 
-      name: "Corte Tradicional", 
-      duration: 30, 
-      price: 25, 
-      description: "Corte clássico com acabamento tradicional"
-    },
-    { 
-      id: 2, 
-      name: "Corte + Barba", 
-      duration: 45, 
-      price: 40, 
-      description: "Corte completo com barba aparada"
-    },
-    { 
-      id: 3, 
-      name: "Barba", 
-      duration: 20, 
-      price: 20, 
-      description: "Aparar e modelar barba"
-    },
-    { 
-      id: 4, 
-      name: "Corte Premium", 
-      duration: 60, 
-      price: 55, 
-      description: "Corte premium com hidratação e massagem"
-    }
-  ];
+  const loadAvailableSlots = async () => {
+    if (!selectedService || !selectedDate || !tenant) return;
 
-  const staff = [
-    { 
-      id: 1, 
-      name: "Carlos Silva", 
-      specialty: "Cortes clássicos", 
-      rating: 4.9,
-      image: "/api/placeholder/100/100"
-    },
-    { 
-      id: 2, 
-      name: "Roberto Santos", 
-      specialty: "Barbas e bigodes", 
-      rating: 4.8,
-      image: "/api/placeholder/100/100"
-    },
-    { 
-      id: 3, 
-      name: "Maria Costa", 
-      specialty: "Cortes femininos", 
-      rating: 5.0,
-      image: "/api/placeholder/100/100"
-    }
-  ];
+    try {
+      setSlotsLoading(true);
+      
+      const { data, error } = await supabase.functions.invoke('get-available-slots', {
+        body: {
+          tenant_id: tenant.id,
+          service_id: selectedService,
+          staff_id: selectedStaff || null,
+          date: selectedDate,
+        },
+      });
 
-  const availableTimes = [
-    "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-    "14:00", "14:30", "15:00", "15:30", "16:00", "16:30"
-  ];
+      if (error) throw error;
+      
+      setAvailableSlots(data.slots || []);
+    } catch (error) {
+      console.error('Error loading slots:', error);
+      toast({
+        title: "Erro ao carregar horários",
+        description: "Tente novamente em alguns instantes.",
+        variant: "destructive",
+      });
+    } finally {
+      setSlotsLoading(false);
+    }
+  };
 
   const handleServiceSelect = (serviceId: string) => {
     setSelectedService(serviceId);
+    setSelectedTime(null);
+    setAvailableSlots([]);
+    
+    // Set default date to tomorrow if today is too late
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setSelectedDate(tomorrow.toISOString().split('T')[0]);
+    
     setStep(2);
   };
 
   const handleStaffSelect = (staffId: string) => {
-    setSelectedStaff(staffId);
+    setSelectedStaff(staffId === "any" ? null : staffId);
+    setSelectedTime(null);
+    setAvailableSlots([]);
     setStep(3);
   };
 
@@ -111,9 +168,54 @@ const BookingPublic = () => {
     setStep(4);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStep(5);
+    
+    if (!tenant || !selectedService || !selectedDate || !selectedTime || !customerName || !customerPhone) {
+      toast({
+        title: "Dados incompletos",
+        description: "Preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      
+      const { data, error } = await supabase.functions.invoke('create-booking', {
+        body: {
+          tenant_id: tenant.id,
+          service_id: selectedService,
+          staff_id: selectedStaff,
+          customer_name: customerName,
+          customer_phone: customerPhone,
+          customer_email: customerEmail || null,
+          date: selectedDate,
+          time: selectedTime,
+          notes: notes || null,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        setStep(5);
+        toast({
+          title: "Agendamento confirmado!",
+          description: "Você receberá uma confirmação em breve.",
+        });
+      }
+    } catch (error: any) {
+      console.error('Error creating booking:', error);
+      toast({
+        title: "Erro no agendamento",
+        description: error.message || "Tente novamente em alguns instantes.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (step === 5) {
@@ -166,20 +268,20 @@ const BookingPublic = () => {
         <div className="absolute inset-0 bg-black/20" />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-end pb-8">
           <div className="text-primary-foreground">
-            <h1 className="text-3xl font-bold mb-2">{barbershop.name}</h1>
+            <h1 className="text-3xl font-bold mb-2">{tenant?.name || "Carregando..."}</h1>
             <div className="flex items-center space-x-4 text-sm opacity-90">
-              <div className="flex items-center">
-                <Star className="h-4 w-4 mr-1 fill-current" />
-                {barbershop.rating} ({barbershop.reviews} avaliações)
-              </div>
-              <div className="flex items-center">
-                <MapPin className="h-4 w-4 mr-1" />
-                {barbershop.address}
-              </div>
-              <div className="flex items-center">
-                <Phone className="h-4 w-4 mr-1" />
-                {barbershop.phone}
-              </div>
+              {tenant?.address && (
+                <div className="flex items-center">
+                  <MapPin className="h-4 w-4 mr-1" />
+                  {tenant.address}
+                </div>
+              )}
+              {tenant?.phone && (
+                <div className="flex items-center">
+                  <Phone className="h-4 w-4 mr-1" />
+                  {tenant.phone}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -219,30 +321,47 @@ const BookingPublic = () => {
             </div>
             
             <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-              {services.map((service) => (
-                <Card 
-                  key={service.id} 
-                  className="cursor-pointer border-border hover:border-primary hover:shadow-medium transition-all duration-300"
-                  onClick={() => handleServiceSelect(service.id.toString())}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                        <Scissors className="h-6 w-6 text-primary" />
+              {loading ? (
+                <div className="col-span-2 text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+                  <p className="text-muted-foreground">Carregando serviços...</p>
+                </div>
+              ) : services.length === 0 ? (
+                <div className="col-span-2 text-center py-8">
+                  <p className="text-muted-foreground">Nenhum serviço disponível no momento.</p>
+                </div>
+              ) : (
+                services.map((service) => (
+                  <Card 
+                    key={service.id} 
+                    className="cursor-pointer border-border hover:border-primary hover:shadow-medium transition-all duration-300"
+                    onClick={() => handleServiceSelect(service.id)}
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <div 
+                          className="w-12 h-12 rounded-xl flex items-center justify-center"
+                          style={{ 
+                            backgroundColor: `${service.color}20`,
+                            color: service.color 
+                          }}
+                        >
+                          <Scissors className="h-6 w-6" />
+                        </div>
+                        <Badge variant="secondary" className="text-accent font-semibold">
+                          R$ {(service.price_cents / 100).toFixed(2)}
+                        </Badge>
                       </div>
-                      <Badge variant="secondary" className="text-accent font-semibold">
-                        R$ {service.price}
-                      </Badge>
-                    </div>
-                    <h3 className="font-semibold text-foreground mb-2">{service.name}</h3>
-                    <p className="text-sm text-muted-foreground mb-3">{service.description}</p>
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3 mr-1" />
-                      {service.duration} minutos
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      <h3 className="font-semibold text-foreground mb-2">{service.name}</h3>
+                      <p className="text-sm text-muted-foreground mb-3">{service.description}</p>
+                      <div className="flex items-center text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {service.duration_minutes} minutos
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
           </div>
         )}
@@ -277,29 +396,38 @@ const BookingPublic = () => {
               <Separator className="mb-6" />
               
               <div className="space-y-4">
-                {staff.map((member) => (
-                  <Card 
-                    key={member.id}
-                    className="cursor-pointer border-border hover:border-primary hover:shadow-medium transition-all duration-300"
-                    onClick={() => handleStaffSelect(member.id.toString())}
-                  >
-                    <CardContent className="p-6">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
-                          <User className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-foreground mb-1">{member.name}</h3>
-                          <p className="text-sm text-muted-foreground mb-2">{member.specialty}</p>
-                          <div className="flex items-center">
-                            <Star className="h-4 w-4 text-accent fill-current mr-1" />
-                            <span className="text-sm font-medium">{member.rating}</span>
+                {loading ? (
+                  <div className="text-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+                    <p className="text-muted-foreground">Carregando profissionais...</p>
+                  </div>
+                ) : (
+                  staff.map((member) => (
+                    <Card 
+                      key={member.id}
+                      className="cursor-pointer border-border hover:border-primary hover:shadow-medium transition-all duration-300"
+                      onClick={() => handleStaffSelect(member.id)}
+                    >
+                      <CardContent className="p-6">
+                        <div className="flex items-center space-x-4">
+                          <div 
+                            className="w-16 h-16 rounded-full flex items-center justify-center"
+                            style={{ 
+                              backgroundColor: `${member.color}20`,
+                              color: member.color 
+                            }}
+                          >
+                            <User className="h-8 w-8" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-foreground mb-1">{member.name}</h3>
+                            <p className="text-sm text-muted-foreground mb-2">{member.bio}</p>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -322,22 +450,41 @@ const BookingPublic = () => {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center">
                     <Calendar className="h-5 w-5 mr-2" />
-                    Hoje - 15 de Janeiro
+                    Selecione a data
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                    {availableTimes.map((time) => (
-                      <Button
-                        key={time}
-                        variant="outline"
-                        onClick={() => handleTimeSelect(time)}
-                        className="h-12 hover:border-primary hover:bg-primary/5"
-                      >
-                        {time}
-                      </Button>
-                    ))}
-                  </div>
+                  <Input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="mb-4"
+                  />
+                  
+                  {slotsLoading ? (
+                    <div className="text-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+                      <p className="text-muted-foreground">Carregando horários disponíveis...</p>
+                    </div>
+                  ) : availableSlots.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      {selectedDate ? "Nenhum horário disponível para esta data." : "Selecione uma data para ver os horários."}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                      {availableSlots.map((time) => (
+                        <Button
+                          key={time}
+                          variant="outline"
+                          onClick={() => handleTimeSelect(time)}
+                          className="h-12 hover:border-primary hover:bg-primary/5"
+                        >
+                          {time}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -365,6 +512,8 @@ const BookingPublic = () => {
                       <Input
                         id="name"
                         placeholder="Seu nome completo"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
                         required
                         className="h-11"
                       />
@@ -376,6 +525,8 @@ const BookingPublic = () => {
                         id="phone"
                         type="tel"
                         placeholder="(11) 99999-9999"
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
                         required
                         className="h-11"
                       />
@@ -390,6 +541,8 @@ const BookingPublic = () => {
                         id="email"
                         type="email"
                         placeholder="seu@email.com"
+                        value={customerEmail}
+                        onChange={(e) => setCustomerEmail(e.target.value)}
                         className="h-11"
                       />
                     </div>
@@ -399,6 +552,8 @@ const BookingPublic = () => {
                       <Textarea
                         id="notes"
                         placeholder="Alguma observação especial?"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
                         rows={3}
                       />
                     </div>
@@ -433,8 +588,15 @@ const BookingPublic = () => {
                   </CardContent>
                 </Card>
 
-                <Button type="submit" size="lg" className="w-full" variant="hero">
-                  Confirmar Agendamento
+                <Button type="submit" size="lg" className="w-full" variant="hero" disabled={submitting}>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    "Confirmar Agendamento"
+                  )}
                 </Button>
               </form>
             </div>
