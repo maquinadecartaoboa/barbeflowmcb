@@ -156,23 +156,31 @@ const BookingPublic = () => {
       const available = data.available_slots || [];
       const occupied = data.occupied_slots || [];
       
+      console.log('Available slots:', available.length);
+      console.log('Occupied slots:', occupied.length);
+      
       setAvailableSlots(available);
       setOccupiedSlots(occupied);
       
-      // Create combined list for display
-      const allSlots = [...available.map((slot: any) => ({ ...slot, available: true }))];
+      // Create combined list for display - merge all slots properly
+      const slotMap = new Map();
       
-      // Add occupied slots if they exist
-      if (occupied.length > 0) {
-        occupied.forEach((occupiedSlot: any) => {
-          const isAlreadyInList = allSlots.some(slot => slot.time === occupiedSlot.time);
-          if (!isAlreadyInList) {
-            allSlots.push({ ...occupiedSlot, available: false });
-          }
+      // Add all available slots
+      available.forEach((slot: any) => {
+        slotMap.set(slot.time, { ...slot, available: true });
+      });
+      
+      // Mark occupied slots as unavailable (override if same time)
+      occupied.forEach((occupiedSlot: any) => {
+        slotMap.set(occupiedSlot.time, { 
+          ...occupiedSlot, 
+          available: false,
+          reason: occupiedSlot.reason 
         });
-      }
+      });
       
-      // Sort all slots by time
+      // Convert to array and sort
+      const allSlots = Array.from(slotMap.values());
       allSlots.sort((a, b) => a.time.localeCompare(b.time));
       setAllTimeSlots(allSlots);
       

@@ -125,6 +125,8 @@ serve(async (req) => {
     const availableSlots: any[] = [];
     const occupiedSlots: any[] = [];
     const allPossibleSlots: any[] = [];
+    
+    console.log(`Processing slots for ${availableStaff.length} staff members on ${date}`);
 
     // First, generate all possible time slots for all staff members
     for (const staff of availableStaff) {
@@ -224,13 +226,18 @@ serve(async (req) => {
           const bookingStart = new Date(booking.starts_at);
           const bookingEnd = new Date(booking.ends_at);
           
+          console.log(`Checking conflict: slot ${slotStart.toISOString()} - ${slotEnd.toISOString()} vs booking ${bookingStart.toISOString()} - ${bookingEnd.toISOString()}`);
+          
           // Add buffer time
           const bufferedStart = new Date(bookingStart.getTime() - (bufferTime * 60 * 1000));
           const bufferedEnd = new Date(bookingEnd.getTime() + (bufferTime * 60 * 1000));
           
+          console.log(`With buffer: slot vs booking with buffer ${bufferedStart.toISOString()} - ${bufferedEnd.toISOString()}`);
+          
           if (slotStart < bufferedEnd && slotEnd > bufferedStart) {
             isAvailable = false;
             conflictReason = `Agendado para ${booking.customer?.name || 'Cliente'} - ${booking.service?.name || 'Serviço'}`;
+            console.log(`CONFLICT DETECTED: ${conflictReason}`);
             break;
           }
         }
@@ -257,9 +264,12 @@ serve(async (req) => {
             const blockStart = new Date(block.starts_at);
             const blockEnd = new Date(block.ends_at);
             
+            console.log(`Checking block conflict: slot ${slotStart.toISOString()} - ${slotEnd.toISOString()} vs block ${blockStart.toISOString()} - ${blockEnd.toISOString()}`);
+            
             if (slotStart < blockEnd && slotEnd > blockStart) {
               isAvailable = false;
               conflictReason = block.reason || 'Horário bloqueado';
+              console.log(`BLOCK CONFLICT DETECTED: ${conflictReason}`);
               break;
             }
           }
@@ -271,6 +281,7 @@ serve(async (req) => {
       } else {
         occupiedSlots.push({
           ...slot,
+          available: false,
           reason: conflictReason
         });
       }
@@ -281,6 +292,8 @@ serve(async (req) => {
     occupiedSlots.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
 
     console.log(`Generated ${availableSlots.length} available slots and ${occupiedSlots.length} occupied slots for ${date}`);
+    console.log('Available slots:', availableSlots.map(s => s.time));
+    console.log('Occupied slots:', occupiedSlots.map(s => `${s.time} (${s.reason})`));
 
     return new Response(
       JSON.stringify({ 
