@@ -64,6 +64,12 @@ function createErrorResponse(type: ErrorType, message: string, status: number, d
   );
 }
 
+// Function to normalize phone numbers for consistent comparison
+function normalizePhone(phone: string): string {
+  // Remove all non-digit characters
+  return phone.replace(/\D/g, '');
+}
+
 function validatePayload(payload: any): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
   
@@ -97,9 +103,9 @@ function validatePayload(payload: any): { isValid: boolean; errors: string[] } {
   
   // Validate phone format (flexible Brazilian phone validation)
   if (payload.customer_phone) {
-    const phoneRegex = /^\(\d{2}\)\s?\d{4,5}-?\d{4}$|^\d{10,11}$/;
-    if (!phoneRegex.test(payload.customer_phone)) {
-      errors.push('customer_phone must be in format (XX) XXXXX-XXXX or XXXXXXXXXX');
+    const normalizedPhone = normalizePhone(payload.customer_phone);
+    if (normalizedPhone.length < 10 || normalizedPhone.length > 11) {
+      errors.push('customer_phone must contain 10 or 11 digits');
     }
   }
   
@@ -338,13 +344,16 @@ serve(async (req) => {
     // 6. Upsert customer (find existing or create new)
     let customer_id: string;
     
-    console.log('Looking for existing customer with phone:', customer_phone);
-    const { data: existingCustomer, error: customerSearchError } = await supabase
+    // Normalize phone for consistent comparison
+    const normalizedPhone = normalizePhone(customer_phone);
+    
+    console.log('Looking for existing customer with normalized phone:', normalizedPhone);
+    
+    // First, try to find existing customer by normalized phone
+    const { data: allCustomers, error: customerSearchError } = await supabase
       .from('customers')
-      .select('id, name')
-      .eq('tenant_id', tenant_id)
-      .eq('phone', customer_phone)
-      .maybeSingle();
+      .select('id, name, phone')
+      .eq('tenant_id', tenant_id);
 
     if (customerSearchError) {
       return createErrorResponse(
@@ -354,6 +363,12 @@ serve(async (req) => {
         { customerSearchError }
       );
     }
+
+    // Find customer with matching normalized phone and name
+    const existingCustomer = allCustomers?.find(customer => 
+      normalizePhone(customer.phone) === normalizedPhone && 
+      customer.name.toLowerCase().trim() === customer_name.toLowerCase().trim()
+    );
 
     if (existingCustomer) {
       customer_id = existingCustomer.id;
@@ -365,8 +380,8 @@ serve(async (req) => {
         .from('customers')
         .insert({
           tenant_id,
-          name: customer_name,
-          phone: customer_phone,
+          name: customer_name.trim(),
+          phone: normalizedPhone,
           email: customer_email
         })
         .select('id')
