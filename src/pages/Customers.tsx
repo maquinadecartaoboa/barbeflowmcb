@@ -16,6 +16,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -32,10 +42,45 @@ import {
   Calendar,
   Eye,
   Clock,
-  DollarSign
+  DollarSign,
+  Edit,
+  Trash2
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+// Helper functions for duplicate detection
+const normalizePhoneNumbers = (phone: string): string => {
+  return phone.replace(/\D/g, '');
+};
+
+const normalizeNameForComparison = (name: string): string => {
+  return name.toLowerCase().trim();
+};
+
+const isCustomerDuplicate = (
+  name: string, 
+  phone: string, 
+  customers: any[], 
+  excludeId?: string
+): { isDuplicate: boolean; existingCustomer?: any } => {
+  const normalizedName = normalizeNameForComparison(name);
+  const normalizedPhone = normalizePhoneNumbers(phone);
+  
+  const existingCustomer = customers.find(customer => {
+    if (excludeId && customer.id === excludeId) return false;
+    
+    const customerName = normalizeNameForComparison(customer.name);
+    const customerPhone = normalizePhoneNumbers(customer.phone);
+    
+    return customerName === normalizedName && customerPhone === normalizedPhone;
+  });
+  
+  return {
+    isDuplicate: !!existingCustomer,
+    existingCustomer
+  };
+};
 
 export default function Customers() {
   const { currentTenant } = useTenant();
@@ -48,6 +93,14 @@ export default function Customers() {
   const [customerBookings, setCustomerBookings] = useState<any[]>([]);
   const [showDetails, setShowDetails] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  
+  // Edit/Delete states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [customerToEdit, setCustomerToEdit] = useState<any>(null);
+  const [customerToDelete, setCustomerToDelete] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ name: '', phone: '', email: '' });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (currentTenant) {
@@ -157,6 +210,135 @@ export default function Customers() {
       });
     } finally {
       setDetailsLoading(false);
+    }
+  };
+
+  const handleEditClick = (customer: any) => {
+    setCustomerToEdit(customer);
+    setEditForm({
+      name: customer.name,
+      phone: customer.phone,
+      email: customer.email || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleDeleteClick = (customer: any) => {
+    setCustomerToDelete(customer);
+    setShowDeleteDialog(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!customerToEdit || !currentTenant) return;
+    
+    const trimmedName = editForm.name.trim();
+    const trimmedPhone = editForm.phone.trim();
+    
+    if (!trimmedName || !trimmedPhone) {
+      toast({
+        title: "Erro",
+        description: "Nome e telefone são obrigatórios",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check for duplicates
+    const { isDuplicate, existingCustomer } = isCustomerDuplicate(
+      trimmedName,
+      trimmedPhone,
+      customers,
+      customerToEdit.id
+    );
+
+    if (isDuplicate) {
+      toast({
+        title: "Cliente duplicado",
+        description: `Já existe um cliente com esse nome e telefone: ${existingCustomer.name}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('customers')
+        .update({
+          name: trimmedName,
+          phone: trimmedPhone,
+          email: editForm.email.trim() || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', customerToEdit.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Cliente atualizado com sucesso",
+      });
+
+      setShowEditModal(false);
+      loadCustomers();
+    } catch (error) {
+      console.error('Error updating customer:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar cliente",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!customerToDelete) return;
+
+    setSaving(true);
+    try {
+      // Check if customer has bookings
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('customer_id', customerToDelete.id)
+        .limit(1);
+
+      if (bookings && bookings.length > 0) {
+        toast({
+          title: "Não é possível excluir",
+          description: "Este cliente possui agendamentos vinculados. Exclua os agendamentos primeiro.",
+          variant: "destructive",
+        });
+        setShowDeleteDialog(false);
+        setSaving(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('customers')
+        .delete()
+        .eq('id', customerToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Cliente excluído com sucesso",
+      });
+
+      setShowDeleteDialog(false);
+      loadCustomers();
+    } catch (error) {
+      console.error('Error deleting customer:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao excluir cliente",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -364,13 +546,33 @@ export default function Customers() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => loadCustomerDetails(customer)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => loadCustomerDetails(customer)}
+                          title="Ver detalhes"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditClick(customer)}
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteClick(customer)}
+                          title="Excluir"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -507,6 +709,83 @@ export default function Customers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Customer Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Cliente</DialogTitle>
+            <DialogDescription>
+              Atualize as informações do cliente
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Nome *</Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Nome do cliente"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-phone">Telefone *</Label>
+              <Input
+                id="edit-phone"
+                value={editForm.phone}
+                onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder="(00) 00000-0000"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="email@exemplo.com"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditModal(false)} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={saving}>
+              {saving ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Cliente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o cliente <strong>{customerToDelete?.name}</strong>? 
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete} 
+              disabled={saving}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {saving ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
