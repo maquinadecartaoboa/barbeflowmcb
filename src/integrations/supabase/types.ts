@@ -348,6 +348,7 @@ export type Database = {
           duration_minutes: number
           id: string
           name: string
+          photo_url: string | null
           price_cents: number
           tenant_id: string
           updated_at: string
@@ -360,6 +361,7 @@ export type Database = {
           duration_minutes: number
           id?: string
           name: string
+          photo_url?: string | null
           price_cents?: number
           tenant_id: string
           updated_at?: string
@@ -372,6 +374,7 @@ export type Database = {
           duration_minutes?: number
           id?: string
           name?: string
+          photo_url?: string | null
           price_cents?: number
           tenant_id?: string
           updated_at?: string
