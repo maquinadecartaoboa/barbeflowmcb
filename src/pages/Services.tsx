@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -32,7 +32,10 @@ import {
   Scissors, 
   Clock,
   DollarSign,
-  Palette
+  Palette,
+  Upload,
+  X,
+  ImageIcon
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -65,6 +68,56 @@ export default function Services() {
   const [showForm, setShowForm] = useState(false);
   const [editingService, setEditingService] = useState<any>(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Arquivo muito grande",
+          description: "A imagem deve ter no máximo 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const uploadPhoto = async (serviceId: string): Promise<string | null> => {
+    if (!photoFile || !currentTenant) return null;
+
+    const fileExt = photoFile.name.split('.').pop();
+    const fileName = `${currentTenant.id}/${serviceId}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('service-photos')
+      .upload(fileName, photoFile, { upsert: true });
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      throw uploadError;
+    }
+
+    const { data } = supabase.storage
+      .from('service-photos')
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  };
+
+  const removePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
@@ -118,10 +171,18 @@ export default function Services() {
       setFormLoading(true);
 
       if (editingService) {
+        // Upload photo if there's a new one
+        let photoUrl = editingService.photo_url;
+        if (photoFile) {
+          setUploadingPhoto(true);
+          photoUrl = await uploadPhoto(editingService.id);
+          setUploadingPhoto(false);
+        }
+
         // Update existing service
         const { error } = await supabase
           .from('services')
-          .update(values)
+          .update({ ...values, photo_url: photoUrl })
           .eq('id', editingService.id);
 
         if (error) throw error;
@@ -131,15 +192,31 @@ export default function Services() {
           description: `${values.name} foi atualizado com sucesso.`,
         });
       } else {
-        // Create new service
-        const { error } = await supabase
+        // Create new service first to get ID
+        const { data: newService, error } = await supabase
           .from('services')
           .insert({
             ...values,
             tenant_id: currentTenant.id,
-          });
+          })
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // Upload photo if provided
+        if (photoFile && newService) {
+          setUploadingPhoto(true);
+          const photoUrl = await uploadPhoto(newService.id);
+          setUploadingPhoto(false);
+
+          if (photoUrl) {
+            await supabase
+              .from('services')
+              .update({ photo_url: photoUrl })
+              .eq('id', newService.id);
+          }
+        }
 
         toast({
           title: "Serviço criado",
@@ -148,6 +225,7 @@ export default function Services() {
       }
 
       form.reset();
+      removePhoto();
       setShowForm(false);
       setEditingService(null);
       loadServices();
@@ -159,6 +237,7 @@ export default function Services() {
       });
     } finally {
       setFormLoading(false);
+      setUploadingPhoto(false);
     }
   };
 
@@ -172,6 +251,8 @@ export default function Services() {
       color: service.color,
       active: service.active,
     });
+    setPhotoPreview(service.photo_url || null);
+    setPhotoFile(null);
     setShowForm(true);
   };
 
@@ -262,18 +343,29 @@ export default function Services() {
       {/* Services Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {services.map((service) => (
-          <Card key={service.id} className="relative">
+          <Card key={service.id} className="relative overflow-hidden">
+            {service.photo_url && (
+              <div className="h-32 w-full overflow-hidden">
+                <img 
+                  src={service.photo_url} 
+                  alt={service.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
-                <div 
-                  className="w-12 h-12 rounded-xl flex items-center justify-center"
-                  style={{ 
-                    backgroundColor: `${service.color}20`,
-                    color: service.color 
-                  }}
-                >
-                  <Scissors className="h-6 w-6" />
-                </div>
+                {!service.photo_url && (
+                  <div 
+                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    style={{ 
+                      backgroundColor: `${service.color}20`,
+                      color: service.color 
+                    }}
+                  >
+                    <Scissors className="h-6 w-6" />
+                  </div>
+                )}
                 <div className="flex items-center space-x-2">
                   <Switch
                     checked={service.active}
@@ -474,6 +566,54 @@ export default function Services() {
                 )}
               />
 
+              {/* Photo Upload */}
+              <div className="space-y-2">
+                <Label>Foto do Serviço</Label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoSelect}
+                  className="hidden"
+                />
+                
+                {photoPreview ? (
+                  <div className="relative w-full h-32 rounded-lg overflow-hidden border border-border">
+                    <img 
+                      src={photoPreview} 
+                      alt="Preview" 
+                      className="w-full h-full object-cover"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 h-6 w-6"
+                      onClick={removePhoto}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-24 border-dashed"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <div className="flex flex-col items-center gap-1">
+                      <Upload className="h-6 w-6 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        Clique para enviar foto
+                      </span>
+                    </div>
+                  </Button>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Máximo 5MB. Formatos: JPG, PNG, WebP
+                </p>
+              </div>
+
               <FormField
                 control={form.control}
                 name="active"
@@ -503,8 +643,8 @@ export default function Services() {
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={formLoading}>
-                  {formLoading ? "Salvando..." : editingService ? "Atualizar" : "Criar"}
+                <Button type="submit" disabled={formLoading || uploadingPhoto}>
+                  {uploadingPhoto ? "Enviando foto..." : formLoading ? "Salvando..." : editingService ? "Atualizar" : "Criar"}
                 </Button>
               </DialogFooter>
             </form>
