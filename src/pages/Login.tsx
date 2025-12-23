@@ -1,13 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Scissors, ArrowLeft } from "lucide-react";
+import { Scissors, ArrowLeft, Mail, Lock, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -21,17 +19,12 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      console.log('Attempting login...');
       const { error } = isSignUp 
         ? await signUp(email, password)
         : await signIn(email, password);
 
-      console.log('Login result:', { error });
-
       if (error) {
-        console.error('Login failed:', error);
-      } else {
-        console.log('Login successful - AuthWatcher will handle redirect');
+        console.error('Auth failed:', error);
       }
     } catch (err) {
       console.error('Auth error:', err);
@@ -41,39 +34,67 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mb-6">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar ao início
-          </Link>
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
-              <Scissors className="h-6 w-6 text-primary-foreground" />
-            </div>
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">BarberSync</h1>
-          <p className="text-muted-foreground">Entre na sua conta</p>
-        </div>
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+      {/* Background gradient */}
+      <div className="fixed inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 pointer-events-none" />
+      
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md relative"
+      >
+        {/* Back link */}
+        <Link 
+          to="/" 
+          className="inline-flex items-center text-sm text-zinc-500 hover:text-zinc-300 transition-colors mb-8"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Voltar ao início
+        </Link>
 
-        <Card className="border-border shadow-large">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-xl text-center">
+        {/* Logo */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="text-center mb-8"
+        >
+          <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl mb-4">
+            <Scissors className="h-7 w-7 text-zinc-950" />
+          </div>
+          <h1 className="text-2xl font-bold text-zinc-100">BarberSync</h1>
+          <p className="text-zinc-500 mt-1">
+            {isSignUp ? "Crie sua conta" : "Entre na sua conta"}
+          </p>
+        </motion.div>
+
+        {/* Card */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="bg-zinc-900/50 border border-zinc-800/50 rounded-2xl p-8"
+        >
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-semibold text-zinc-100">
               {isSignUp ? "Criar conta" : "Fazer login"}
-            </CardTitle>
-            <CardDescription className="text-center">
+            </h2>
+            <p className="text-zinc-500 text-sm mt-1">
               {isSignUp 
                 ? "Crie sua conta para gerenciar sua barbearia" 
                 : "Entre com seus dados para acessar o painel"
               }
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-zinc-400 text-sm">
+                E-mail
+              </Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600" />
                 <Input
                   id="email"
                   type="email"
@@ -81,11 +102,17 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="h-11"
+                  className="h-12 pl-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-500/50 focus:ring-emerald-500/20"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-zinc-400 text-sm">
+                Senha
+              </Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600" />
                 <Input
                   id="password"
                   type="password"
@@ -93,67 +120,74 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="h-11"
+                  className="h-12 pl-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-500/50 focus:ring-emerald-500/20"
                 />
               </div>
-              <div className="flex items-center justify-between">
+            </div>
+
+            {!isSignUp && (
+              <div className="flex justify-end">
                 <Link
                   to="/app/forgot-password"
-                  className="text-sm text-primary hover:text-primary-hover transition-colors"
+                  className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
                 >
                   Esqueci minha senha
                 </Link>
               </div>
-              <Button
-                type="submit"
-                className="w-full"
-                size="lg"
-                disabled={isLoading}
-              >
-                {isLoading 
-                  ? (isSignUp ? "Criando conta..." : "Entrando...") 
-                  : (isSignUp ? "Criar conta" : "Entrar")
-                }
-              </Button>
-            </form>
+            )}
 
-            <div className="mt-6">
-              <Separator className="mb-6" />
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">
-                  {isSignUp ? "Já tem uma conta?" : "Ainda não tem uma conta?"}{" "}
-                  <button
-                    type="button"
-                    onClick={() => setIsSignUp(!isSignUp)}
-                    className="text-primary hover:text-primary-hover font-medium transition-colors"
-                  >
-                    {isSignUp ? "Fazer login" : "Criar conta"}
-                  </button>
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <Button
+              type="submit"
+              size="lg"
+              disabled={isLoading}
+              className="w-full h-12 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold"
+            >
+              {isLoading 
+                ? (isSignUp ? "Criando conta..." : "Entrando...") 
+                : (isSignUp ? "Criar conta" : "Entrar")
+              }
+            </Button>
+          </form>
 
-        {/* Demo Access */}
-        <Card className="mt-6 border-accent/20 bg-accent/5">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground mb-4">
-                Quer testar antes? Acesse a demonstração:
-              </p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full"
-                onClick={() => window.location.href = '/booking/barbearia-premium'}
+          <div className="mt-6 pt-6 border-t border-zinc-800/50">
+            <p className="text-center text-sm text-zinc-500">
+              {isSignUp ? "Já tem uma conta?" : "Ainda não tem uma conta?"}{" "}
+              <button
+                type="button"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
               >
-                Ver Demo da Barbearia
-              </Button>
+                {isSignUp ? "Fazer login" : "Criar conta"}
+              </button>
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Demo card */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="mt-6 bg-zinc-900/30 border border-zinc-800/30 rounded-xl p-5"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-emerald-400" />
             </div>
-          </CardContent>
-        </Card>
-      </div>
+            <p className="text-sm text-zinc-400">
+              Quer testar antes?
+            </p>
+          </div>
+          <Button 
+            variant="ghost"
+            size="sm" 
+            className="w-full bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-zinc-100"
+            onClick={() => window.location.href = '/booking/barbearia-premium'}
+          >
+            Ver Demo da Barbearia
+          </Button>
+        </motion.div>
+      </motion.div>
     </div>
   );
 };
