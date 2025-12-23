@@ -488,23 +488,38 @@ END:VCALENDAR`;
                     onClick={() => handleServiceSelect(service.id)}
                     className="w-full p-4 bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 rounded-xl text-left transition-all duration-200 hover:bg-zinc-900 group"
                   >
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      {/* Service Image */}
+                      <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-zinc-800">
+                        {service.photo_url ? (
+                          <img 
+                            src={service.photo_url} 
+                            alt={service.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Scissors className="h-6 w-6 text-zinc-600" />
+                          </div>
+                        )}
+                      </div>
+                      
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium mb-1 group-hover:text-white transition-colors">{service.name}</h3>
-                        <p className="text-zinc-500 text-sm line-clamp-2 mb-3">{service.description}</p>
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-medium mb-1 group-hover:text-white transition-colors">{service.name}</h3>
+                          <span className="font-semibold text-emerald-400 whitespace-nowrap">
+                            R$ {(service.price_cents / 100).toFixed(2)}
+                          </span>
+                        </div>
+                        <p className="text-zinc-500 text-sm line-clamp-2 mb-2">{service.description}</p>
                         <div className="flex items-center gap-3 text-xs text-zinc-600">
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
                             {service.duration_minutes}min
                           </span>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-lg font-semibold text-emerald-400">
-                          R$ {(service.price_cents / 100).toFixed(0)}
-                        </span>
                       </div>
                     </div>
+                  </div>
                   </button>
                 ))}
               </div>
