@@ -1,12 +1,32 @@
 import { Button } from "@/components/ui/button";
 import { Scissors, Calendar, Users, Clock, Shield, Smartphone, CreditCard, ArrowRight, Check, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.5 }
+};
+
+const staggerContainer = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
 
 const Landing = () => {
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 overflow-x-hidden">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/50">
+      <motion.nav 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="fixed top-0 left-0 right-0 z-50 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/50"
+      >
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-2">
@@ -29,29 +49,49 @@ const Landing = () => {
             </div>
           </div>
         </div>
-      </nav>
+      </motion.nav>
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium mb-8">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium mb-8"
+          >
             <Sparkles className="h-3.5 w-3.5" />
             Sistema de Agendamento Profissional
-          </div>
+          </motion.div>
           
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-[1.1]">
+          <motion.h1 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-[1.1]"
+          >
             Transforme sua barbearia em um{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-emerald-500">
               negócio digital
             </span>
-          </h1>
+          </motion.h1>
           
-          <p className="text-lg text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="text-lg text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed"
+          >
             Sistema completo de agendamento online. Seus clientes agendam sem cadastro, 
             você gerencia tudo em um só lugar.
-          </p>
+          </motion.p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="flex flex-col sm:flex-row gap-4 justify-center"
+          >
             <Link to="/app/register">
               <Button size="lg" className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold h-12 px-8 text-base">
                 <Calendar className="mr-2 h-5 w-5" />
@@ -64,23 +104,35 @@ const Landing = () => {
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Features Section */}
       <section className="py-24 px-6 border-t border-zinc-800/50">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-16"
+          >
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
               Tudo que sua barbearia precisa
             </h2>
             <p className="text-zinc-400 text-lg max-w-xl mx-auto">
               Recursos profissionais para gerenciar agendamentos, clientes e aumentar sua receita
             </p>
-          </div>
+          </motion.div>
           
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <motion.div 
+            variants={staggerContainer}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true, margin: "-100px" }}
+            className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6"
+          >
             {[
               {
                 icon: Calendar,
@@ -107,9 +159,11 @@ const Landing = () => {
                 color: "amber"
               }
             ].map((feature, index) => (
-              <div 
+              <motion.div 
                 key={index}
-                className="group p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 hover:border-zinc-700/50 transition-all duration-300"
+                variants={fadeInUp}
+                whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                className="group p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 hover:border-zinc-700/50 transition-colors duration-300"
               >
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${
                   feature.color === 'emerald' ? 'bg-emerald-500/10 text-emerald-400' :
@@ -125,9 +179,9 @@ const Landing = () => {
                 <p className="text-zinc-500 text-sm leading-relaxed">
                   {feature.description}
                 </p>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -135,7 +189,12 @@ const Landing = () => {
       <section className="py-24 px-6 border-t border-zinc-800/50">
         <div className="max-w-6xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.6 }}
+            >
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-6">
                 Para Barbearias
               </div>
@@ -145,7 +204,13 @@ const Landing = () => {
                 <span className="text-emerald-400">40%</span>
               </h2>
               
-              <div className="space-y-6">
+              <motion.div 
+                variants={staggerContainer}
+                initial="initial"
+                whileInView="animate"
+                viewport={{ once: true, margin: "-100px" }}
+                className="space-y-6"
+              >
                 {[
                   {
                     icon: Clock,
@@ -163,7 +228,11 @@ const Landing = () => {
                     description: "Dashboard completo com relatórios, métricas e gestão de toda operação"
                   }
                 ].map((item, index) => (
-                  <div key={index} className="flex gap-4">
+                  <motion.div 
+                    key={index} 
+                    variants={fadeInUp}
+                    className="flex gap-4"
+                  >
                     <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center flex-shrink-0">
                       <item.icon className="h-5 w-5 text-emerald-400" />
                     </div>
@@ -171,12 +240,18 @@ const Landing = () => {
                       <h3 className="font-semibold mb-1 text-zinc-100">{item.title}</h3>
                       <p className="text-zinc-500 text-sm leading-relaxed">{item.description}</p>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
             
-            <div className="relative">
+            <motion.div 
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="relative"
+            >
               <div className="absolute -inset-px bg-gradient-to-br from-emerald-500/20 to-blue-500/20 rounded-3xl blur-xl opacity-50" />
               <div className="relative bg-zinc-900 rounded-2xl border border-zinc-800 p-8">
                 <div className="space-y-4">
@@ -185,24 +260,37 @@ const Landing = () => {
                     { label: "Receita do mês", value: "R$ 12.450", trend: "+23%" },
                     { label: "Clientes ativos", value: "186", trend: "+8%" }
                   ].map((stat, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 rounded-xl bg-zinc-800/50">
+                    <motion.div 
+                      key={index} 
+                      initial={{ opacity: 0, y: 10 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.4, delay: 0.3 + index * 0.1 }}
+                      className="flex items-center justify-between p-4 rounded-xl bg-zinc-800/50"
+                    >
                       <div>
                         <p className="text-zinc-500 text-sm">{stat.label}</p>
                         <p className="text-xl font-semibold text-zinc-100">{stat.value}</p>
                       </div>
                       <span className="text-emerald-400 text-sm font-medium">{stat.trend}</span>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* Pricing Section */}
       <section className="py-24 px-6 border-t border-zinc-800/50">
-        <div className="max-w-3xl mx-auto text-center">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6 }}
+          className="max-w-3xl mx-auto text-center"
+        >
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
             Simples e transparente
           </h2>
@@ -210,7 +298,13 @@ const Landing = () => {
             Comece gratuitamente, escale quando precisar
           </p>
           
-          <div className="bg-zinc-900/50 rounded-2xl border border-zinc-800/50 p-8 sm:p-10">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="bg-zinc-900/50 rounded-2xl border border-zinc-800/50 p-8 sm:p-10"
+          >
             <div className="flex items-baseline justify-center gap-1 mb-6">
               <span className="text-5xl font-bold text-zinc-100">R$ 0</span>
               <span className="text-zinc-500">/ mês</span>
@@ -220,7 +314,13 @@ const Landing = () => {
               Primeiros 30 dias grátis. Depois, a partir de R$ 49/mês.
             </p>
             
-            <div className="grid sm:grid-cols-2 gap-3 text-left mb-8">
+            <motion.div 
+              variants={staggerContainer}
+              initial="initial"
+              whileInView="animate"
+              viewport={{ once: true }}
+              className="grid sm:grid-cols-2 gap-3 text-left mb-8"
+            >
               {[
                 "Agendamentos ilimitados",
                 "Até 5 profissionais",
@@ -229,25 +329,35 @@ const Landing = () => {
                 "Dashboard de gestão",
                 "Suporte prioritário"
               ].map((item, index) => (
-                <div key={index} className="flex items-center gap-3 text-zinc-300">
+                <motion.div 
+                  key={index} 
+                  variants={fadeInUp}
+                  className="flex items-center gap-3 text-zinc-300"
+                >
                   <Check className="h-5 w-5 text-emerald-400 flex-shrink-0" />
                   <span className="text-sm">{item}</span>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
             
             <Link to="/app/register">
               <Button size="lg" className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold h-12 px-10 text-base">
                 Começar Gratuitamente
               </Button>
             </Link>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </section>
 
       {/* CTA Section */}
       <section className="py-24 px-6 border-t border-zinc-800/50">
-        <div className="max-w-4xl mx-auto text-center">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6 }}
+          className="max-w-4xl mx-auto text-center"
+        >
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
             Pronto para modernizar sua barbearia?
           </h2>
@@ -265,11 +375,17 @@ const Landing = () => {
               Falar com Especialista
             </Button>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-6 border-t border-zinc-800/50">
+      <motion.footer 
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
+        className="py-8 px-6 border-t border-zinc-800/50"
+      >
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-md flex items-center justify-center">
@@ -281,7 +397,7 @@ const Landing = () => {
             © 2024 BarberSync. Todos os direitos reservados.
           </p>
         </div>
-      </footer>
+      </motion.footer>
     </div>
   );
 };
