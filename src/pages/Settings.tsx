@@ -82,6 +82,10 @@ export default function Settings() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
   const [showNewTenantModal, setShowNewTenantModal] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   const tenantForm = useForm<TenantFormData>({
     resolver: zodResolver(tenantSchema),
@@ -112,6 +116,8 @@ export default function Settings() {
   useEffect(() => {
     if (currentTenant) {
       loadTenantData();
+      setLogoUrl(currentTenant.logo_url || null);
+      setCoverUrl(currentTenant.cover_url || null);
     }
   }, [currentTenant]);
 
@@ -138,6 +144,93 @@ export default function Settings() {
       require_prepayment: settings.require_prepayment || false,
       prepayment_percentage: settings.prepayment_percentage || 0,
     });
+  };
+
+  const handleImageUpload = async (
+    file: File,
+    type: 'logo' | 'cover'
+  ) => {
+    if (!currentTenant) return;
+
+    const setUploading = type === 'logo' ? setUploadingLogo : setUploadingCover;
+    const setUrl = type === 'logo' ? setLogoUrl : setCoverUrl;
+    const columnName = type === 'logo' ? 'logo_url' : 'cover_url';
+
+    try {
+      setUploading(true);
+
+      // Create unique file name
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentTenant.id}/${type}-${Date.now()}.${fileExt}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('tenant-media')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('tenant-media')
+        .getPublicUrl(fileName);
+
+      const publicUrl = publicUrlData.publicUrl;
+
+      // Update tenant record
+      const { error: updateError } = await supabase
+        .from('tenants')
+        .update({ [columnName]: publicUrl })
+        .eq('id', currentTenant.id);
+
+      if (updateError) throw updateError;
+
+      setUrl(publicUrl);
+
+      toast({
+        title: type === 'logo' ? "Logo atualizado" : "Capa atualizada",
+        description: "A imagem foi salva com sucesso.",
+      });
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Erro no upload",
+        description: error.message || "Não foi possível fazer o upload da imagem.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+    type: 'logo' | 'cover'
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Arquivo inválido",
+        description: "Por favor, selecione uma imagem.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "A imagem deve ter no máximo 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    handleImageUpload(file, type);
   };
 
   const handleTenantSubmit = async (values: TenantFormData) => {
@@ -342,35 +435,181 @@ export default function Settings() {
                   <div>
                     <h3 className="text-lg font-medium mb-4">Mídia</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Logo Upload */}
                       <div>
                         <Label>Logo</Label>
-                        <div className="mt-2 flex items-center justify-center border-2 border-dashed border-border rounded-lg p-6">
-                          <div className="text-center">
-                            <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                            <Button variant="outline" size="sm">
-                              <Upload className="h-4 w-4 mr-2" />
-                              Upload Logo
-                            </Button>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              Recomendado: 200x200px
-                            </p>
-                          </div>
+                        <div className="mt-2 border-2 border-dashed border-border rounded-lg p-4 transition-colors hover:border-emerald-500/50">
+                          {logoUrl ? (
+                            <div className="relative group">
+                              <div className="w-24 h-24 mx-auto rounded-lg overflow-hidden bg-zinc-800">
+                                <img 
+                                  src={logoUrl} 
+                                  alt="Logo" 
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="mt-3 text-center">
+                                <label className="cursor-pointer">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => handleFileChange(e, 'logo')}
+                                    disabled={uploadingLogo}
+                                  />
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    type="button"
+                                    disabled={uploadingLogo}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      (e.currentTarget.previousElementSibling as HTMLInputElement)?.click();
+                                    }}
+                                  >
+                                    {uploadingLogo ? (
+                                      <>
+                                        <span className="animate-spin mr-2">⏳</span>
+                                        Enviando...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Upload className="h-4 w-4 mr-2" />
+                                        Alterar Logo
+                                      </>
+                                    )}
+                                  </Button>
+                                </label>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-4">
+                              <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                              <label className="cursor-pointer">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => handleFileChange(e, 'logo')}
+                                  disabled={uploadingLogo}
+                                />
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  type="button"
+                                  disabled={uploadingLogo}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    (e.currentTarget.previousElementSibling as HTMLInputElement)?.click();
+                                  }}
+                                >
+                                  {uploadingLogo ? (
+                                    <>
+                                      <span className="animate-spin mr-2">⏳</span>
+                                      Enviando...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Upload className="h-4 w-4 mr-2" />
+                                      Upload Logo
+                                    </>
+                                  )}
+                                </Button>
+                              </label>
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Recomendado: 200x200px
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
 
+                      {/* Cover Upload */}
                       <div>
                         <Label>Capa</Label>
-                        <div className="mt-2 flex items-center justify-center border-2 border-dashed border-border rounded-lg p-6">
-                          <div className="text-center">
-                            <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                            <Button variant="outline" size="sm">
-                              <Upload className="h-4 w-4 mr-2" />
-                              Upload Capa
-                            </Button>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              Recomendado: 1200x400px
-                            </p>
-                          </div>
+                        <div className="mt-2 border-2 border-dashed border-border rounded-lg p-4 transition-colors hover:border-emerald-500/50">
+                          {coverUrl ? (
+                            <div className="relative group">
+                              <div className="w-full h-24 rounded-lg overflow-hidden bg-zinc-800">
+                                <img 
+                                  src={coverUrl} 
+                                  alt="Capa" 
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="mt-3 text-center">
+                                <label className="cursor-pointer">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => handleFileChange(e, 'cover')}
+                                    disabled={uploadingCover}
+                                  />
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    type="button"
+                                    disabled={uploadingCover}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      (e.currentTarget.previousElementSibling as HTMLInputElement)?.click();
+                                    }}
+                                  >
+                                    {uploadingCover ? (
+                                      <>
+                                        <span className="animate-spin mr-2">⏳</span>
+                                        Enviando...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Upload className="h-4 w-4 mr-2" />
+                                        Alterar Capa
+                                      </>
+                                    )}
+                                  </Button>
+                                </label>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-4">
+                              <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                              <label className="cursor-pointer">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => handleFileChange(e, 'cover')}
+                                  disabled={uploadingCover}
+                                />
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  type="button"
+                                  disabled={uploadingCover}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    (e.currentTarget.previousElementSibling as HTMLInputElement)?.click();
+                                  }}
+                                >
+                                  {uploadingCover ? (
+                                    <>
+                                      <span className="animate-spin mr-2">⏳</span>
+                                      Enviando...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Upload className="h-4 w-4 mr-2" />
+                                      Upload Capa
+                                    </>
+                                  )}
+                                </Button>
+                              </label>
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Recomendado: 1200x400px
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
