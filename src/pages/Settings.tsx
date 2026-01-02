@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useTenant } from "@/hooks/useTenant";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { NewTenantModal } from "@/components/modals/NewTenantModal";
+import { NoTenantState } from "@/components/NoTenantState";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -88,7 +89,7 @@ const timezones = [
 ];
 
 export default function Settings() {
-  const { currentTenant, tenants } = useTenant();
+  const { currentTenant, tenants, loading: tenantLoading } = useTenant();
   const { isSuperAdmin } = useSuperAdmin();
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -437,13 +438,17 @@ export default function Settings() {
     }
   };
 
-  if (!currentTenant) {
+  if (tenantLoading) {
     return (
       <div className="space-y-6">
         <div className="h-8 bg-muted rounded animate-pulse" />
         <div className="h-96 bg-muted rounded animate-pulse" />
       </div>
     );
+  }
+
+  if (!currentTenant) {
+    return <NoTenantState />;
   }
 
   return (

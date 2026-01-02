@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { NoTenantState } from "@/components/NoTenantState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -61,7 +62,7 @@ const serviceSchema = z.object({
 type ServiceFormData = z.infer<typeof serviceSchema>;
 
 export default function Services() {
-  const { currentTenant } = useTenant();
+  const { currentTenant, loading: tenantLoading } = useTenant();
   const { toast } = useToast();
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -308,13 +309,17 @@ export default function Services() {
     }
   };
 
-  if (loading) {
+  if (tenantLoading || loading) {
     return (
       <div className="space-y-6">
         <div className="h-8 bg-muted rounded animate-pulse" />
         <div className="h-96 bg-muted rounded animate-pulse" />
       </div>
     );
+  }
+
+  if (!currentTenant) {
+    return <NoTenantState />;
   }
 
   return (
