@@ -5,6 +5,7 @@ import { useDateRange } from "@/contexts/DateRangeContext";
 import { DateRangeSelector } from "@/components/DateRangeSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { NoTenantState } from "@/components/NoTenantState";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -169,6 +170,19 @@ const Dashboard = () => {
     if (hour < 18) return "Boa tarde";
     return "Boa noite";
   };
+
+  if (tenantLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-8 bg-muted rounded animate-pulse" />
+        <div className="h-32 bg-muted rounded animate-pulse" />
+      </div>
+    );
+  }
+
+  if (!currentTenant) {
+    return <NoTenantState />;
+  }
 
   return (
     <div className="space-y-6 p-4 md:p-0">

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { NoTenantState } from "@/components/NoTenantState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -52,7 +53,7 @@ const staffSchema = z.object({
 type StaffFormData = z.infer<typeof staffSchema>;
 
 export default function Staff() {
-  const { currentTenant } = useTenant();
+  const { currentTenant, loading: tenantLoading } = useTenant();
   const { toast } = useToast();
   const [staff, setStaff] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
@@ -282,13 +283,17 @@ export default function Staff() {
       .filter(Boolean);
   };
 
-  if (loading) {
+  if (tenantLoading || loading) {
     return (
       <div className="space-y-6">
         <div className="h-8 bg-muted rounded animate-pulse" />
         <div className="h-96 bg-muted rounded animate-pulse" />
       </div>
     );
+  }
+
+  if (!currentTenant) {
+    return <NoTenantState />;
   }
 
   return (

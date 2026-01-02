@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
+import { NoTenantState } from "@/components/NoTenantState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +48,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useBookingModal } from "@/hooks/useBookingModal";
 
 export default function Bookings() {
-  const { currentTenant } = useTenant();
+  const { currentTenant, loading: tenantLoading } = useTenant();
   const { toast } = useToast();
   const { openBookingModal } = useBookingModal();
   const [bookings, setBookings] = useState<any[]>([]);
@@ -175,13 +176,17 @@ export default function Bookings() {
     return variants[status] || 'secondary';
   };
 
-  if (loading) {
+  if (tenantLoading || loading) {
     return (
       <div className="space-y-6">
         <div className="h-8 bg-muted rounded animate-pulse" />
         <div className="h-96 bg-muted rounded animate-pulse" />
       </div>
     );
+  }
+
+  if (!currentTenant) {
+    return <NoTenantState />;
   }
 
   return (

@@ -4,6 +4,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { useDateRange } from "@/contexts/DateRangeContext";
 import { DateRangeSelector } from "@/components/DateRangeSelector";
 import { supabase } from "@/integrations/supabase/client";
+import { NoTenantState } from "@/components/NoTenantState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -68,7 +69,7 @@ const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
 export default function Finance() {
   const { user } = useAuth();
-  const { currentTenant } = useTenant();
+  const { currentTenant, loading: tenantLoading } = useTenant();
   const { dateRange } = useDateRange();
   const [data, setData] = useState<FinanceData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -308,7 +309,7 @@ export default function Finance() {
     }
   };
 
-  if (loading) {
+  if (tenantLoading || loading) {
     return (
       <div className="space-y-6">
         <div className="h-8 bg-muted rounded animate-pulse" />
@@ -326,6 +327,10 @@ export default function Finance() {
         </div>
       </div>
     );
+  }
+
+  if (!currentTenant) {
+    return <NoTenantState />;
   }
 
   return (

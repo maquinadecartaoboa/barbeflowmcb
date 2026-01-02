@@ -8,9 +8,10 @@ import { Calendar, Clock, User, Plus } from "lucide-react";
 import { format, startOfWeek, endOfWeek, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useBookingModal } from "@/hooks/useBookingModal";
+import { NoTenantState } from "@/components/NoTenantState";
 
 export default function Agenda() {
-  const { currentTenant } = useTenant();
+  const { currentTenant, loading: tenantLoading } = useTenant();
   const { openBookingModal } = useBookingModal();
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -220,6 +221,19 @@ export default function Agenda() {
       </div>
     );
   };
+
+  if (tenantLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-8 bg-muted rounded animate-pulse" />
+        <div className="h-64 bg-muted rounded animate-pulse" />
+      </div>
+    );
+  }
+
+  if (!currentTenant) {
+    return <NoTenantState />;
+  }
 
   return (
     <div className="space-y-6">
