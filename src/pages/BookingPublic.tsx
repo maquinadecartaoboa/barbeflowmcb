@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar as CalendarRac } from "@/components/ui/calendar-rac";
+import { MercadoPagoCheckout } from "@/components/MercadoPagoCheckout";
 import { 
   Calendar, 
   Clock, 
@@ -315,25 +316,15 @@ const BookingPublic = () => {
 
       if (data.success) {
         const booking = data.booking;
+        setCreatedBooking(booking);
         
-        // If user chose online payment, create checkout and redirect
+        // If user chose online payment, go to checkout step (transparent)
         if (paymentMethod === 'online') {
-          const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('mp-create-checkout', {
-            body: { booking_id: booking.id },
-          });
-
-          if (checkoutError) throw checkoutError;
-
-          if (checkoutData?.checkout_url) {
-            window.location.href = checkoutData.checkout_url;
-            return;
-          } else {
-            throw new Error('URL de checkout não recebida');
-          }
+          setStep(7); // New step for transparent checkout
+          return;
         }
         
         // On-site payment or no payment - show confirmation
-        setCreatedBooking(booking);
         setStep(6);
         toast({
           title: "Agendamento confirmado!",
@@ -350,6 +341,33 @@ const BookingPublic = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handlePaymentSuccess = (paymentData: any) => {
+    console.log('Payment successful:', paymentData);
+    toast({
+      title: "Pagamento aprovado!",
+      description: "Seu agendamento foi confirmado.",
+    });
+    setStep(6); // Go to confirmation
+  };
+
+  const handlePaymentError = (error: string) => {
+    console.error('Payment error:', error);
+    toast({
+      title: "Erro no pagamento",
+      description: error || "Tente novamente ou escolha outro método.",
+      variant: "destructive",
+    });
+  };
+
+  const handlePaymentPending = (paymentData: any) => {
+    console.log('Payment pending:', paymentData);
+    toast({
+      title: "Pagamento em processamento",
+      description: "Aguardando confirmação.",
+    });
+    setStep(6); // Go to confirmation with pending status
   };
 
   const TIMEZONE = 'America/Bahia';
@@ -899,6 +917,62 @@ END:VCALENDAR`;
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {/* Step 7: Transparent Checkout (Online Payment) */}
+        {step === 7 && createdBooking && (
+          <div className="animate-in fade-in duration-300">
+            <div className="text-center mb-8">
+              <h2 className="text-xl font-semibold mb-2">Pagamento</h2>
+              <p className="text-zinc-500 text-sm">Finalize seu agendamento</p>
+            </div>
+            
+            {/* Booking Summary */}
+            <div className="p-4 bg-zinc-900/30 border border-zinc-800/50 rounded-xl mb-6">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center shrink-0">
+                  <Scissors className="h-4 w-4 text-zinc-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm">{createdBooking.service?.name}</p>
+                  <p className="text-zinc-500 text-xs">
+                    {createdBooking.staff?.name || 'Qualquer profissional'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-3 border-t border-zinc-800">
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="h-4 w-4 text-zinc-500" />
+                  <span className="text-zinc-400">{formatDateForDisplay(selectedDate)}</span>
+                  <span className="text-zinc-600">•</span>
+                  <Clock className="h-4 w-4 text-zinc-500" />
+                  <span className="text-zinc-400">{selectedTime}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* MercadoPago Checkout */}
+            <MercadoPagoCheckout
+              bookingId={createdBooking.id}
+              tenantSlug={slug || ''}
+              amount={(createdBooking.service?.price_cents || 0) / 100}
+              serviceName={createdBooking.service?.name || 'Serviço'}
+              payer={{
+                email: customerEmail || 'cliente@email.com',
+              }}
+              onSuccess={handlePaymentSuccess}
+              onError={handlePaymentError}
+              onPending={handlePaymentPending}
+            />
+            
+            <button
+              onClick={() => setStep(5)}
+              className="flex items-center gap-2 text-zinc-500 hover:text-white mt-6 mx-auto transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Voltar
+            </button>
           </div>
         )}
       </div>

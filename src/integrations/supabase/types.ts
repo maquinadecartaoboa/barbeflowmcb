@@ -231,6 +231,7 @@ export type Database = {
           created_at: string
           id: string
           mp_user_id: string | null
+          public_key: string | null
           refresh_token: string | null
           tenant_id: string
           token_expires_at: string | null
@@ -241,6 +242,7 @@ export type Database = {
           created_at?: string
           id?: string
           mp_user_id?: string | null
+          public_key?: string | null
           refresh_token?: string | null
           tenant_id: string
           token_expires_at?: string | null
@@ -251,6 +253,7 @@ export type Database = {
           created_at?: string
           id?: string
           mp_user_id?: string | null
+          public_key?: string | null
           refresh_token?: string | null
           tenant_id?: string
           token_expires_at?: string | null
