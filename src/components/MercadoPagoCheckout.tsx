@@ -24,7 +24,7 @@ interface MercadoPagoCheckoutProps {
 }
 
 type PaymentMethod = 'card' | 'pix' | null;
-type PaymentStatus = 'idle' | 'loading' | 'method-select' | 'ready' | 'processing' | 'pix-waiting' | 'success' | 'error' | 'pending';
+type PaymentStatus = 'idle' | 'loading' | 'method-select' | 'card-form' | 'ready' | 'processing' | 'pix-waiting' | 'success' | 'error' | 'pending';
 
 declare global {
   interface Window {
@@ -140,7 +140,14 @@ export const MercadoPagoCheckout = ({
     setPaymentMethod(method);
 
     if (method === 'card') {
-      await initializeCardBrick();
+      // First set status to card-form to render the container
+      setStatus('card-form');
+      // Wait for DOM to render the container, then initialize the brick
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          initializeCardBrick();
+        }, 50);
+      });
     } else if (method === 'pix') {
       await processPixPayment();
     }
@@ -148,14 +155,8 @@ export const MercadoPagoCheckout = ({
 
   const initializeCardBrick = useCallback(async () => {
     if (!isMountedRef.current) return;
-    setStatus('loading');
 
-    // Wait for DOM to be ready
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    if (!isMountedRef.current) return;
-
-    // Check if container exists
+    // Check if container exists (should exist since status is 'card-form')
     const container = document.getElementById('cardPaymentBrick_container');
     if (!container) {
       console.error('Card payment container not found');
@@ -572,58 +573,71 @@ export const MercadoPagoCheckout = ({
     );
   }
 
-  // Card form state
-  return (
-    <div className="space-y-4">
-      {/* Payment info */}
-      <div className="flex items-center justify-between p-3 bg-secondary/50 border border-border rounded-xl">
-        <div className="flex items-center gap-3">
-          <CreditCard className="h-5 w-5 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">{serviceName}</span>
-        </div>
-        <span className="font-semibold text-emerald-400">
-          R$ {amount.toFixed(2)}
-        </span>
-      </div>
-
-      {/* Error message */}
-      {errorMessage && (
-        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
-          <p className="text-sm text-red-400 flex items-center gap-2">
-            <AlertCircle className="h-4 w-4" />
-            {errorMessage}
-          </p>
-        </div>
-      )}
-
-      {/* Card Payment Brick container */}
-      <div 
-        id="cardPaymentBrick_container" 
-        className="mp-checkout-container"
-      />
-
-      {/* Back button */}
-      <Button onClick={goBackToMethodSelect} variant="ghost" className="w-full">
-        Voltar e escolher outra forma de pagamento
-      </Button>
-
-      {/* Processing overlay */}
-      {status === 'processing' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card p-6 rounded-xl text-center border border-border">
-            <Loader2 className="h-8 w-8 animate-spin text-foreground mx-auto mb-4" />
-            <p className="text-foreground">Processando pagamento...</p>
+  // Card form state (card-form, ready, or processing with card method)
+  if (status === 'card-form' || status === 'ready' || (status === 'processing' && paymentMethod === 'card')) {
+    return (
+      <div className="space-y-4">
+        {/* Payment info */}
+        <div className="flex items-center justify-between p-3 bg-secondary/50 border border-border rounded-xl">
+          <div className="flex items-center gap-3">
+            <CreditCard className="h-5 w-5 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">{serviceName}</span>
           </div>
+          <span className="font-semibold text-emerald-400">
+            R$ {amount.toFixed(2)}
+          </span>
         </div>
-      )}
 
-      {/* Security badge */}
-      <div className="flex items-center justify-center gap-2 pt-2">
-        <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
-        </svg>
-        <span className="text-xs text-muted-foreground">Pagamento seguro via Mercado Pago</span>
+        {/* Error message */}
+        {errorMessage && (
+          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
+            <p className="text-sm text-red-400 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              {errorMessage}
+            </p>
+          </div>
+        )}
+
+        {/* Loading indicator while brick is initializing */}
+        {status === 'card-form' && (
+          <div className="flex flex-col items-center py-4">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground">Carregando formulário...</p>
+          </div>
+        )}
+
+        {/* Card Payment Brick container */}
+        <div 
+          id="cardPaymentBrick_container" 
+          className="mp-checkout-container"
+        />
+
+        {/* Back button */}
+        <Button onClick={goBackToMethodSelect} variant="ghost" className="w-full">
+          Voltar e escolher outra forma de pagamento
+        </Button>
+
+        {/* Processing overlay */}
+        {status === 'processing' && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-card p-6 rounded-xl text-center border border-border">
+              <Loader2 className="h-8 w-8 animate-spin text-foreground mx-auto mb-4" />
+              <p className="text-foreground">Processando pagamento...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Security badge */}
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+          </svg>
+          <span className="text-xs text-muted-foreground">Pagamento seguro via Mercado Pago</span>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // Fallback - shouldn't reach here normally
+  return null;
 };
