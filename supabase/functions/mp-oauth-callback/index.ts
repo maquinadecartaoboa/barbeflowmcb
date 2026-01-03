@@ -73,7 +73,10 @@ serve(async (req) => {
       refresh_token,
       expires_in,
       user_id: mp_user_id,
+      public_key,
     } = tokenData;
+    
+    console.log('Token data received, public_key:', public_key ? 'present' : 'missing');
 
     if (!access_token) {
       console.error('No access_token in response');
@@ -96,6 +99,7 @@ serve(async (req) => {
         mp_user_id: mp_user_id?.toString(),
         access_token,
         refresh_token,
+        public_key: public_key || null,
         token_expires_at: tokenExpiresAt,
         updated_at: new Date().toISOString(),
       }, {
