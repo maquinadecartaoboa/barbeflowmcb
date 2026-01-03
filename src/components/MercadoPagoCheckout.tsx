@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Loader2, CreditCard, AlertCircle, Check, QrCode, Copy, CheckCircle2 } from 'lucide-react';
@@ -49,22 +49,28 @@ export const MercadoPagoCheckout = ({
   const [copied, setCopied] = useState(false);
   const brickControllerRef = useRef<any>(null);
   const publicKeyRef = useRef<string | null>(null);
+  const isMountedRef = useRef(true);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    isMountedRef.current = true;
     loadPublicKey();
 
     return () => {
+      isMountedRef.current = false;
       if (brickControllerRef.current) {
         try {
           brickControllerRef.current.unmount();
         } catch (e) {
           console.log('Cleanup error:', e);
         }
+        brickControllerRef.current = null;
       }
     };
   }, []);
 
   const loadPublicKey = async () => {
+    if (!isMountedRef.current) return;
     setStatus('loading');
 
     try {
@@ -73,10 +79,14 @@ export const MercadoPagoCheckout = ({
         await loadScript('https://sdk.mercadopago.com/js/v2');
       }
 
+      if (!isMountedRef.current) return;
+
       // Get public key from backend
       const { data: keyData, error: keyError } = await supabase.functions.invoke('mp-get-public-key', {
         body: { slug: tenantSlug },
       });
+
+      if (!isMountedRef.current) return;
 
       if (keyError || !keyData?.public_key) {
         throw new Error(keyData?.error || 'Não foi possível obter a chave do Mercado Pago');
@@ -86,6 +96,7 @@ export const MercadoPagoCheckout = ({
       setStatus('method-select');
 
     } catch (error: any) {
+      if (!isMountedRef.current) return;
       console.error('Error loading MP SDK:', error);
       setErrorMessage(error.message || 'Erro ao carregar o pagamento');
       setStatus('error');
@@ -116,8 +127,23 @@ export const MercadoPagoCheckout = ({
     }
   };
 
-  const initializeCardBrick = async () => {
+  const initializeCardBrick = useCallback(async () => {
+    if (!isMountedRef.current) return;
     setStatus('loading');
+
+    // Wait for DOM to be ready
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    if (!isMountedRef.current) return;
+
+    // Check if container exists
+    const container = document.getElementById('cardPaymentBrick_container');
+    if (!container) {
+      console.error('Card payment container not found');
+      setErrorMessage('Erro ao carregar formulário');
+      setStatus('error');
+      return;
+    }
 
     try {
       const mp = new window.MercadoPago(publicKeyRef.current, {
@@ -125,6 +151,8 @@ export const MercadoPagoCheckout = ({
       });
 
       const bricksBuilder = mp.bricks();
+
+      if (!isMountedRef.current) return;
 
       brickControllerRef.current = await bricksBuilder.create('cardPayment', 'cardPaymentBrick_container', {
         initialization: {
@@ -156,14 +184,17 @@ export const MercadoPagoCheckout = ({
         },
         callbacks: {
           onReady: () => {
+            if (!isMountedRef.current) return;
             console.log('CardPayment Brick ready');
             setStatus('ready');
           },
           onSubmit: async (formData: any) => {
+            if (!isMountedRef.current) return;
             console.log('Payment form submitted:', formData);
             await handleCardPaymentSubmit(formData);
           },
           onError: (error: any) => {
+            if (!isMountedRef.current) return;
             console.error('CardPayment Brick error:', error);
             setErrorMessage('Erro no formulário de pagamento');
           },
@@ -171,13 +202,15 @@ export const MercadoPagoCheckout = ({
       });
 
     } catch (error: any) {
+      if (!isMountedRef.current) return;
       console.error('Error initializing card brick:', error);
       setErrorMessage(error.message || 'Erro ao carregar formulário de cartão');
       setStatus('error');
     }
-  };
+  }, [amount, payer.email]);
 
   const handleCardPaymentSubmit = async (formData: any) => {
+    if (!isMountedRef.current) return;
     setStatus('processing');
     setErrorMessage('');
 
@@ -195,6 +228,7 @@ export const MercadoPagoCheckout = ({
         },
       });
 
+      if (!isMountedRef.current) return;
       if (error) throw error;
 
       console.log('Payment result:', data);
@@ -210,6 +244,7 @@ export const MercadoPagoCheckout = ({
       }
 
     } catch (error: any) {
+      if (!isMountedRef.current) return;
       console.error('Payment error:', error);
       setErrorMessage(error.message || 'Erro ao processar pagamento');
       setStatus('error');
@@ -218,6 +253,7 @@ export const MercadoPagoCheckout = ({
   };
 
   const processPixPayment = async () => {
+    if (!isMountedRef.current) return;
     setStatus('processing');
     setErrorMessage('');
 
@@ -233,6 +269,7 @@ export const MercadoPagoCheckout = ({
         },
       });
 
+      if (!isMountedRef.current) return;
       if (error) throw error;
 
       console.log('PIX result:', data);
@@ -248,6 +285,7 @@ export const MercadoPagoCheckout = ({
       }
 
     } catch (error: any) {
+      if (!isMountedRef.current) return;
       console.error('PIX error:', error);
       setErrorMessage(error.message || 'Erro ao gerar PIX');
       setStatus('error');
