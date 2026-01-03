@@ -47,6 +47,8 @@ export const MercadoPagoCheckout = ({
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [pixData, setPixData] = useState<{ qr_code: string; qr_code_base64: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [useCheckoutRedirect, setUseCheckoutRedirect] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const brickControllerRef = useRef<any>(null);
   const publicKeyRef = useRef<string | null>(null);
   const isMountedRef = useRef(true);
@@ -88,8 +90,25 @@ export const MercadoPagoCheckout = ({
 
       if (!isMountedRef.current) return;
 
+      // Check if we have public_key - if not, use checkout redirect as fallback
       if (keyError || !keyData?.public_key) {
-        throw new Error(keyData?.error || 'Não foi possível obter a chave do Mercado Pago');
+        console.log('No public_key available, using checkout redirect fallback');
+        setUseCheckoutRedirect(true);
+        
+        // Create checkout redirect URL
+        const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('mp-create-checkout', {
+          body: { booking_id: bookingId },
+        });
+
+        if (!isMountedRef.current) return;
+
+        if (checkoutError || !checkoutData?.checkout_url) {
+          throw new Error(checkoutData?.error || 'Erro ao criar checkout do Mercado Pago');
+        }
+
+        setCheckoutUrl(checkoutData.checkout_url);
+        setStatus('method-select');
+        return;
       }
 
       publicKeyRef.current = keyData.public_key;
@@ -404,6 +423,43 @@ export const MercadoPagoCheckout = ({
 
   // Payment method selection
   if (status === 'method-select') {
+    // If using checkout redirect (no public_key), show redirect button
+    if (useCheckoutRedirect && checkoutUrl) {
+      return (
+        <div className="space-y-4">
+          {/* Payment info */}
+          <div className="flex items-center justify-between p-3 bg-secondary/50 border border-border rounded-xl">
+            <span className="text-sm text-muted-foreground">{serviceName}</span>
+            <span className="font-semibold text-emerald-400">
+              R$ {amount.toFixed(2)}
+            </span>
+          </div>
+
+          <p className="text-center text-sm text-muted-foreground">
+            Você será redirecionado para o Mercado Pago para concluir o pagamento.
+          </p>
+
+          <Button 
+            onClick={() => window.location.href = checkoutUrl}
+            className="w-full gap-2"
+            size="lg"
+          >
+            <CreditCard className="h-5 w-5" />
+            Pagar com Mercado Pago
+          </Button>
+
+          {/* Security badge */}
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+            </svg>
+            <span className="text-xs text-muted-foreground">Pagamento seguro via Mercado Pago</span>
+          </div>
+        </div>
+      );
+    }
+
+    // Normal inline payment selection
     return (
       <div className="space-y-4">
         {/* Payment info */}
