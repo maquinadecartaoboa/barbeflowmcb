@@ -20,11 +20,19 @@ import {
   MoreVertical,
   Smile,
   Paperclip,
-  Mic
+  Mic,
+  Download,
+  Loader2
 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Message {
   id: string;
@@ -57,7 +65,38 @@ export default function WhatsAppInbox() {
   const [sending, setSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const syncMessages = async (remoteJid?: string) => {
+    if (!currentTenant?.id) return;
+
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("evolution-sync-messages", {
+        body: {
+          tenant_id: currentTenant.id,
+          remote_jid: remoteJid,
+          limit: 100,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success(`Sincronizado! ${data.synced_count} mensagens importadas`);
+      
+      // Reload conversations and messages
+      await loadConversations();
+      if (selectedConversation) {
+        await loadMessages(selectedConversation);
+      }
+    } catch (error) {
+      console.error("Error syncing messages:", error);
+      toast.error("Erro ao sincronizar mensagens");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -272,15 +311,32 @@ export default function WhatsAppInbox() {
                 <p className="text-xs text-muted-foreground">{conversations.length} conversas</p>
               </div>
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={loadConversations}
-              disabled={refreshing}
-              className="hover:bg-primary/10 rounded-full"
-            >
-              <RefreshCw className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`} />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => syncMessages()}
+                disabled={syncing}
+                className="hover:bg-primary/10 rounded-full"
+                title="Sincronizar histórico"
+              >
+                {syncing ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Download className="h-5 w-5" />
+                )}
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={loadConversations}
+                disabled={refreshing}
+                className="hover:bg-primary/10 rounded-full"
+                title="Atualizar conversas"
+              >
+                <RefreshCw className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
           </div>
           
           {/* Search */}
@@ -398,13 +454,30 @@ export default function WhatsAppInbox() {
                   <p className="text-xs text-muted-foreground">Online</p>
                 </div>
               </div>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="hover:bg-primary/10 rounded-full"
-              >
-                <MoreVertical className="h-5 w-5" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    className="hover:bg-primary/10 rounded-full"
+                  >
+                    <MoreVertical className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem 
+                    onClick={() => syncMessages(selectedConversation)}
+                    disabled={syncing}
+                  >
+                    {syncing ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    Sincronizar conversa
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Messages Area */}
