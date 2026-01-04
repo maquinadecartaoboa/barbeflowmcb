@@ -170,7 +170,7 @@ export default function WhatsApp() {
     return `+${cleaned}`;
   };
 
-  if (tenantLoading || loading) {
+  if (tenantLoading) {
     return (
       <div className="space-y-6">
         <div>
@@ -184,6 +184,18 @@ export default function WhatsApp() {
 
   if (!currentTenant) {
     return <NoTenantState />;
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-8 w-48 bg-zinc-800" />
+          <Skeleton className="h-4 w-72 mt-2 bg-zinc-800" />
+        </div>
+        <Skeleton className="h-64 w-full bg-zinc-800" />
+      </div>
+    );
   }
 
   return (
@@ -246,8 +258,8 @@ export default function WhatsApp() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {status?.connected ? (
-            // Connected State
+          {/* Connected State */}
+          {status?.connected && (
             <div className="space-y-4">
               <div className="flex items-center gap-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
                 <div className="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center">
@@ -297,7 +309,6 @@ export default function WhatsApp() {
                 </ul>
               </div>
 
-              {/* Inbox Button */}
               <Button
                 onClick={() => navigate("/app/whatsapp/inbox")}
                 className="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950"
@@ -320,8 +331,10 @@ export default function WhatsApp() {
                 Desconectar WhatsApp
               </Button>
             </div>
-          ) : qrCode ? (
-            // QR Code State
+          )}
+
+          {/* QR Code State */}
+          {!status?.connected && qrCode && (
             <div className="space-y-4">
               <div className="flex flex-col items-center p-6 bg-white rounded-lg">
                 <img 
@@ -348,8 +361,10 @@ export default function WhatsApp() {
                 Cancelar
               </Button>
             </div>
-          ) : (
-            // Disconnected State
+          )}
+
+          {/* Disconnected State */}
+          {!status?.connected && !qrCode && (
             <div className="space-y-4">
               <div className="flex items-center gap-4 p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg">
                 <div className="w-12 h-12 bg-zinc-700 rounded-full flex items-center justify-center">
