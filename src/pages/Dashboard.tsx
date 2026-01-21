@@ -138,12 +138,11 @@ const Dashboard = () => {
   const calculateRevenue = async (bookingsList: any[]) => {
     if (!bookingsList.length) return 0;
     
-    const completedBookings = bookingsList.filter(booking => booking.status === 'completed');
-    
-    if (completedBookings.length === 0) return 0;
-    
     try {
-      const bookingIds = completedBookings.map(b => b.id);
+      // Get all booking IDs from the period (confirmed + completed)
+      const bookingIds = bookingsList.map(b => b.id);
+      
+      // Fetch all paid payments for these bookings
       const { data: payments } = await supabase
         .from('payments')
         .select('amount_cents, status')
@@ -155,13 +154,16 @@ const Dashboard = () => {
       if (actualPayments > 0) {
         return actualPayments;
       }
+      
+      // Fallback: only count completed bookings' service prices
+      const completedBookings = bookingsList.filter(booking => booking.status === 'completed');
+      return completedBookings.reduce((sum, booking) => {
+        return sum + (booking.service?.price_cents || 0);
+      }, 0);
     } catch (error) {
       console.error('Error fetching payments:', error);
+      return 0;
     }
-    
-    return completedBookings.reduce((sum, booking) => {
-      return sum + (booking.service?.price_cents || 0);
-    }, 0);
   };
 
   const getGreeting = () => {
