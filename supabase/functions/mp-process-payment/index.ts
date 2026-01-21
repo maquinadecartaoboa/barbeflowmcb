@@ -139,7 +139,7 @@ serve(async (req) => {
           last_name: booking.customer?.name?.split(' ').slice(1).join(' ') || '',
           identification: payer?.identification || undefined,
         },
-        external_reference: booking_id,
+        external_reference: paymentRecord.id,
         metadata: {
           booking_id: booking_id,
           payment_id: paymentRecord.id,
@@ -159,7 +159,7 @@ serve(async (req) => {
           email: payer?.email || booking.customer?.email || 'cliente@example.com',
           identification: payer?.identification || undefined,
         },
-        external_reference: booking_id,
+        external_reference: paymentRecord.id,
         metadata: {
           booking_id: booking_id,
           payment_id: paymentRecord.id,

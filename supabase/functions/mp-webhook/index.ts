@@ -90,26 +90,45 @@ serve(async (req) => {
       metadata: mpPaymentData.metadata,
     }));
 
-    // Find our internal payment using external_reference (our payment_id) or metadata
-    const paymentId = mpPaymentData.external_reference || mpPaymentData.metadata?.payment_id;
+    // Find our internal payment using metadata.payment_id (preferred) or external_reference
+    // Note: external_reference may be payment_id or booking_id depending on code version
+    let paymentId = mpPaymentData.metadata?.payment_id || mpPaymentData.external_reference;
     
     if (!paymentId) {
-      console.error('No payment_id found in external_reference or metadata');
+      console.error('No payment_id found in metadata or external_reference');
       return new Response(
         JSON.stringify({ error: 'No internal payment reference' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Get our payment record
-    const { data: payment, error: paymentError } = await supabase
+    
+    // Try to find payment by id first
+    let { data: payment, error: paymentError } = await supabase
       .from('payments')
       .select('*, booking:bookings(*)')
       .eq('id', paymentId)
-      .single();
+      .maybeSingle();
+    
+    // If not found, it might be a booking_id (old format) - try to find by booking_id
+    if (!payment) {
+      console.log('Payment not found by id, trying by booking_id:', paymentId);
+      const { data: paymentByBooking, error: bookingPaymentError } = await supabase
+        .from('payments')
+        .select('*, booking:bookings(*)')
+        .eq('booking_id', paymentId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (paymentByBooking) {
+        payment = paymentByBooking;
+        paymentId = paymentByBooking.id;
+        console.log('Found payment by booking_id:', paymentId);
+      }
+    }
 
-    if (paymentError || !payment) {
-      console.error('Internal payment not found:', paymentId, paymentError);
+    if (!payment) {
+      console.error('Internal payment not found:', paymentId);
       return new Response(
         JSON.stringify({ error: 'Internal payment not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
