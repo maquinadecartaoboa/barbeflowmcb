@@ -6,8 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Reminder window: 2 hours before, with a 10-minute buffer
-const REMINDER_HOURS_BEFORE = 2;
+// Reminder window: 1 hour before, with a 10-minute buffer
+const REMINDER_HOURS_BEFORE = 1;
 const BUFFER_MINUTES = 10;
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
