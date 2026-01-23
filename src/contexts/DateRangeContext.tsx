@@ -21,6 +21,7 @@ export interface DateRangeContextValue {
 const DateRangeContext = createContext<DateRangeContextValue | undefined>(undefined);
 
 export const presetOptions = [
+  { value: 'today', label: 'Hoje' },
   { value: '7', label: 'Últimos 7 dias' },
   { value: '14', label: 'Últimos 14 dias' },
   { value: '30', label: 'Últimos 30 dias' },
@@ -35,6 +36,8 @@ const getDateRangeFromPreset = (preset: string, customStart?: string, customEnd?
   const now = new Date();
   
   switch (preset) {
+    case 'today':
+      return { from: startOfDay(now), to: endOfDay(now) };
     case '7':
       return { from: subDays(now, 6), to: now };
     case '14':
