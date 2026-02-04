@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
 import { useTenant } from "@/hooks/useTenant";
-import { useDateRange } from "@/contexts/DateRangeContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { NoTenantState } from "@/components/NoTenantState";
-import { DateRangeSelector } from "@/components/DateRangeSelector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -55,7 +53,6 @@ interface ProductSale {
 
 const Products = () => {
   const { currentTenant, loading: tenantLoading } = useTenant();
-  const { dateRange } = useDateRange();
   const { toast } = useToast();
 
   // Products state
@@ -94,7 +91,7 @@ const Products = () => {
     if (currentTenant) {
       loadSales();
     }
-  }, [currentTenant, dateRange]);
+  }, [currentTenant]);
 
   const loadProducts = async () => {
     if (!currentTenant) return;
@@ -125,9 +122,8 @@ const Products = () => {
         .from('product_sales')
         .select('*, product:products(*)')
         .eq('tenant_id', currentTenant.id)
-        .gte('sale_date', dateRange.from.toISOString())
-        .lte('sale_date', dateRange.to.toISOString())
-        .order('sale_date', { ascending: false });
+        .order('sale_date', { ascending: false })
+        .limit(100);
 
       if (error) throw error;
       setSales(data || []);
@@ -368,12 +364,9 @@ const Products = () => {
 
   return (
     <div className="space-y-6 px-4 md:px-0">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-zinc-100">Produtos</h1>
-          <p className="text-sm text-zinc-500">Gerencie produtos e vendas</p>
-        </div>
-        <DateRangeSelector />
+      <div>
+        <h1 className="text-xl md:text-2xl font-bold text-foreground">Produtos</h1>
+        <p className="text-sm text-muted-foreground">Gerencie produtos e vendas</p>
       </div>
 
       <Tabs defaultValue="products" className="space-y-6">

@@ -49,7 +49,9 @@ import {
   Download,
   DollarSign,
   Clock,
-  Target
+  Target,
+  Package,
+  ShoppingCart
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -63,6 +65,9 @@ interface FinanceData {
   daily_revenue: { date: string; expected: number; received: number; }[];
   top_services: { name: string; revenue: number; count: number; }[];
   staff_performance: { name: string; revenue: number; bookings: number; }[];
+  product_sales_revenue: number;
+  product_sales_profit: number;
+  top_products: { name: string; revenue: number; profit: number; quantity: number; }[];
 }
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
@@ -181,12 +186,36 @@ export default function Finance() {
     const loadProductSales = async () => {
       const { data: productSales } = await supabase
         .from('product_sales')
-        .select('sale_price_snapshot_cents, quantity')
+        .select('sale_price_snapshot_cents, purchase_price_snapshot_cents, quantity, product:products(name)')
         .eq('tenant_id', currentTenant!.id)
         .gte('sale_date', dateRange.from.toISOString())
         .lte('sale_date', dateRange.to.toISOString());
       
-      return productSales?.reduce((sum, sale) => sum + (sale.sale_price_snapshot_cents * sale.quantity), 0) || 0;
+      const totalRevenue = productSales?.reduce((sum, sale) => sum + (sale.sale_price_snapshot_cents * sale.quantity), 0) || 0;
+      const totalProfit = productSales?.reduce((sum, sale) => sum + ((sale.sale_price_snapshot_cents - sale.purchase_price_snapshot_cents) * sale.quantity), 0) || 0;
+      
+      // Calculate top products
+      const productStats = (productSales || []).reduce((acc: Record<string, { name: string; revenue: number; profit: number; quantity: number }>, sale: any) => {
+        const productName = sale.product?.name || 'Produto';
+        const saleRevenue = sale.sale_price_snapshot_cents * sale.quantity;
+        const saleProfit = (sale.sale_price_snapshot_cents - sale.purchase_price_snapshot_cents) * sale.quantity;
+        
+        if (!acc[productName]) {
+          acc[productName] = { name: productName, revenue: 0, profit: 0, quantity: 0 };
+        }
+        
+        acc[productName].revenue += saleRevenue;
+        acc[productName].profit += saleProfit;
+        acc[productName].quantity += sale.quantity;
+        
+        return acc;
+      }, {});
+      
+      const topProducts = Object.values(productStats)
+        .sort((a, b) => b.quantity - a.quantity)
+        .slice(0, 5);
+      
+      return { revenue: totalRevenue, profit: totalProfit, topProducts };
     };
 
     // Fallback: use completed bookings value if no payments data
@@ -238,17 +267,17 @@ export default function Finance() {
 
     // Load payments, no-show rate, and product sales asynchronously
     try {
-      const [actualPayments, noShowRate, productSalesRevenue] = await Promise.all([
+      const [actualPayments, noShowRate, productSalesData] = await Promise.all([
         loadPaymentsData(),
         loadAllBookingsForNoShow(),
         loadProductSales()
       ]);
 
       // Add product sales to expected and received revenue
-      revenueExpected += productSalesRevenue;
+      revenueExpected += productSalesData.revenue;
       
       // Use actual payments if available, otherwise use completed bookings value
-      const finalRevenueReceived = (actualPayments > 0 ? actualPayments : revenueReceived) + productSalesRevenue;
+      const finalRevenueReceived = (actualPayments > 0 ? actualPayments : revenueReceived) + productSalesData.revenue;
       
       // Recalculate avg ticket including product sales
       const avgTicket = bookingsCount > 0 ? revenueExpected / bookingsCount : 0;
@@ -262,6 +291,9 @@ export default function Finance() {
         daily_revenue: dailyRevenue,
         top_services: topServices as any,
         staff_performance: staffPerformance as any,
+        product_sales_revenue: productSalesData.revenue,
+        product_sales_profit: productSalesData.profit,
+        top_products: productSalesData.topProducts,
       });
     } catch (error) {
       console.error('Error calculating finance metrics:', error);
@@ -488,6 +520,56 @@ export default function Finance() {
         </Card>
       </div>
 
+      {/* Product Sales Cards */}
+      {(data?.product_sales_revenue || 0) > 0 && (
+        <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
+          <Card>
+            <CardContent className="p-4 md:p-6">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs md:text-sm text-muted-foreground truncate">Faturamento Produtos</p>
+                  <p className="text-lg md:text-2xl font-bold text-foreground">
+                    R$ {data ? (data.product_sales_revenue / 100).toFixed(0) : '0'}
+                  </p>
+                  <div className="flex items-center mt-1">
+                    <ShoppingCart className="h-3 w-3 text-primary mr-1 flex-shrink-0" />
+                    <span className="text-xs text-muted-foreground truncate">Vendas no período</span>
+                  </div>
+                </div>
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 ml-2">
+                  <ShoppingCart className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4 md:p-6">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs md:text-sm text-muted-foreground truncate">Lucro Produtos</p>
+                  <p className="text-lg md:text-2xl font-bold text-success">
+                    R$ {data ? (data.product_sales_profit / 100).toFixed(0) : '0'}
+                  </p>
+                  <div className="flex items-center mt-1">
+                    <TrendingUp className="h-3 w-3 text-success mr-1 flex-shrink-0" />
+                    <span className="text-xs text-success truncate">
+                      {data && data.product_sales_revenue > 0 
+                        ? `${((data.product_sales_profit / data.product_sales_revenue) * 100).toFixed(0)}% margem`
+                        : '0%'
+                      }
+                    </span>
+                  </div>
+                </div>
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-success/10 flex items-center justify-center flex-shrink-0 ml-2">
+                  <TrendingUp className="h-5 w-5 md:h-6 md:w-6 text-success" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Charts */}
       <div className="grid gap-4 md:gap-6 grid-cols-1 lg:grid-cols-2">
         <Card>
@@ -583,6 +665,71 @@ export default function Finance() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Top Products Section */}
+      {data?.top_products && data.top_products.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2 md:pb-4">
+            <CardTitle className="text-base md:text-lg flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" />
+              Produtos Mais Vendidos
+            </CardTitle>
+            <CardDescription className="text-xs md:text-sm">Por quantidade vendida no período</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Mobile: Card list */}
+            <div className="md:hidden space-y-3">
+              {data.top_products.map((product, index) => (
+                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
+                      style={{ backgroundColor: `${COLORS[index % COLORS.length]}20`, color: COLORS[index % COLORS.length] }}
+                    >
+                      {index + 1}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm text-foreground">{product.name}</p>
+                      <p className="text-xs text-muted-foreground">{product.quantity} unidades</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-semibold text-sm text-foreground block">
+                      R$ {(product.revenue / 100).toFixed(0)}
+                    </span>
+                    <span className="text-xs text-success">
+                      +R$ {(product.profit / 100).toFixed(0)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop: Table */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Produto</TableHead>
+                    <TableHead className="text-right">Quantidade</TableHead>
+                    <TableHead className="text-right">Faturamento</TableHead>
+                    <TableHead className="text-right">Lucro</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.top_products.map((product, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{product.name}</TableCell>
+                      <TableCell className="text-right">{product.quantity}</TableCell>
+                      <TableCell className="text-right">R$ {(product.revenue / 100).toFixed(2)}</TableCell>
+                      <TableCell className="text-right text-success font-medium">R$ {(product.profit / 100).toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tables */}
       <div className="grid gap-4 md:gap-6 grid-cols-1 lg:grid-cols-2">
