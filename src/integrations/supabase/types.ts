@@ -59,6 +59,67 @@ export type Database = {
           },
         ]
       }
+      booking_holds: {
+        Row: {
+          created_at: string
+          ends_at: string
+          expires_at: string
+          id: string
+          remote_jid: string
+          service_id: string | null
+          staff_id: string | null
+          starts_at: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          ends_at: string
+          expires_at: string
+          id?: string
+          remote_jid: string
+          service_id?: string | null
+          staff_id?: string | null
+          starts_at: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string
+          expires_at?: string
+          id?: string
+          remote_jid?: string
+          service_id?: string | null
+          staff_id?: string | null
+          starts_at?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_holds_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_holds_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_holds_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           created_at: string
@@ -797,6 +858,47 @@ export type Database = {
             foreignKeyName: "whatsapp_connections_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_conversation_state: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_id: string | null
+          payload: Json | null
+          remote_jid: string
+          step: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_id?: string | null
+          payload?: Json | null
+          remote_jid: string
+          step?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_id?: string | null
+          payload?: Json | null
+          remote_jid?: string
+          step?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_conversation_state_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
