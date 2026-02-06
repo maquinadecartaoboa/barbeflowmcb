@@ -82,10 +82,10 @@ export default function Agenda() {
 
       setBookings(bookingsWithPayments);
 
-      // Load recurring clients
+      // Load recurring clients with service info
       const { data: recurring } = await supabase
         .from('recurring_clients')
-        .select('*, staff:staff(name, color)')
+        .select('*, staff:staff(name, color), service:services(name, color, duration_minutes, price_cents)')
         .eq('tenant_id', currentTenant.id)
         .eq('active', true);
       
@@ -114,14 +114,18 @@ export default function Agenda() {
         const [h, m] = r.start_time.split(':').map(Number);
         const startsAt = new Date(dayStart);
         startsAt.setHours(h, m, 0, 0);
-        const endsAt = new Date(startsAt.getTime() + r.duration_minutes * 60 * 1000);
+        const duration = r.service?.duration_minutes || r.duration_minutes;
+        const endsAt = new Date(startsAt.getTime() + duration * 60 * 1000);
+        const serviceName = r.service?.name || 'Cliente Fixo';
+        const serviceColor = r.service?.color || '#8B5CF6';
+        const priceCents = r.service?.price_cents || 0;
         return {
           id: `recurring-${r.id}`,
           starts_at: startsAt.toISOString(),
           ends_at: endsAt.toISOString(),
           status: 'recurring',
           customer: { name: r.client_name, phone: r.client_phone },
-          service: { name: 'Cliente Fixo', color: '#8B5CF6', duration_minutes: r.duration_minutes, price_cents: 0 },
+          service: { name: serviceName, color: serviceColor, duration_minutes: duration, price_cents: priceCents },
           staff: r.staff,
           payment: null,
           is_recurring: true,
@@ -175,7 +179,7 @@ export default function Agenda() {
                         {booking.is_recurring && <UserCheck className="h-3.5 w-3.5 inline mr-1 text-violet-400" />}
                         {booking.is_recurring ? `Cliente Fixo — ${booking.customer?.name}` : booking.customer?.name}
                       </h4>
-                      <p className="text-sm text-muted-foreground">{booking.is_recurring ? (booking.notes || 'Recorrência semanal') : booking.service?.name}</p>
+                      <p className="text-sm text-muted-foreground">{booking.is_recurring ? `${booking.service?.name}${booking.notes ? ` • ${booking.notes}` : ''}` : booking.service?.name}</p>
                       <div className="flex items-center space-x-4 mt-2">
                         <div className="flex items-center text-xs text-muted-foreground">
                           <User className="h-3 w-3 mr-1" />

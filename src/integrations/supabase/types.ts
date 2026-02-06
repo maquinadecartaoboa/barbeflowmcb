@@ -436,6 +436,7 @@ export type Database = {
           duration_minutes: number
           id: string
           notes: string | null
+          service_id: string | null
           staff_id: string
           start_date: string
           start_time: string
@@ -451,6 +452,7 @@ export type Database = {
           duration_minutes: number
           id?: string
           notes?: string | null
+          service_id?: string | null
           staff_id: string
           start_date?: string
           start_time: string
@@ -466,6 +468,7 @@ export type Database = {
           duration_minutes?: number
           id?: string
           notes?: string | null
+          service_id?: string | null
           staff_id?: string
           start_date?: string
           start_time?: string
@@ -474,6 +477,13 @@ export type Database = {
           weekday?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "recurring_clients_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "recurring_clients_staff_id_fkey"
             columns: ["staff_id"]

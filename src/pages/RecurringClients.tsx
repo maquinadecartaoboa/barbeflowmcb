@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
@@ -21,7 +21,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Plus, Loader2, Trash2, Pencil, UserCheck, Clock, CalendarClock, Phone, Ban
+  Plus, Loader2, Trash2, Pencil, UserCheck, Clock, CalendarClock, Ban
 } from "lucide-react";
 
 const WEEKDAY_LABELS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -31,6 +31,7 @@ interface RecurringClient {
   id: string;
   tenant_id: string;
   staff_id: string;
+  service_id: string | null;
   client_name: string;
   client_phone: string;
   weekday: number;
@@ -48,12 +49,20 @@ interface Staff {
   name: string;
 }
 
+interface Service {
+  id: string;
+  name: string;
+  duration_minutes: number;
+  price_cents: number;
+}
+
 export default function RecurringClients() {
   const { currentTenant, loading: tenantLoading } = useTenant();
   const { toast } = useToast();
 
   const [records, setRecords] = useState<RecurringClient[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -63,9 +72,9 @@ export default function RecurringClients() {
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [selectedStaff, setSelectedStaff] = useState("");
-  const [weekday, setWeekday] = useState("1"); // Monday default
+  const [selectedService, setSelectedService] = useState("");
+  const [weekday, setWeekday] = useState("1");
   const [startTime, setStartTime] = useState("09:00");
-  const [duration, setDuration] = useState("30");
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
   const [isActive, setIsActive] = useState(true);
   const [notes, setNotes] = useState("");
@@ -74,7 +83,7 @@ export default function RecurringClients() {
     if (!currentTenant) return;
     try {
       setLoading(true);
-      const [recRes, staffRes] = await Promise.all([
+      const [recRes, staffRes, svcRes] = await Promise.all([
         supabase
           .from("recurring_clients")
           .select("*")
@@ -87,11 +96,19 @@ export default function RecurringClients() {
           .eq("tenant_id", currentTenant.id)
           .eq("active", true)
           .order("name"),
+        supabase
+          .from("services")
+          .select("id, name, duration_minutes, price_cents")
+          .eq("tenant_id", currentTenant.id)
+          .eq("active", true)
+          .order("name"),
       ]);
       if (recRes.error) throw recRes.error;
       if (staffRes.error) throw staffRes.error;
+      if (svcRes.error) throw svcRes.error;
       setRecords(recRes.data || []);
       setStaff(staffRes.data || []);
+      setServices(svcRes.data || []);
     } catch (err: any) {
       console.error(err);
       toast({ title: "Erro", description: "Erro ao carregar clientes fixos", variant: "destructive" });
@@ -108,9 +125,9 @@ export default function RecurringClients() {
     setClientName("");
     setClientPhone("");
     setSelectedStaff("");
+    setSelectedService("");
     setWeekday("1");
     setStartTime("09:00");
-    setDuration("30");
     setStartDate(new Date().toISOString().slice(0, 10));
     setIsActive(true);
     setNotes("");
@@ -122,32 +139,38 @@ export default function RecurringClients() {
     setClientName(r.client_name);
     setClientPhone(r.client_phone);
     setSelectedStaff(r.staff_id);
+    setSelectedService(r.service_id || "");
     setWeekday(String(r.weekday));
     setStartTime(r.start_time.slice(0, 5));
-    setDuration(String(r.duration_minutes));
     setStartDate(r.start_date);
     setIsActive(r.active);
     setNotes(r.notes || "");
     setDialogOpen(true);
   };
 
+  const getServiceDuration = (serviceId: string): number => {
+    return services.find(s => s.id === serviceId)?.duration_minutes || 30;
+  };
+
   const handleSave = async () => {
     if (!currentTenant) return;
-    if (!clientName.trim() || !clientPhone.trim() || !selectedStaff) {
-      toast({ title: "Erro", description: "Preencha nome, telefone e profissional", variant: "destructive" });
+    if (!clientName.trim() || !clientPhone.trim() || !selectedStaff || !selectedService) {
+      toast({ title: "Erro", description: "Preencha nome, telefone, profissional e serviço", variant: "destructive" });
       return;
     }
 
     try {
       setSaving(true);
+      const duration = getServiceDuration(selectedService);
       const payload = {
         tenant_id: currentTenant.id,
         staff_id: selectedStaff,
+        service_id: selectedService,
         client_name: clientName.trim(),
         client_phone: clientPhone.trim(),
         weekday: Number(weekday),
         start_time: startTime,
-        duration_minutes: Number(duration),
+        duration_minutes: duration,
         start_date: startDate,
         active: isActive,
         notes: notes.trim() || null,
@@ -214,6 +237,7 @@ export default function RecurringClients() {
   };
 
   const getStaffName = (staffId: string) => staff.find((s) => s.id === staffId)?.name || "Profissional";
+  const getServiceName = (serviceId: string | null) => services.find((s) => s.id === serviceId)?.name || "—";
 
   if (tenantLoading) {
     return (
@@ -277,7 +301,28 @@ export default function RecurringClients() {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Serviço</Label>
+                <Select value={selectedService} onValueChange={setSelectedService}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o serviço" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {services.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} ({s.duration_minutes}min — R$ {(s.price_cents / 100).toFixed(2)})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedService && (
+                  <p className="text-xs text-muted-foreground">
+                    Duração: {getServiceDuration(selectedService)} minutos
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Dia da semana</Label>
                   <Select value={weekday} onValueChange={setWeekday}>
@@ -294,10 +339,6 @@ export default function RecurringClients() {
                 <div className="space-y-2">
                   <Label>Horário</Label>
                   <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Duração (min)</Label>
-                  <Input type="number" min={5} step={5} value={duration} onChange={(e) => setDuration(e.target.value)} />
                 </div>
               </div>
 
@@ -369,11 +410,9 @@ export default function RecurringClients() {
                         {WEEKDAY_SHORT[r.weekday]} {r.start_time.slice(0, 5)} ({r.duration_minutes}min)
                       </span>
                       <span>•</span>
+                      <span>{getServiceName(r.service_id)}</span>
+                      <span>•</span>
                       <span>{getStaffName(r.staff_id)}</span>
-                      {r.notes && <>
-                        <span className="hidden sm:inline">•</span>
-                        <span className="hidden sm:inline truncate">{r.notes}</span>
-                      </>}
                     </div>
                   </div>
                 </div>
