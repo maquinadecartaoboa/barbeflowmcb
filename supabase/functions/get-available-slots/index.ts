@@ -206,6 +206,21 @@ serve(async (req) => {
 
     console.log(`Found ${allBlocks?.length || 0} blocks for the day`);
 
+    // Get recurring clients for this weekday
+    const { data: recurringClients, error: recurringError } = await supabase
+      .from('recurring_clients')
+      .select('id, staff_id, client_name, start_time, duration_minutes, start_date')
+      .eq('tenant_id', tenant_id)
+      .eq('weekday', dayOfWeek)
+      .eq('active', true)
+      .lte('start_date', date);
+
+    if (recurringError) {
+      console.error('Error fetching recurring clients:', recurringError);
+    }
+
+    console.log(`Found ${recurringClients?.length || 0} recurring clients for weekday ${dayOfWeek}`);
+
     const availableSlots: any[] = [];
     const occupiedSlots: any[] = [];
     const processedTimes = new Set<string>();
@@ -231,6 +246,7 @@ serve(async (req) => {
       // Get bookings for this staff
       const staffBookings = allBookings?.filter(b => b.staff_id === staff.id) || [];
       const staffBlocks = allBlocks?.filter(b => b.staff_id === staff.id || b.staff_id === null) || [];
+      const staffRecurring = recurringClients?.filter(r => r.staff_id === staff.id) || [];
 
       for (const schedule of schedules) {
         // Schedule times are in local timezone
@@ -337,6 +353,29 @@ serve(async (req) => {
                 isAvailable = false;
                 conflictReason = block.reason || 'Horário bloqueado';
                 console.log(`BLOCK CONFLICT: Slot ${timeString} conflicts with block`);
+                break;
+              }
+            }
+          }
+
+          // Check conflicts with recurring clients if still available
+          if (isAvailable) {
+            const slotStartMins = currentHour * 60 + currentMin;
+            const slotEndMins = slotStartMins + serviceDuration;
+            
+            for (const recurring of staffRecurring) {
+              const [recHour, recMin] = recurring.start_time.split(':').map(Number);
+              const recStartMins = recHour * 60 + recMin;
+              const recEndMins = recStartMins + recurring.duration_minutes;
+              
+              // Check overlap (with buffer)
+              const recStartWithBuffer = recStartMins - bufferTime;
+              const recEndWithBuffer = recEndMins + bufferTime;
+              
+              if (slotStartMins < recEndWithBuffer && slotEndMins > recStartWithBuffer) {
+                isAvailable = false;
+                conflictReason = 'Horário reservado';
+                console.log(`RECURRING CONFLICT: Slot ${timeString} conflicts with recurring client ${recurring.client_name}`);
                 break;
               }
             }

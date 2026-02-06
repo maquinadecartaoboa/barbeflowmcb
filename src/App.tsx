@@ -17,6 +17,7 @@ import Settings from "./pages/Settings";
 import WhatsApp from "./pages/WhatsApp";
 import WhatsAppInbox from "./pages/WhatsAppInbox";
 import Products from "./pages/Products";
+import RecurringClients from "./pages/RecurringClients";
 import BookingPublic from "./pages/BookingPublic";
 import PaymentReturn from "./pages/PaymentReturn";
 import NotFound from "./pages/NotFound";
@@ -54,6 +55,7 @@ const App = () => (
             <Route path="customers" element={<Customers />} />
             <Route path="finance" element={<Finance />} />
             <Route path="products" element={<Products />} />
+            <Route path="recurring-clients" element={<RecurringClients />} />
             <Route path="whatsapp" element={<WhatsApp />} />
             <Route path="whatsapp/inbox" element={<WhatsAppInbox />} />
             <Route path="settings" element={<Settings />} />

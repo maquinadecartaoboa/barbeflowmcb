@@ -427,6 +427,69 @@ export type Database = {
           },
         ]
       }
+      recurring_clients: {
+        Row: {
+          active: boolean
+          client_name: string
+          client_phone: string
+          created_at: string
+          duration_minutes: number
+          id: string
+          notes: string | null
+          staff_id: string
+          start_date: string
+          start_time: string
+          tenant_id: string
+          updated_at: string
+          weekday: number
+        }
+        Insert: {
+          active?: boolean
+          client_name: string
+          client_phone: string
+          created_at?: string
+          duration_minutes: number
+          id?: string
+          notes?: string | null
+          staff_id: string
+          start_date?: string
+          start_time: string
+          tenant_id: string
+          updated_at?: string
+          weekday: number
+        }
+        Update: {
+          active?: boolean
+          client_name?: string
+          client_phone?: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          notes?: string | null
+          staff_id?: string
+          start_date?: string
+          start_time?: string
+          tenant_id?: string
+          updated_at?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_clients_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_clients_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedules: {
         Row: {
           active: boolean | null
