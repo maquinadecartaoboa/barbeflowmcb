@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, User, Plus, CreditCard, Banknote, AlertCircle } from "lucide-react";
+import { Calendar, Clock, User, Plus, CreditCard, Banknote, AlertCircle, UserCheck } from "lucide-react";
 import { format, startOfWeek, endOfWeek, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useBookingModal } from "@/hooks/useBookingModal";
@@ -14,6 +14,7 @@ export default function Agenda() {
   const { currentTenant, loading: tenantLoading } = useTenant();
   const { openBookingModal } = useBookingModal();
   const [bookings, setBookings] = useState<any[]>([]);
+  const [recurringClients, setRecurringClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'day' | 'week'>('week');
@@ -80,6 +81,15 @@ export default function Agenda() {
       }));
 
       setBookings(bookingsWithPayments);
+
+      // Load recurring clients
+      const { data: recurring } = await supabase
+        .from('recurring_clients')
+        .select('*, staff:staff(name, color)')
+        .eq('tenant_id', currentTenant.id)
+        .eq('active', true);
+      
+      setRecurringClients(recurring || []);
     } catch (error) {
       console.error('Error loading bookings:', error);
     } finally {
@@ -90,11 +100,37 @@ export default function Agenda() {
   const getBookingsForDay = (date: Date) => {
     const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+    const dayOfWeek = date.getDay();
     
-    return bookings.filter(booking => {
+    const realBookings = bookings.filter(booking => {
       const bookingDate = new Date(booking.starts_at);
       return bookingDate >= dayStart && bookingDate < dayEnd;
-    }).sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+    });
+
+    // Add recurring clients as pseudo-bookings for this day
+    const recurringForDay = recurringClients
+      .filter(r => r.weekday === dayOfWeek && new Date(r.start_date) <= date)
+      .map(r => {
+        const [h, m] = r.start_time.split(':').map(Number);
+        const startsAt = new Date(dayStart);
+        startsAt.setHours(h, m, 0, 0);
+        const endsAt = new Date(startsAt.getTime() + r.duration_minutes * 60 * 1000);
+        return {
+          id: `recurring-${r.id}`,
+          starts_at: startsAt.toISOString(),
+          ends_at: endsAt.toISOString(),
+          status: 'recurring',
+          customer: { name: r.client_name, phone: r.client_phone },
+          service: { name: 'Cliente Fixo', color: '#8B5CF6', duration_minutes: r.duration_minutes, price_cents: 0 },
+          staff: r.staff,
+          payment: null,
+          is_recurring: true,
+          notes: r.notes,
+        };
+      });
+
+    return [...realBookings, ...recurringForDay]
+      .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
   };
 
   const renderDayView = () => {
@@ -135,8 +171,11 @@ export default function Agenda() {
                           {format(new Date(booking.ends_at), 'HH:mm')}
                         </span>
                       </div>
-                      <h4 className="font-semibold text-foreground">{booking.customer?.name}</h4>
-                      <p className="text-sm text-muted-foreground">{booking.service?.name}</p>
+                      <h4 className="font-semibold text-foreground">
+                        {booking.is_recurring && <UserCheck className="h-3.5 w-3.5 inline mr-1 text-violet-400" />}
+                        {booking.is_recurring ? `Cliente Fixo — ${booking.customer?.name}` : booking.customer?.name}
+                      </h4>
+                      <p className="text-sm text-muted-foreground">{booking.is_recurring ? (booking.notes || 'Recorrência semanal') : booking.service?.name}</p>
                       <div className="flex items-center space-x-4 mt-2">
                         <div className="flex items-center text-xs text-muted-foreground">
                           <User className="h-3 w-3 mr-1" />
@@ -145,47 +184,55 @@ export default function Agenda() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end space-y-2">
-                      {/* Payment Status */}
-                      {booking.payment ? (
-                        <div className="flex items-center gap-1">
-                          {booking.payment.status === 'paid' && (
-                            <CreditCard className="h-3 w-3 text-emerald-500" />
-                          )}
-                          {booking.payment.status === 'pending' && (
-                            <AlertCircle className="h-3 w-3 text-amber-500" />
-                          )}
-                          <span className={`text-xs ${
-                            booking.payment.status === 'paid' ? 'text-emerald-500' :
-                            booking.payment.status === 'pending' ? 'text-amber-500' :
-                            'text-muted-foreground'
-                          }`}>
-                            {booking.payment.status === 'paid' ? 'Pago' : 
-                             booking.payment.status === 'pending' ? 'Aguardando' : 'Falhou'}
-                          </span>
-                        </div>
+                      {booking.is_recurring ? (
+                        <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30">
+                          Fixo
+                        </Badge>
                       ) : (
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          <Banknote className="h-3 w-3" />
-                          <span className="text-xs">No local</span>
-                        </div>
+                        <>
+                          {/* Payment Status */}
+                          {booking.payment ? (
+                            <div className="flex items-center gap-1">
+                              {booking.payment.status === 'paid' && (
+                                <CreditCard className="h-3 w-3 text-emerald-500" />
+                              )}
+                              {booking.payment.status === 'pending' && (
+                                <AlertCircle className="h-3 w-3 text-amber-500" />
+                              )}
+                              <span className={`text-xs ${
+                                booking.payment.status === 'paid' ? 'text-emerald-500' :
+                                booking.payment.status === 'pending' ? 'text-amber-500' :
+                                'text-muted-foreground'
+                              }`}>
+                                {booking.payment.status === 'paid' ? 'Pago' : 
+                                 booking.payment.status === 'pending' ? 'Aguardando' : 'Falhou'}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Banknote className="h-3 w-3" />
+                              <span className="text-xs">No local</span>
+                            </div>
+                          )}
+                          
+                          {/* Booking Status */}
+                          <Badge variant={
+                            booking.status === 'confirmed' ? 'default' :
+                            booking.status === 'pending' ? 'outline' :
+                            booking.status === 'cancelled' ? 'destructive' :
+                            'secondary'
+                          }>
+                            {booking.status === 'confirmed' ? 'Confirmado' :
+                             booking.status === 'pending' ? 'Aguardando' :
+                             booking.status === 'cancelled' ? 'Cancelado' :
+                             booking.status === 'no_show' ? 'Faltou' : booking.status}
+                          </Badge>
+                          
+                          <span className="text-sm font-medium text-success">
+                            R$ {((booking.service?.price_cents || 0) / 100).toFixed(2)}
+                          </span>
+                        </>
                       )}
-                      
-                      {/* Booking Status */}
-                      <Badge variant={
-                        booking.status === 'confirmed' ? 'default' :
-                        booking.status === 'pending' ? 'outline' :
-                        booking.status === 'cancelled' ? 'destructive' :
-                        'secondary'
-                      }>
-                        {booking.status === 'confirmed' ? 'Confirmado' :
-                         booking.status === 'pending' ? 'Aguardando' :
-                         booking.status === 'cancelled' ? 'Cancelado' :
-                         booking.status === 'no_show' ? 'Faltou' : booking.status}
-                      </Badge>
-                      
-                      <span className="text-sm font-medium text-success">
-                        R$ {((booking.service?.price_cents || 0) / 100).toFixed(2)}
-                      </span>
                     </div>
                   </div>
                 ))}
