@@ -44,8 +44,11 @@ import {
   CalendarOff,
   Ban
 } from "lucide-react";
-import { format, parseISO, isBefore, startOfDay } from "date-fns";
+import { parseISO, isBefore, startOfDay } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { ptBR } from "date-fns/locale";
+
+const TIMEZONE = "America/Bahia";
 
 interface Block {
   id: string;
@@ -145,13 +148,11 @@ export function AvailabilityBlocksManager({ tenantId }: AvailabilityBlocksManage
       let endsAt: string;
 
       if (isFullDay) {
-        // Full day block: from 00:00 to 23:59
-        startsAt = `${blockDate}T00:00:00`;
-        endsAt = `${blockDate}T23:59:59`;
+        startsAt = `${blockDate}T00:00:00-03:00`;
+        endsAt = `${blockDate}T23:59:59-03:00`;
       } else {
-        // Partial block with specific times
-        startsAt = `${blockDate}T${startTime}:00`;
-        endsAt = `${blockDate}T${endTime}:00`;
+        startsAt = `${blockDate}T${startTime}:00-03:00`;
+        endsAt = `${blockDate}T${endTime}:00-03:00`;
       }
 
       const { error } = await supabase
@@ -223,22 +224,20 @@ export function AvailabilityBlocksManager({ tenantId }: AvailabilityBlocksManage
     const start = parseISO(startsAt);
     const end = parseISO(endsAt);
     
-    const startHours = start.getHours();
-    const startMinutes = start.getMinutes();
-    const endHours = end.getHours();
-    const endMinutes = end.getMinutes();
+    const startH = formatInTimeZone(start, TIMEZONE, "HH");
+    const startM = formatInTimeZone(start, TIMEZONE, "mm");
+    const endH = formatInTimeZone(end, TIMEZONE, "HH");
+    const endM = formatInTimeZone(end, TIMEZONE, "mm");
     
-    // Check if it's a full day block (00:00 to 23:59)
-    const isFullDay = startHours === 0 && startMinutes === 0 && 
-                      endHours === 23 && endMinutes === 59;
+    const isFullDay = startH === "00" && startM === "00" && endH === "23" && endM === "59";
     
-    const dateStr = format(start, "EEEE, d 'de' MMMM", { locale: ptBR });
+    const dateStr = formatInTimeZone(start, TIMEZONE, "EEEE, d 'de' MMMM", { locale: ptBR });
     
     if (isFullDay) {
       return { date: dateStr, time: "Dia inteiro", isFullDay: true };
     }
     
-    const timeStr = `${format(start, "HH:mm")} - ${format(end, "HH:mm")}`;
+    const timeStr = `${startH}:${startM} - ${endH}:${endM}`;
     return { date: dateStr, time: timeStr, isFullDay: false };
   };
 
@@ -290,7 +289,7 @@ export function AvailabilityBlocksManager({ tenantId }: AvailabilityBlocksManage
                   type="date"
                   value={blockDate}
                   onChange={(e) => setBlockDate(e.target.value)}
-                  min={format(new Date(), "yyyy-MM-dd")}
+                  min={formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd")}
                 />
               </div>
 
