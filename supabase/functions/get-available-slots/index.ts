@@ -206,10 +206,10 @@ serve(async (req) => {
 
     console.log(`Found ${allBlocks?.length || 0} blocks for the day`);
 
-    // Get recurring clients for this weekday
+    // Get recurring clients for this weekday (include service for duration)
     const { data: recurringClients, error: recurringError } = await supabase
       .from('recurring_clients')
-      .select('id, staff_id, client_name, start_time, duration_minutes, start_date')
+      .select('id, staff_id, client_name, start_time, duration_minutes, start_date, service_id, service:services(duration_minutes)')
       .eq('tenant_id', tenant_id)
       .eq('weekday', dayOfWeek)
       .eq('active', true)
@@ -366,7 +366,8 @@ serve(async (req) => {
             for (const recurring of staffRecurring) {
               const [recHour, recMin] = recurring.start_time.split(':').map(Number);
               const recStartMins = recHour * 60 + recMin;
-              const recEndMins = recStartMins + recurring.duration_minutes;
+              const recDuration = recurring.service?.duration_minutes || recurring.duration_minutes;
+              const recEndMins = recStartMins + recDuration;
               
               // Check overlap (with buffer)
               const recStartWithBuffer = recStartMins - bufferTime;
