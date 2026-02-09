@@ -100,52 +100,15 @@ export function CustomerBookingsModal({
 
     try {
       setLoading(true);
-      const normalizedPhone = normalizePhone(phone);
-      const phoneVariants = [
-        normalizedPhone,
-        normalizedPhone.replace('+', ''),
-        digits,
-        '55' + digits,
-      ];
+      const digits = phone.replace(/\D/g, '');
 
-      // First find the customer by phone
-      const { data: customers, error: customerError } = await supabase
-        .from('customers')
-        .select('id')
-        .eq('tenant_id', tenantId)
-        .or(phoneVariants.map(p => `phone.eq.${p}`).join(','));
+      const { data, error } = await supabase.functions.invoke('public-customer-bookings', {
+        body: { phone: digits, tenant_id: tenantId },
+      });
 
-      if (customerError) throw customerError;
+      if (error) throw error;
 
-      if (!customers || customers.length === 0) {
-        setBookings([]);
-        setStep('bookings');
-        return;
-      }
-
-      const customerIds = customers.map(c => c.id);
-
-      // Get future bookings for these customers
-      const now = new Date().toISOString();
-      const { data: bookingsData, error: bookingsError } = await supabase
-        .from('bookings')
-        .select(`
-          id,
-          starts_at,
-          ends_at,
-          status,
-          service:services(name, price_cents),
-          staff:staff(name)
-        `)
-        .eq('tenant_id', tenantId)
-        .in('customer_id', customerIds)
-        .gte('starts_at', now)
-        .neq('status', 'cancelled')
-        .order('starts_at', { ascending: true });
-
-      if (bookingsError) throw bookingsError;
-
-      setBookings(bookingsData || []);
+      setBookings(data?.bookings || []);
       setStep('bookings');
     } catch (error) {
       console.error('Error searching bookings:', error);
@@ -163,11 +126,13 @@ export function CustomerBookingsModal({
     try {
       setCancellingId(bookingId);
 
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status: 'cancelled' })
-        .eq('id', bookingId)
-        .eq('tenant_id', tenantId);
+      const { data, error } = await supabase.functions.invoke('public-customer-bookings', {
+        body: { 
+          action: 'cancel',
+          booking_id: bookingId,
+          tenant_id: tenantId,
+        },
+      });
 
       if (error) throw error;
 

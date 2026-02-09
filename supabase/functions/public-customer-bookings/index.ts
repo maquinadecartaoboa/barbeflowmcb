@@ -1,0 +1,106 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const body = await req.json();
+    const { phone, tenant_id, action, booking_id } = body;
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Handle cancel action
+    if (action === "cancel" && booking_id && tenant_id) {
+      const { error } = await supabase
+        .from("bookings")
+        .update({ status: "cancelled", updated_at: new Date().toISOString() })
+        .eq("id", booking_id)
+        .eq("tenant_id", tenant_id);
+
+      if (error) throw error;
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!phone || !tenant_id) {
+      return new Response(
+        JSON.stringify({ error: "phone and tenant_id are required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Build phone variants for matching
+    const digits = phone.replace(/\D/g, "");
+    const variants = [
+      digits,
+      "+" + digits,
+      "+55" + digits,
+      "55" + digits,
+    ];
+    if (digits.startsWith("55") && digits.length >= 12) {
+      variants.push(digits.slice(2));
+    }
+    const uniqueVariants = [...new Set(variants)];
+
+    // Find customers by phone
+    const { data: customers, error: customerError } = await supabase
+      .from("customers")
+      .select("id")
+      .eq("tenant_id", tenant_id)
+      .or(uniqueVariants.map((p) => `phone.eq.${p}`).join(","));
+
+    if (customerError) throw customerError;
+
+    if (!customers || customers.length === 0) {
+      return new Response(
+        JSON.stringify({ bookings: [] }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const customerIds = customers.map((c) => c.id);
+    const now = new Date().toISOString();
+
+    const { data: bookings, error: bookingsError } = await supabase
+      .from("bookings")
+      .select(`
+        id,
+        starts_at,
+        ends_at,
+        status,
+        service:services(name, price_cents),
+        staff:staff(name)
+      `)
+      .eq("tenant_id", tenant_id)
+      .in("customer_id", customerIds)
+      .gte("starts_at", now)
+      .neq("status", "cancelled")
+      .order("starts_at", { ascending: true });
+
+    if (bookingsError) throw bookingsError;
+
+    return new Response(
+      JSON.stringify({ bookings: bookings || [] }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error in public-customer-bookings:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
