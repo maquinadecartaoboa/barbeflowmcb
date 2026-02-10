@@ -848,7 +848,7 @@ END:VCALENDAR`;
                   </div>
                   <div>
                     <h3 className="font-medium group-hover:text-white transition-colors">Pagar online</h3>
-                    <p className="text-zinc-500 text-sm">Pague agora via Mercado Pago</p>
+                    <p className="text-zinc-500 text-sm">Pague agora via Pix ou cartão</p>
                   </div>
                 </div>
               </button>
