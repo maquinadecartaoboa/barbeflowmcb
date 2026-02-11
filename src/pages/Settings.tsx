@@ -1,5 +1,6 @@
 import mpIcon from "@/assets/mercadopago-icon.jpg";
 import { useState, useEffect } from "react";
+import { CustomerImportExport } from "@/components/CustomerImportExport";
 import { useSearchParams } from "react-router-dom";
 import { useTenant } from "@/hooks/useTenant";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
@@ -22,7 +23,7 @@ import {
   Store, 
   Clock, 
   Bell, 
-  
+  Database,
   Upload,
   Image as ImageIcon,
   Globe,
@@ -474,11 +475,15 @@ export default function Settings() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-6">
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-          <TabsList className={`inline-flex w-auto min-w-full md:w-full ${isSuperAdmin ? 'md:grid md:grid-cols-5' : 'md:grid md:grid-cols-4'}`}>
+          <TabsList className={`inline-flex w-auto min-w-full md:w-full ${isSuperAdmin ? 'md:grid md:grid-cols-6' : 'md:grid md:grid-cols-5'}`}>
             <TabsTrigger value="general" className="text-xs md:text-sm whitespace-nowrap">Geral</TabsTrigger>
             <TabsTrigger value="scheduling" className="text-xs md:text-sm whitespace-nowrap">Agendamento</TabsTrigger>
             <TabsTrigger value="notifications" className="text-xs md:text-sm whitespace-nowrap">Notificações</TabsTrigger>
             <TabsTrigger value="payments" className="text-xs md:text-sm whitespace-nowrap">Pagamentos</TabsTrigger>
+            <TabsTrigger value="data" className="text-xs md:text-sm whitespace-nowrap">
+              <Database className="h-3.5 w-3.5 mr-1" />
+              Dados
+            </TabsTrigger>
             {isSuperAdmin && (
               <TabsTrigger value="multi-tenant" className="text-xs md:text-sm whitespace-nowrap">Multi-Barbearia</TabsTrigger>
             )}
@@ -1141,6 +1146,11 @@ export default function Settings() {
               </Form>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Data Import/Export */}
+        <TabsContent value="data">
+          <CustomerImportExport />
         </TabsContent>
 
         {/* Multi-Tenant Management (Only for Super Admins) */}
