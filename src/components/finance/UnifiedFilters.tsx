@@ -32,40 +32,40 @@ export function UnifiedFilters({
           <DateRangeSelector showTitle={false} className="border-0 bg-transparent p-0" />
         </div>
 
-        {/* Staff Filter */}
-        {staff.length > 0 && (
-          <div className="w-full md:w-48 flex-shrink-0">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Users className="h-3.5 w-3.5 text-muted-foreground/50" />
-              <span className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground/60">Profissional</span>
+        {/* Staff Filter + Export stacked */}
+        <div className="flex-shrink-0 flex flex-col gap-2 w-full md:w-auto">
+          {staff.length > 0 && (
+            <div className="w-full md:w-48">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Users className="h-3.5 w-3.5 text-muted-foreground/50" />
+                <span className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground/60">Profissional</span>
+              </div>
+              <Select value={staffFilter} onValueChange={onStaffFilterChange}>
+                <SelectTrigger className="h-10 bg-muted/30 border-border/50 text-foreground hover:bg-muted/50 transition-colors">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {staff.map((member) => (
+                    <SelectItem key={member.id} value={member.id}>
+                      {member.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={staffFilter} onValueChange={onStaffFilterChange}>
-              <SelectTrigger className="h-10 bg-muted/30 border-border/50 text-foreground hover:bg-muted/50 transition-colors">
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {staff.map((member) => (
-                  <SelectItem key={member.id} value={member.id}>
-                    {member.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
-        {/* Export Button */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onExport}
-          disabled={!hasData}
-          className="flex-shrink-0 h-10 border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Exportar CSV
-        </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onExport}
+            disabled={!hasData}
+            className="flex-shrink-0 h-10 w-full md:w-48 border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Exportar CSV
+          </Button>
+        </div>
       </div>
     </div>
   );
