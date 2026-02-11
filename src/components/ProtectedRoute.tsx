@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
+import { dashPath } from "@/lib/hostname";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -12,14 +13,12 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Wait for auth to complete loading before redirecting
     if (!loading && !user) {
       console.log('ProtectedRoute: No user found, redirecting to login');
-      navigate('/app/login', { replace: true });
+      navigate(dashPath('/app/login'), { replace: true });
     }
   }, [user, loading, navigate]);
 
-  // Show loading while auth is loading
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -28,11 +27,9 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // Show nothing if no user (will redirect)
   if (!user) {
     return null;
   }
 
-  // Render children if user is authenticated
   return <>{children}</>;
 }
