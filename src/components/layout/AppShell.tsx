@@ -174,9 +174,13 @@ function AppSidebar() {
     <Sidebar className="border-r border-zinc-800/50 bg-zinc-950">
       <SidebarHeader className="p-4 border-b border-zinc-800/50">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center">
-            <Scissors className="h-4 w-4 text-zinc-950" />
-          </div>
+          {currentTenant?.logo_url ? (
+              <img src={currentTenant.logo_url} alt={currentTenant.name} className="w-9 h-9 rounded-xl object-cover" />
+            ) : (
+              <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center">
+                <Scissors className="h-4 w-4 text-zinc-950" />
+              </div>
+            )}
           <div className="flex-1 min-w-0">
             <h1 className="text-sm font-semibold text-zinc-100 truncate">
                {currentTenant?.name || 'BarberFlow'}
@@ -267,9 +271,13 @@ function MobileDrawer() {
       <DrawerContent className="bg-zinc-950 border-zinc-800 max-h-[85vh]">
         <DrawerHeader className="border-b border-zinc-800/50 pb-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center">
-              <Scissors className="h-5 w-5 text-zinc-950" />
-            </div>
+            {currentTenant?.logo_url ? (
+              <img src={currentTenant.logo_url} alt={currentTenant.name} className="w-10 h-10 rounded-xl object-cover" />
+            ) : (
+              <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center">
+                <Scissors className="h-5 w-5 text-zinc-950" />
+              </div>
+            )}
             <div className="flex-1">
               <DrawerTitle className="text-zinc-100 text-left">{currentTenant?.name || 'BarberFlow'}</DrawerTitle>
               <DrawerDescription className="text-zinc-500 text-left text-xs">
@@ -411,9 +419,13 @@ export default function AppShell() {
               <div className="flex items-center gap-3">
                 <MobileDrawer />
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-lg flex items-center justify-center">
-                    <Scissors className="h-3.5 w-3.5 text-zinc-950" />
-                  </div>
+                  {currentTenant?.logo_url ? (
+                    <img src={currentTenant.logo_url} alt={currentTenant.name} className="w-7 h-7 rounded-lg object-cover" />
+                  ) : (
+                    <div className="w-7 h-7 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-lg flex items-center justify-center">
+                      <Scissors className="h-3.5 w-3.5 text-zinc-950" />
+                    </div>
+                  )}
                   <div>
                     <h1 className="text-sm font-semibold text-zinc-100">
                       {currentTenant?.name || 'BarberFlow'}
