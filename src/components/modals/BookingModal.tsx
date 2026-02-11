@@ -63,7 +63,7 @@ interface AvailableSlot {
 
 export function BookingModal() {
   const { currentTenant } = useTenant();
-  const { isOpen, closeBookingModal } = useBookingModal();
+  const { isOpen, closeBookingModal, initialStaffId, initialDate, initialTime } = useBookingModal();
   const { toast } = useToast();
   const [services, setServices] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
@@ -102,6 +102,10 @@ export function BookingModal() {
   useEffect(() => {
     if (isOpen && currentTenant) {
       loadFormData();
+      // Apply pre-fill values
+      if (initialDate) form.setValue("date", initialDate);
+      if (initialStaffId) form.setValue("staff_id", initialStaffId);
+      if (initialTime) form.setValue("time", initialTime);
     }
     if (!isOpen) {
       form.reset();

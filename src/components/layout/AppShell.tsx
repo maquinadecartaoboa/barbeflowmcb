@@ -386,7 +386,7 @@ function FloatingActionButton() {
 
   return (
     <Button
-      onClick={openBookingModal}
+      onClick={() => openBookingModal()}
       size="lg"
       className="md:hidden fixed bottom-20 right-4 rounded-full w-14 h-14 shadow-lg z-50 bg-emerald-500 hover:bg-emerald-400 text-zinc-950"
     >
@@ -491,7 +491,7 @@ export default function AppShell() {
                 <div className="flex items-center gap-3">
                   <Button 
                     size="sm" 
-                    onClick={openBookingModal}
+                    onClick={() => openBookingModal()}
                     className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-medium"
                   >
                     <Plus className="h-4 w-4 mr-2" />
