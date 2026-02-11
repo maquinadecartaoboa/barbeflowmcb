@@ -1,277 +1,217 @@
 
-# Plano de Evolucao - BarberFlow
 
-## Resumo Executivo
+# Plano: Sistema de Assinaturas Recorrentes via Mercado Pago
 
-Reorganizar e expandir o BarberFlow com 9 recursos-chave, eliminando redundancias (ex: aba Calendario) e consolidando funcionalidades na Dashboard e nas abas corretas.
+## Resumo
 
----
-
-## O que ja existe vs. O que precisa ser construido
-
-| Recurso | Status Atual |
-|---------|-------------|
-| Agendamento online (publico) | Funcional |
-| Lembretes automaticos (WhatsApp) | Funcional (Edge Function + Cron) |
-| Recorrencia de agendamento (Clientes Fixos) | Funcional |
-| Produtos e vendas | Funcional |
-| Relatorios basicos (Financeiro com graficos) | Parcial |
-| Debito/credito de cliente | Nao existe |
-| Pacotes com baixa automatica | Nao existe |
-| Baixa de pagamento de profissionais | Nao existe |
-| Comissoes para barbeiros (servicos + produtos) | Parcial (campo commission_percent em staff_services existe, mas sem calculo) |
-| Assinaturas e gerenciamento de planos | Nao existe |
+Implementar um sistema completo de assinaturas mensais onde a barbearia cria planos (ex: "Plano Premium R$129,90/mes") e clientes assinam com cobranca automatica via API de Preapproval do Mercado Pago. O sistema funciona em paralelo aos pacotes avulsos existentes, sem quebra-los.
 
 ---
 
-## Fase 1 - Reorganizacao e Limpeza
+## Fase 1 -- Banco de Dados (5 tabelas + RLS)
 
-### 1.1 Remover aba "Calendario" e integrar na Dashboard
+### Novas tabelas
 
-- Remover rota `/app/agenda` e pagina `Agenda.tsx`
-- Remover do `navigationItems` e `bottomTabItems` no `AppShell.tsx`
-- Mover a visualizacao semanal compacta para dentro da Dashboard, abaixo dos stats e ao lado dos "Proximos Agendamentos"
-- No mobile bottom tab, substituir "Calendario" por "Agendamentos"
+1. **subscription_plans** -- Planos criados pela barbearia
+   - id, tenant_id, name, description, price_cents, billing_cycle, sessions_limit, active, created_at, updated_at
 
-### 1.2 Reorganizar navegacao lateral
+2. **subscription_plan_services** -- Servicos inclusos em cada plano
+   - id, plan_id (FK subscription_plans), service_id (FK services), sessions_per_cycle, UNIQUE(plan_id, service_id)
 
-Nova estrutura proposta:
-- Dashboard (com mini-calendario embutido)
-- Agendamentos
-- Clientes (absorve "Clientes Fixos" como sub-aba)
-- Servicos
-- Profissionais
-- Financeiro (absorve "Produtos" como sub-aba)
-- WhatsApp
-- Configuracoes
+3. **customer_subscriptions** -- Assinatura ativa do cliente
+   - id, tenant_id, customer_id, plan_id, status (pending/authorized/active/paused/cancelled/expired), mp_preapproval_id, mp_payer_id, checkout_url, current_period_start/end, next_payment_date, started_at, cancelled_at, cancellation_reason, created_at, updated_at
 
-Isso reduz de 11 itens para 8 no menu.
+4. **subscription_usage** -- Controle de uso por ciclo
+   - id, subscription_id, service_id, period_start, period_end, sessions_used, sessions_limit, booking_ids (uuid[]), UNIQUE(subscription_id, service_id, period_start)
 
----
+5. **subscription_payments** -- Historico de cobrancas
+   - id, subscription_id, tenant_id, amount_cents, status, mp_payment_id, period_start, period_end, paid_at, created_at
 
-## Fase 2 - Debito e Credito de Cliente
+### RLS
 
-### Objetivo
-Permitir que o barbeiro registre saldo devedor ou credito para um cliente (ex: "ficou devendo R$20" ou "pagou adiantado R$50").
+Todas as tabelas seguem o padrao existente:
+- SELECT publico para `subscription_plans` e `subscription_plan_services` (planos ativos)
+- ALL com `user_belongs_to_tenant(tenant_id)` para tabelas de gestao
+- SELECT publico para `customer_subscriptions` (para verificacao no agendamento publico)
 
-### Banco de Dados
-Nova tabela `customer_balance_entries`:
-- `id` (uuid, PK)
-- `tenant_id` (uuid, NOT NULL)
-- `customer_id` (uuid, NOT NULL, FK -> customers)
-- `type` ("credit" | "debit")
-- `amount_cents` (integer, NOT NULL)
-- `description` (text)
-- `staff_id` (uuid, nullable)
-- `booking_id` (uuid, nullable)
-- `created_at` (timestamptz)
+### Trigger
 
-RLS: `user_belongs_to_tenant(tenant_id)`
-
-### Frontend
-- Na pagina de detalhes do cliente (modal existente em Customers.tsx), adicionar aba "Saldo" com:
-  - Saldo atual (soma de creditos - debitos)
-  - Historico de lancamentos
-  - Botao para adicionar credito ou debito
-- Badge de saldo na lista de clientes (verde se credito, vermelho se debito)
+- `update_updated_at_column` nas tabelas subscription_plans e customer_subscriptions
 
 ---
 
-## Fase 3 - Pacotes com Baixa Automatica
+## Fase 2 -- Edge Functions (Backend)
 
-### Objetivo
-Vender pacotes de servicos (ex: "10 cortes por R$250") e dar baixa automatica a cada agendamento concluido.
+### 2.1 -- mp-create-subscription (NOVA)
 
-### Banco de Dados
+Arquivo: `supabase/functions/mp-create-subscription/index.ts`
 
-Tabela `service_packages`:
-- `id` (uuid, PK)
-- `tenant_id` (uuid)
-- `name` (text) - Ex: "Pacote 10 Cortes"
-- `service_id` (uuid, FK -> services)
-- `total_sessions` (integer) - Ex: 10
-- `price_cents` (integer) - Ex: 25000
-- `active` (boolean, default true)
-- `created_at`, `updated_at`
+- Recebe `subscription_id` (customer_subscriptions ja criado com status pending)
+- Busca subscription + plan + tenant + customer + mercadopago_connections
+- Valida que o cliente tem email preenchido
+- Chama `POST https://api.mercadopago.com/preapproval` com auto_recurring (monthly, BRL, valor do plano)
+- Salva `mp_preapproval_id` e `checkout_url` (init_point) no customer_subscriptions
+- Retorna `checkout_url` para o frontend redirecionar
 
-Tabela `customer_packages`:
-- `id` (uuid, PK)
-- `tenant_id` (uuid)
-- `customer_id` (uuid, FK -> customers)
-- `package_id` (uuid, FK -> service_packages)
-- `sessions_used` (integer, default 0)
-- `sessions_total` (integer)
-- `status` ("active" | "completed" | "cancelled")
-- `purchased_at` (timestamptz)
-- `expires_at` (timestamptz, nullable)
-- `created_at`
+Config: `verify_jwt = false` no config.toml
 
-RLS: `user_belongs_to_tenant(tenant_id)` em ambas.
+### 2.2 -- mp-cancel-subscription (NOVA)
 
-### Logica de Baixa
-- Ao completar um agendamento (`status -> completed`), verificar se o cliente tem pacote ativo para aquele servico
-- Se sim, incrementar `sessions_used` e nao gerar cobranca adicional
-- Se `sessions_used == sessions_total`, marcar pacote como `completed`
-- Implementar via trigger no banco OU logica no frontend ao atualizar status do booking
+Arquivo: `supabase/functions/mp-cancel-subscription/index.ts`
 
-### Frontend
-- Nova sub-aba "Pacotes" dentro de Servicos
-- No modal de detalhes do cliente, mostrar pacotes ativos e sessoes restantes
-- Indicador visual no agendamento quando esta usando pacote
+- Recebe `subscription_id`
+- Busca mp_preapproval_id e access_token
+- Chama `PUT https://api.mercadopago.com/preapproval/{id}` com `{ status: "cancelled" }`
+- Atualiza customer_subscriptions: status=cancelled, cancelled_at=now()
 
----
+### 2.3 -- mp-pause-subscription (NOVA)
 
-## Fase 4 - Baixa de Pagamento de Profissionais (Comissionamento)
+Arquivo: `supabase/functions/mp-pause-subscription/index.ts`
 
-### Objetivo
-Registrar pagamentos feitos aos profissionais (comissoes, adiantamentos, acertos).
+- Igual ao cancel, mas envia `{ status: "paused" }`
 
-### Banco de Dados
+### 2.4 -- Modificar mp-webhook (EXISTENTE)
 
-Tabela `staff_payments`:
-- `id` (uuid, PK)
-- `tenant_id` (uuid)
-- `staff_id` (uuid, FK -> staff)
-- `type` ("commission" | "advance" | "bonus" | "deduction")
-- `amount_cents` (integer)
-- `reference_period_start` (date, nullable)
-- `reference_period_end` (date, nullable)
-- `notes` (text, nullable)
-- `paid_at` (timestamptz, nullable)
-- `status` ("pending" | "paid")
-- `created_at`
+Arquivo: `supabase/functions/mp-webhook/index.ts`
 
-RLS: `user_belongs_to_tenant(tenant_id)`
+Refatoracao:
+- Mover busca de `mercadopago_connections` para ANTES dos checks de type (compartilhada)
+- Adicionar tratamento de `type === 'subscription_preapproval'`:
+  - Buscar detalhes da preapproval no MP
+  - Encontrar customer_subscriptions por mp_preapproval_id ou external_reference
+  - Mapear status MP -> status interno (authorized->active, paused, cancelled)
+  - Ao ativar: setar period dates e inicializar subscription_usage
+- Adicionar tratamento de `type === 'subscription_authorized_payment'`:
+  - Registrar em subscription_payments
+  - Criar cash_entry
+  - Resetar subscription_usage para novo ciclo
+  - Atualizar datas de periodo
 
-### Frontend
-- Nova sub-aba "Pagamentos" dentro de Profissionais
-- Resumo por profissional: comissao acumulada no periodo vs. ja pago
-- Botao "Registrar Pagamento" com valor, tipo, e data
-- Integrar com o filtro de data global
+### 2.5 -- Modificar create-booking (EXISTENTE)
+
+Arquivo: `supabase/functions/create-booking/index.ts`
+
+- Adicionar verificacao de assinatura ativa do cliente antes de processar pagamento
+- Se servico incluso no plano e sessoes disponiveis: criar booking sem cobranca
+- Incrementar subscription_usage.sessions_used
+- Se limite atingido: retornar flag para frontend oferecer pagamento avulso
 
 ---
 
-## Fase 5 - Sistema de Comissoes (Servicos + Produtos)
+## Fase 3 -- Frontend Admin
 
-### Objetivo
-Calcular comissoes automaticamente para barbeiros sobre servicos e vendas de produtos.
+### 3.1 -- Pagina de Planos de Assinatura
 
-### Banco de Dados
-- Utilizar campo existente `staff_services.commission_percent` (ja existe mas nao esta sendo usado)
-- Adicionar coluna `staff_id` na tabela `product_sales` (para saber quem vendeu)
-- Adicionar tabela ou campo de comissao padrao em `staff` (`default_commission_percent`)
+Arquivo: `src/pages/SubscriptionPlansPage.tsx`
+Rota: `/app/subscription-plans`
 
-### Logica
-- Comissao de servico: `booking.service.price_cents * staff_services.commission_percent / 100`
-- Comissao de produto: `product_sale.sale_price_snapshot_cents * staff.default_commission_percent / 100` (ou percentual especifico por produto)
-- Calcular automaticamente no painel Financeiro, filtrado por periodo e profissional
+- Layout inspirado no ServicePackagesTab existente
+- Formulario: nome, descricao, valor mensal, limite de sessoes (toggle ilimitado), servicos inclusos com limite por ciclo
+- Grid de cards com: nome, preco, servicos, quantidade de assinantes ativos, switch ativo/inativo, botoes editar/excluir
 
-### Frontend
-- No cadastro de profissional, campo para definir percentual de comissao por servico (ja tem o campo no banco, falta UI)
-- Na pagina Financeiro, nova secao "Comissoes" com:
-  - Tabela: Profissional | Servicos (R$) | Produtos (R$) | Total Comissao | Status Pagamento
-  - Botao para gerar baixa de pagamento (integra com Fase 4)
+### 3.2 -- Gestao de Assinantes
+
+Arquivo: `src/components/subscriptions/SubscribersList.tsx`
+
+- Tab dentro da pagina de planos (abas "Planos" | "Assinantes")
+- Tabela: nome do cliente, plano, status (badge), data inicio, proxima cobranca, uso no ciclo
+- Filtros por plano e status
+- Acoes: ver detalhes, pausar, cancelar, atribuir manualmente
+
+### 3.3 -- Dialog de Atribuir Assinatura
+
+- Select de cliente (busca por nome/telefone)
+- Select de plano
+- Opcao: "Cobrar via Mercado Pago" (gera link) ou "Registrar manualmente" (ativa direto)
+
+### 3.4 -- Indicador no Perfil do Cliente
+
+Dentro da pagina de Clientes, exibir info de assinatura ativa: plano, status, proxima cobranca, barra de uso por servico
+
+### 3.5 -- Navegacao
+
+No menu lateral, dentro do grupo "Financeiro":
+- Adicionar item "Assinaturas" -> `/app/subscription-plans`
+
+### Componentes a criar:
+- `src/components/subscriptions/SubscriptionPlanForm.tsx`
+- `src/components/subscriptions/SubscriptionPlanCard.tsx`
+- `src/components/subscriptions/SubscribersList.tsx`
+- `src/components/subscriptions/CustomerSubscriptionInfo.tsx`
+- `src/components/subscriptions/AssignSubscriptionDialog.tsx`
+- `src/components/subscriptions/PublicSubscriptionPlans.tsx`
 
 ---
 
-## Fase 6 - Relatorios Avancados
+## Fase 4 -- Frontend Publico
 
-### Objetivo
-Expandir os relatorios existentes no Financeiro.
+### 4.1 -- Aba de Assinaturas no BookingPublic
 
-### Novos Relatorios
-- **Relatorio de Comissoes**: detalhado por profissional e periodo
-- **Relatorio de Pacotes**: vendas, baixas, pacotes ativos
-- **Relatorio de Clientes**: frequencia, ticket medio, debitos pendentes
-- **Relatorio de Produtos**: vendas por periodo, margem de lucro, ranking
+No `BookingPublic.tsx`, adicionar terceira aba "Assinaturas" ao lado de "Servicos" e "Pacotes":
+- Cards dos planos ativos do tenant
+- Botao "Assinar" que pede email, cria customer_subscriptions (pending), chama mp-create-subscription, redireciona ao init_point do MP
 
-### Frontend
-- Nova sub-aba "Relatorios" no Financeiro com cards clicaveis para cada tipo
-- Manter exportacao CSV existente e expandir para cada relatorio
-- Graficos com Recharts (ja instalado)
+### 4.2 -- Pagina de Callback
+
+Arquivo: `src/pages/SubscriptionCallback.tsx`
+Rota: `/:slug/subscription/callback`
+
+- Recebe retorno do MP
+- Mostra status da assinatura
+- Botao para voltar ao agendamento
+
+### 4.3 -- Verificacao no Fluxo de Agendamento
+
+Ao identificar cliente por telefone:
+- Verificar se tem assinatura ativa
+- Mostrar badge "Assinante -- Plano [nome]"
+- Se servico incluso: "Incluso no seu plano (2/4 sessoes)"
+- Se limite atingido: "Sera cobrado valor avulso"
+- Ao confirmar: pular pagamento se coberto
 
 ---
 
-## Fase 7 - Assinaturas e Planos (SaaS)
+## Fase 5 -- Config e Deploy
 
-### Objetivo
-Gerenciar planos de assinatura dos parceiros (barbearias) que usam o BarberFlow.
+### config.toml
 
-### Banco de Dados
+Adicionar:
+```
+[functions.mp-create-subscription]
+verify_jwt = false
 
-Tabela `plans`:
-- `id` (uuid, PK)
-- `name` (text) - "Basico", "Pro", "Premium"
-- `price_cents` (integer)
-- `billing_cycle` ("monthly" | "yearly")
-- `features` (jsonb) - lista de features habilitadas
-- `max_staff` (integer, nullable)
-- `max_bookings_month` (integer, nullable)
-- `active` (boolean)
+[functions.mp-cancel-subscription]
+verify_jwt = false
 
-Tabela `subscriptions`:
-- `id` (uuid, PK)
-- `tenant_id` (uuid, FK -> tenants)
-- `plan_id` (uuid, FK -> plans)
-- `status` ("active" | "past_due" | "cancelled" | "trial")
-- `current_period_start` (timestamptz)
-- `current_period_end` (timestamptz)
-- `trial_ends_at` (timestamptz, nullable)
-- `cancelled_at` (timestamptz, nullable)
-- `external_subscription_id` (text, nullable) - Ref MP/Stripe
-- `created_at`
+[functions.mp-pause-subscription]
+verify_jwt = false
+```
 
-### Frontend
-- Pagina "Planos" acessivel em Configuracoes (sub-aba)
-- Cards com planos disponiveis, plano atual destacado
-- Botao para upgrade/downgrade
-- Historico de faturas
-- Banner de aviso quando plano esta vencendo ou em atraso
+### Rota no App.tsx
 
-### Nota
-A integracao de pagamento de assinaturas pode usar o Mercado Pago ja conectado ou Stripe. A implementacao completa do gateway de pagamento recorrente sera feita como etapa posterior.
+Adicionar:
+- `/app/subscription-plans` -> SubscriptionPlansPage
+- `/:slug/subscription/callback` -> SubscriptionCallback
 
 ---
 
 ## Detalhes Tecnicos
 
-### Migracao de Banco (ordem)
-1. `customer_balance_entries` (Fase 2)
-2. `service_packages` + `customer_packages` (Fase 3)
-3. `staff_payments` (Fase 4)
-4. ALTER `product_sales` ADD `staff_id` uuid + ALTER `staff` ADD `default_commission_percent` numeric (Fase 5)
-5. `plans` + `subscriptions` (Fase 7)
+### Sequencia de implementacao
 
-### Ajustes no Frontend (ordem)
-1. Reorganizacao de navegacao e remocao do Calendario (Fase 1)
-2. Tela de debito/credito no modal de clientes (Fase 2)
-3. Sub-aba Pacotes em Servicos + logica de baixa (Fase 3)
-4. Sub-aba Pagamentos em Profissionais (Fase 4)
-5. UI de comissoes no Financeiro + cadastro no Staff (Fase 5)
-6. Relatorios expandidos (Fase 6)
-7. Planos e assinaturas em Configuracoes (Fase 7)
+1. Migracoes de banco (5 tabelas + RLS + triggers + indices)
+2. Edge Functions novas (create, cancel, pause)
+3. Modificar mp-webhook para tratar subscription_preapproval e subscription_authorized_payment
+4. Modificar create-booking para verificar assinatura
+5. Componentes admin (planos + assinantes)
+6. Pagina publica (aba assinaturas + callback)
+7. Verificacao de assinatura no fluxo de agendamento
 
-### Edge Functions novas
-- Nenhuma nova obrigatoria nas Fases 1-6 (tudo pode ser feito client-side com RLS)
-- Fase 7 pode precisar de edge function para processar webhooks de pagamento recorrente
+### Pontos de atencao
 
-### Impacto em funcionalidades existentes
-- A pagina `Bookings.tsx` ganha logica de verificacao de pacotes ao completar agendamento
-- A pagina `Finance.tsx` ganha secao de comissoes
-- `Staff.tsx` ganha campo de comissao e sub-aba de pagamentos
-- `Customers.tsx` ganha aba de saldo e pacotes
-- `Products.tsx` ganha campo de vendedor (staff_id)
+- Email do cliente e obrigatorio para o MP Preapproval. Validar antes de prosseguir
+- Pacotes avulsos (service_packages/customer_packages) continuam funcionando normalmente
+- Usar timezone do tenant (America/Bahia) para calculos de periodo
+- A refatoracao do mp-webhook deve mover a busca de connections para antes dos checks de type, garantindo que payment e subscription usem o mesmo bloco
+- O campo `checkout_url` no customer_subscriptions armazena o init_point do MP para reenvio
 
----
-
-## Ordem de Implementacao Sugerida
-
-1. **Fase 1** - Reorganizacao (rapido, sem banco)
-2. **Fase 5** - Comissoes (aproveita campo existente, alto valor)
-3. **Fase 2** - Debito/Credito de cliente
-4. **Fase 4** - Baixa de pagamento de profissionais
-5. **Fase 3** - Pacotes (mais complexo)
-6. **Fase 6** - Relatorios
-7. **Fase 7** - Assinaturas (mais estrategico, pode ser feito por ultimo)
-
-Cada fase sera implementada de forma independente para permitir testes incrementais.
