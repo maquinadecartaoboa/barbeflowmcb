@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { NoTenantState } from "@/components/NoTenantState";
@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -42,222 +43,186 @@ import {
   XCircle,
   CreditCard,
   Banknote,
-  AlertCircle
+  AlertCircle,
+  Ban,
 } from "lucide-react";
-import { format, parseISO, addMinutes } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
+import { useBookingsByDate, type BookingData } from "@/hooks/useBookingsByDate";
+import { DateNavigator } from "@/components/calendar/DateNavigator";
+import { ScheduleGrid } from "@/components/calendar/ScheduleGrid";
+import { BlockDialog } from "@/components/calendar/BlockDialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 export default function Bookings() {
   const { currentTenant, loading: tenantLoading } = useTenant();
   const { toast } = useToast();
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [dateFilter, setDateFilter] = useState("");
+  const isMobile = useIsMobile();
+
+  // View state
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [visibleStaffIds, setVisibleStaffIds] = useState<string[]>([]);
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+
+  // Detail dialog
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [showDetails, setShowDetails] = useState(false);
 
+  // List view state
+  const [listBookings, setListBookings] = useState<any[]>([]);
+  const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
+  const [listLoading, setListLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  // Grid data
+  const {
+    staff,
+    schedules,
+    bookings: gridBookings,
+    blocks,
+    settings,
+    timeRange,
+    loading: gridLoading,
+    refetch,
+  } = useBookingsByDate(currentTenant?.id, selectedDate);
+
+  // Initialize visible staff when staff loads
   useEffect(() => {
-    if (currentTenant) {
-      loadData();
+    if (staff.length > 0 && visibleStaffIds.length === 0) {
+      setVisibleStaffIds(staff.map((s) => s.id));
     }
-  }, [currentTenant]);
+  }, [staff]);
+
+  // Load list view data
+  useEffect(() => {
+    if (viewMode === "list" && currentTenant) {
+      loadListData();
+    }
+  }, [viewMode, currentTenant, selectedDate]);
 
   useEffect(() => {
-    filterBookings();
-  }, [bookings, searchTerm, statusFilter, dateFilter]);
+    if (viewMode === "list") filterListBookings();
+  }, [listBookings, searchTerm, statusFilter]);
 
-  const loadData = async () => {
+  const loadListData = async () => {
     if (!currentTenant) return;
-
+    setListLoading(true);
     try {
-      setLoading(true);
-      
-      // Load bookings with payment info
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
+      const dayStart = `${dateStr}T00:00:00-03:00`;
+      const dayEnd = `${dateStr}T23:59:59-03:00`;
+
       const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          service:services(name, color, duration_minutes, price_cents),
-          staff:staff(name, color),
-          customer:customers(name, phone, email)
-        `)
-        .eq('tenant_id', currentTenant.id)
-        .order('starts_at', { ascending: false });
+        .from("bookings")
+        .select(`*, service:services(name, color, duration_minutes, price_cents), staff:staff(name, color), customer:customers(name, phone, email)`)
+        .eq("tenant_id", currentTenant.id)
+        .gte("starts_at", dayStart)
+        .lte("starts_at", dayEnd)
+        .order("starts_at", { ascending: true });
 
       if (error) throw error;
 
-      // Load payments for these bookings
-      const bookingIds = (data || []).map(b => b.id);
+      const bookingIds = (data || []).map((b) => b.id);
       let paymentsMap: Record<string, any> = {};
-      
       if (bookingIds.length > 0) {
-        const { data: payments } = await supabase
-          .from('payments')
-          .select('*')
-          .in('booking_id', bookingIds);
-        
-        if (payments) {
-          paymentsMap = payments.reduce((acc, p) => {
-            acc[p.booking_id] = p;
-            return acc;
-          }, {} as Record<string, any>);
-        }
+        const { data: payments } = await supabase.from("payments").select("*").in("booking_id", bookingIds);
+        if (payments) paymentsMap = payments.reduce((acc, p) => { acc[p.booking_id] = p; return acc; }, {} as Record<string, any>);
       }
 
-      // Merge payments into bookings
-      const bookingsWithPayments = (data || []).map(booking => ({
-        ...booking,
-        payment: paymentsMap[booking.id] || null,
-      }));
-
-      setBookings(bookingsWithPayments);
-    } catch (error) {
-      console.error('Error loading data:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar dados",
-        variant: "destructive",
-      });
+      setListBookings((data || []).map((b) => ({ ...b, payment: paymentsMap[b.id] || null })));
+    } catch (err) {
+      console.error("Error loading list bookings:", err);
     } finally {
-      setLoading(false);
+      setListLoading(false);
     }
   };
 
-  const filterBookings = () => {
-    let filtered = [...bookings];
-
-    // Search filter
+  const filterListBookings = () => {
+    let filtered = [...listBookings];
     if (searchTerm) {
-      filtered = filtered.filter(booking =>
-        booking.customer?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        booking.customer?.phone.includes(searchTerm) ||
-        booking.service?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        booking.staff?.name.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter((b) =>
+        b.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        b.customer?.phone?.includes(searchTerm) ||
+        b.service?.name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-
-    // Status filter
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(booking => booking.status === statusFilter);
-    }
-
-    // Date filter
-    if (dateFilter) {
-      filtered = filtered.filter(booking => {
-        const bookingDate = format(parseISO(booking.starts_at), 'yyyy-MM-dd');
-        return bookingDate === dateFilter;
-      });
-    }
-
+    if (statusFilter !== "all") filtered = filtered.filter((b) => b.status === statusFilter);
     setFilteredBookings(filtered);
   };
 
   const updateBookingStatus = async (bookingId: string, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status: newStatus })
-        .eq('id', bookingId);
-
+      const { error } = await supabase.from("bookings").update({ status: newStatus }).eq("id", bookingId);
       if (error) throw error;
 
-      // Map status to notification type
       const notificationTypeMap: Record<string, string | null> = {
-        cancelled: 'booking_cancelled',
-        confirmed: 'booking_confirmed',
+        cancelled: "booking_cancelled",
+        confirmed: "booking_confirmed",
         completed: null,
         no_show: null,
       };
-
       const notificationType = notificationTypeMap[newStatus];
-
-      // Send WhatsApp notification if applicable
       if (notificationType && currentTenant) {
         try {
-          const { error: notifError } = await supabase.functions.invoke(
-            'send-whatsapp-notification',
-            {
-              body: {
-                type: notificationType,
-                booking_id: bookingId,
-                tenant_id: currentTenant.id,
-              },
-            }
-          );
-
-          if (notifError) {
-            console.error('Erro ao enviar notificação WhatsApp:', notifError);
-          } else {
-            console.log('Notificação WhatsApp enviada:', notificationType);
-          }
-        } catch (notifError) {
-          console.error('Erro ao chamar send-whatsapp-notification:', notifError);
-        }
+          await supabase.functions.invoke("send-whatsapp-notification", {
+            body: { type: notificationType, booking_id: bookingId, tenant_id: currentTenant.id },
+          });
+        } catch (e) { console.error(e); }
       }
 
-      toast({
-        title: "Status atualizado",
-        description: `Agendamento marcado como ${getStatusLabel(newStatus)}`,
-      });
-
-      loadData();
-    } catch (error) {
-      console.error('Error updating booking status:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao atualizar status do agendamento",
-        variant: "destructive",
-      });
+      toast({ title: "Status atualizado", description: `Agendamento marcado como ${getStatusLabel(newStatus)}` });
+      refetch();
+      if (viewMode === "list") loadListData();
+    } catch (err) {
+      toast({ title: "Erro", description: "Erro ao atualizar status", variant: "destructive" });
     }
   };
 
   const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      confirmed: 'Confirmado',
-      pending: 'Aguardando Pagamento',
-      cancelled: 'Cancelado',
-      completed: 'Concluído',
-      no_show: 'Faltou'
-    };
+    const labels: Record<string, string> = { confirmed: "Confirmado", pending: "Aguardando Pagamento", cancelled: "Cancelado", completed: "Concluído", no_show: "Faltou" };
     return labels[status] || status;
   };
 
   const getStatusVariant = (status: string) => {
-    const variants: Record<string, "default" | "destructive" | "secondary" | "outline"> = {
-      confirmed: 'default',
-      pending: 'outline',
-      cancelled: 'destructive',
-      completed: 'secondary',
-      no_show: 'destructive'
-    };
-    return variants[status] || 'secondary';
+    const v: Record<string, "default" | "destructive" | "secondary" | "outline"> = { confirmed: "default", pending: "outline", cancelled: "destructive", completed: "secondary", no_show: "destructive" };
+    return v[status] || "secondary";
   };
 
   const getPaymentStatusLabel = (payment: any) => {
-    if (!payment) return 'Não requer';
-    const labels: Record<string, string> = {
-      paid: 'Pago',
-      pending: 'Pendente',
-      failed: 'Falhou',
-    };
-    return labels[payment.status] || payment.status;
+    if (!payment) return "Não requer";
+    const l: Record<string, string> = { paid: "Pago", pending: "Pendente", failed: "Falhou" };
+    return l[payment.status] || payment.status;
   };
 
   const getPaymentStatusVariant = (payment: any) => {
-    if (!payment) return 'secondary';
-    const variants: Record<string, "default" | "destructive" | "secondary" | "outline"> = {
-      paid: 'default',
-      pending: 'outline',
-      failed: 'destructive',
-    };
-    return variants[payment.status] || 'secondary';
+    if (!payment) return "secondary" as const;
+    const v: Record<string, "default" | "destructive" | "secondary" | "outline"> = { paid: "default", pending: "outline", failed: "destructive" };
+    return v[payment.status] || ("secondary" as const);
   };
 
-  if (tenantLoading || loading) {
+  const toggleStaffVisibility = (staffId: string) => {
+    setVisibleStaffIds((prev) =>
+      prev.includes(staffId) ? prev.filter((id) => id !== staffId) : [...prev, staffId]
+    );
+  };
+
+  const handleBookingClick = (booking: BookingData) => {
+    setSelectedBooking(booking);
+    setShowDetails(true);
+  };
+
+  if (tenantLoading) {
     return (
       <div className="space-y-6">
         <div className="h-8 bg-muted rounded animate-pulse" />
@@ -266,357 +231,268 @@ export default function Bookings() {
     );
   }
 
-  if (!currentTenant) {
-    return <NoTenantState />;
-  }
+  if (!currentTenant) return <NoTenantState />;
+
+  const loading = viewMode === "grid" ? gridLoading : listLoading;
+
+  const StaffFilter = () => (
+    <div className="space-y-2">
+      <button
+        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() =>
+          setVisibleStaffIds(visibleStaffIds.length === staff.length ? [] : staff.map((s) => s.id))
+        }
+      >
+        {visibleStaffIds.length === staff.length ? "Desmarcar todos" : "Selecionar todos"}
+      </button>
+      {staff.map((s) => (
+        <label key={s.id} className="flex items-center gap-2.5 cursor-pointer group py-1">
+          <Checkbox
+            checked={visibleStaffIds.includes(s.id)}
+            onCheckedChange={() => toggleStaffVisibility(s.id)}
+          />
+          <Avatar className="h-6 w-6">
+            <AvatarImage src={s.photo_url || undefined} />
+            <AvatarFallback
+              className="text-[9px] font-semibold"
+              style={{ backgroundColor: `${s.color || "#10B981"}30`, color: s.color || "#10B981" }}
+            >
+              {s.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-sm text-foreground group-hover:text-foreground/80 truncate">{s.name}</span>
+        </label>
+      ))}
+    </div>
+  );
 
   return (
-    <div className="space-y-4 md:space-y-6 px-4 md:px-0">
+    <div className="space-y-4 px-4 md:px-0">
       {/* Header */}
       <div>
         <h1 className="text-xl md:text-2xl font-bold text-foreground">Agendamentos</h1>
-        <p className="text-sm md:text-base text-muted-foreground">
-          Gerencie todos os agendamentos da barbearia
-        </p>
+        <p className="text-sm text-muted-foreground">Grade visual de agendamentos por profissional</p>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base md:text-lg flex items-center">
-            <Filter className="h-4 w-4 md:h-5 md:w-5 mr-2" />
-            Filtros
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <Label className="text-sm">Buscar</Label>
-              <div className="relative mt-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Cliente, serviço..."
-                  className="pl-10"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
+      {/* Navigation bar */}
+      <DateNavigator
+        date={selectedDate}
+        onDateChange={setSelectedDate}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      >
+        <Button variant="outline" size="sm" onClick={() => setBlockDialogOpen(true)} className="h-8">
+          <Ban className="h-3.5 w-3.5 mr-1.5" />
+          Bloquear
+        </Button>
+      </DateNavigator>
 
-            <div>
-              <Label className="text-sm">Status</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="confirmed">Confirmado</SelectItem>
-                  <SelectItem value="pending">Aguardando Pagamento</SelectItem>
-                  <SelectItem value="completed">Concluído</SelectItem>
-                  <SelectItem value="cancelled">Cancelado</SelectItem>
-                  <SelectItem value="no_show">Faltou</SelectItem>
-                </SelectContent>
-              </Select>
+      {/* Main content */}
+      {viewMode === "grid" ? (
+        <div className="flex gap-4">
+          {/* Desktop staff sidebar */}
+          {!isMobile && staff.length > 0 && (
+            <div className="w-48 flex-shrink-0">
+              <Card className="sticky top-4">
+                <CardHeader className="pb-2 px-3 pt-3">
+                  <CardTitle className="text-xs text-muted-foreground uppercase tracking-wider">Profissionais</CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-3">
+                  <StaffFilter />
+                </CardContent>
+              </Card>
             </div>
+          )}
 
-            <div>
-              <Label className="text-sm">Data</Label>
-              <Input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-
-            <div className="flex items-end">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setSearchTerm("");
-                  setStatusFilter("all");
-                  setDateFilter("");
-                }}
-                className="w-full sm:w-auto"
-                size="sm"
-              >
-                Limpar Filtros
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Bookings - Mobile Cards / Desktop Table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base md:text-lg">
-            Agendamentos ({filteredBookings.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Mobile: Card Layout */}
-          <div className="md:hidden space-y-3">
-            {filteredBookings.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground text-sm">
-                Nenhum agendamento encontrado
-              </div>
-            ) : (
-              filteredBookings.map((booking) => (
-                <div key={booking.id} className="p-4 rounded-lg border border-border bg-card space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="w-3 h-3 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: booking.service?.color || '#3B82F6' }}
-                      />
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground truncate">{booking.customer?.name}</p>
-                        <p className="text-sm text-muted-foreground">{booking.service?.name}</p>
-                      </div>
-                    </div>
-                    <Badge variant={getStatusVariant(booking.status)} className="text-xs flex-shrink-0">
-                      {getStatusLabel(booking.status)}
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {format(parseISO(booking.starts_at), "dd/MM/yyyy", { locale: ptBR })}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {format(parseISO(booking.starts_at), "HH:mm")} - {format(parseISO(booking.ends_at), "HH:mm")}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <User className="h-3 w-3" />
-                      {booking.staff?.name || 'Qualquer'}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between pt-2 border-t border-border">
-                    <div className="flex items-center gap-2">
-                      {booking.payment ? (
-                        <div className="flex items-center gap-1">
-                          {booking.payment.status === 'paid' && (
-                            <CreditCard className="h-3 w-3 text-emerald-500" />
-                          )}
-                          {booking.payment.status === 'pending' && (
-                            <AlertCircle className="h-3 w-3 text-amber-500" />
-                          )}
-                          <span className="text-xs">{getPaymentStatusLabel(booking.payment)}</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          <Banknote className="h-3 w-3" />
-                          <span className="text-xs">No local</span>
-                        </div>
-                      )}
-                      <span className="font-medium text-success text-sm">
-                        R$ {((booking.service?.price_cents || 0) / 100).toFixed(2)}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedBooking(booking);
-                          setShowDetails(true);
-                        }}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      {booking.status === 'confirmed' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => updateBookingStatus(booking.id, 'completed')}
-                          className="h-8 w-8 p-0"
-                        >
-                          <CheckCircle className="h-4 w-4 text-success" />
-                        </Button>
-                      )}
-                      {booking.status !== 'cancelled' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-                          className="h-8 w-8 p-0"
-                        >
-                          <XCircle className="h-4 w-4 text-destructive" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+          {/* Mobile staff filter as sheet */}
+          {isMobile && staff.length > 1 && (
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="absolute right-4 top-[8.5rem] z-10 h-8">
+                  <Filter className="h-3.5 w-3.5 mr-1" />
+                  Filtrar
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64">
+                <SheetHeader>
+                  <SheetTitle>Profissionais</SheetTitle>
+                </SheetHeader>
+                <div className="mt-4">
+                  <StaffFilter />
                 </div>
-              ))
+              </SheetContent>
+            </Sheet>
+          )}
+
+          {/* Grid */}
+          <div className="flex-1 min-w-0">
+            {loading ? (
+              <div className="h-96 bg-muted/30 rounded-xl animate-pulse" />
+            ) : (
+              <ScheduleGrid
+                staff={staff}
+                schedules={schedules}
+                bookings={gridBookings}
+                blocks={blocks}
+                settings={settings}
+                timeRange={timeRange}
+                date={selectedDate}
+                onBookingClick={handleBookingClick}
+                visibleStaffIds={visibleStaffIds}
+              />
             )}
           </div>
+        </div>
+      ) : (
+        /* List view */
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="pt-4">
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Buscar cliente, serviço..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="confirmed">Confirmado</SelectItem>
+                    <SelectItem value="pending">Aguardando</SelectItem>
+                    <SelectItem value="completed">Concluído</SelectItem>
+                    <SelectItem value="cancelled">Cancelado</SelectItem>
+                    <SelectItem value="no_show">Faltou</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" onClick={() => { setSearchTerm(""); setStatusFilter("all"); }}>
+                  Limpar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Desktop: Table Layout */}
-          <div className="hidden md:block overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Serviço</TableHead>
-                  <TableHead>Profissional</TableHead>
-                  <TableHead>Data/Hora</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Pagamento</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredBookings.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      Nenhum agendamento encontrado
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredBookings.map((booking) => (
-                    <TableRow key={booking.id}>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-medium">{booking.customer?.name}</div>
-                          <div className="text-sm text-muted-foreground flex items-center">
-                            <Phone className="h-3 w-3 mr-1" />
-                            {booking.customer?.phone}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <div 
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: booking.service?.color || '#3B82F6' }}
-                          />
-                          <div>
-                            <div className="font-medium">{booking.service?.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {booking.service?.duration_minutes}min
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Agendamentos ({filteredBookings.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="h-48 bg-muted/30 rounded animate-pulse" />
+              ) : (
+                <>
+                  {/* Mobile cards */}
+                  <div className="md:hidden space-y-3">
+                    {filteredBookings.length === 0 ? (
+                      <p className="text-center py-8 text-muted-foreground text-sm">Nenhum agendamento</p>
+                    ) : filteredBookings.map((booking) => (
+                      <div key={booking.id} className="p-4 rounded-lg border border-border bg-card space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: booking.service?.color || "#3B82F6" }} />
+                            <div className="min-w-0">
+                              <p className="font-medium text-foreground truncate">{booking.customer?.name}</p>
+                              <p className="text-sm text-muted-foreground">{booking.service?.name}</p>
                             </div>
                           </div>
+                          <Badge variant={getStatusVariant(booking.status)} className="text-xs flex-shrink-0">{getStatusLabel(booking.status)}</Badge>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span>{booking.staff?.name || 'Qualquer profissional'}</span>
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1"><Clock className="h-3 w-3" />{format(parseISO(booking.starts_at), "HH:mm")} - {format(parseISO(booking.ends_at), "HH:mm")}</div>
+                          <div className="flex items-center gap-1"><User className="h-3 w-3" />{booking.staff?.name || "Qualquer"}</div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center">
-                            <Calendar className="h-3 w-3 mr-1 text-muted-foreground" />
-                            <span className="text-sm">
-                              {format(parseISO(booking.starts_at), "dd/MM/yyyy", { locale: ptBR })}
-                            </span>
-                          </div>
-                          <div className="flex items-center">
-                            <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
-                            <span className="text-sm">
-                              {format(parseISO(booking.starts_at), "HH:mm")} - 
-                              {format(parseISO(booking.ends_at), "HH:mm")}
-                            </span>
+                        <div className="flex items-center justify-between pt-2 border-t border-border">
+                          <span className="font-medium text-sm">R$ {((booking.service?.price_cents || 0) / 100).toFixed(2)}</span>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedBooking(booking); setShowDetails(true); }} className="h-8 w-8 p-0"><Edit className="h-4 w-4" /></Button>
+                            {booking.status === "confirmed" && <Button variant="ghost" size="sm" onClick={() => updateBookingStatus(booking.id, "completed")} className="h-8 w-8 p-0"><CheckCircle className="h-4 w-4 text-emerald-500" /></Button>}
+                            {booking.status !== "cancelled" && <Button variant="ghost" size="sm" onClick={() => updateBookingStatus(booking.id, "cancelled")} className="h-8 w-8 p-0"><XCircle className="h-4 w-4 text-destructive" /></Button>}
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-medium text-success">
-                          R$ {((booking.service?.price_cents || 0) / 100).toFixed(2)}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {booking.payment ? (
-                            <>
-                              {booking.payment.status === 'paid' && (
-                                <CreditCard className="h-4 w-4 text-emerald-500" />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Desktop table */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Serviço</TableHead>
+                          <TableHead>Profissional</TableHead>
+                          <TableHead>Horário</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Pagamento</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredBookings.length === 0 ? (
+                          <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum agendamento</TableCell></TableRow>
+                        ) : filteredBookings.map((booking) => (
+                          <TableRow key={booking.id}>
+                            <TableCell>
+                              <div className="font-medium">{booking.customer?.name}</div>
+                              <div className="text-sm text-muted-foreground flex items-center"><Phone className="h-3 w-3 mr-1" />{booking.customer?.phone}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: booking.service?.color || "#3B82F6" }} />
+                                <div>
+                                  <div className="font-medium">{booking.service?.name}</div>
+                                  <div className="text-sm text-muted-foreground">{booking.service?.duration_minutes}min</div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>{booking.staff?.name || "Qualquer"}</TableCell>
+                            <TableCell>
+                              <div className="text-sm">{format(parseISO(booking.starts_at), "HH:mm")} - {format(parseISO(booking.ends_at), "HH:mm")}</div>
+                            </TableCell>
+                            <TableCell><span className="font-medium">R$ {((booking.service?.price_cents || 0) / 100).toFixed(2)}</span></TableCell>
+                            <TableCell>
+                              {booking.payment ? (
+                                <Badge variant={getPaymentStatusVariant(booking.payment)}>{getPaymentStatusLabel(booking.payment)}</Badge>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">No local</span>
                               )}
-                              {booking.payment.status === 'pending' && (
-                                <AlertCircle className="h-4 w-4 text-amber-500" />
-                              )}
-                              {booking.payment.status === 'failed' && (
-                                <XCircle className="h-4 w-4 text-destructive" />
-                              )}
-                              <Badge variant={getPaymentStatusVariant(booking.payment)}>
-                                {getPaymentStatusLabel(booking.payment)}
-                              </Badge>
-                            </>
-                          ) : (
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Banknote className="h-4 w-4" />
-                              <span className="text-sm">No local</span>
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusVariant(booking.status)}>
-                          {getStatusLabel(booking.status)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedBooking(booking);
-                              setShowDetails(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          
-                          {booking.status === 'confirmed' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => updateBookingStatus(booking.id, 'completed')}
-                            >
-                              <CheckCircle className="h-4 w-4 text-success" />
-                            </Button>
-                          )}
-                          
-                          {booking.status !== 'cancelled' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-                            >
-                              <XCircle className="h-4 w-4 text-destructive" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                            </TableCell>
+                            <TableCell><Badge variant={getStatusVariant(booking.status)}>{getStatusLabel(booking.status)}</Badge></TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Button variant="ghost" size="sm" onClick={() => { setSelectedBooking(booking); setShowDetails(true); }}><Edit className="h-4 w-4" /></Button>
+                                {booking.status === "confirmed" && <Button variant="ghost" size="sm" onClick={() => updateBookingStatus(booking.id, "completed")}><CheckCircle className="h-4 w-4 text-emerald-500" /></Button>}
+                                {booking.status !== "cancelled" && <Button variant="ghost" size="sm" onClick={() => updateBookingStatus(booking.id, "cancelled")}><XCircle className="h-4 w-4 text-destructive" /></Button>}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Block Dialog */}
+      <BlockDialog
+        open={blockDialogOpen}
+        onOpenChange={setBlockDialogOpen}
+        staff={staff}
+        defaultDate={format(selectedDate, "yyyy-MM-dd")}
+        onCreated={refetch}
+      />
 
       {/* Booking Details Dialog */}
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Detalhes do Agendamento</DialogTitle>
-            <DialogDescription>
-              Informações completas do agendamento
-            </DialogDescription>
+            <DialogDescription>Informações completas do agendamento</DialogDescription>
           </DialogHeader>
-          
           {selectedBooking && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -629,7 +505,6 @@ export default function Bookings() {
                   <p className="text-sm">{selectedBooking.customer?.phone}</p>
                 </div>
               </div>
-              
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium">Serviço</Label>
@@ -637,97 +512,57 @@ export default function Bookings() {
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Profissional</Label>
-                  <p className="text-sm">{selectedBooking.staff?.name || 'Qualquer profissional'}</p>
+                  <p className="text-sm">{selectedBooking.staff?.name || "Qualquer"}</p>
                 </div>
               </div>
-              
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium">Data</Label>
-                  <p className="text-sm">
-                    {format(parseISO(selectedBooking.starts_at), "dd/MM/yyyy", { locale: ptBR })}
-                  </p>
-                </div>
                 <div>
                   <Label className="text-sm font-medium">Horário</Label>
                   <p className="text-sm">
-                    {format(parseISO(selectedBooking.starts_at), "HH:mm")} - 
-                    {format(parseISO(selectedBooking.ends_at), "HH:mm")}
+                    {format(parseISO(selectedBooking.starts_at), "HH:mm")} - {format(parseISO(selectedBooking.ends_at), "HH:mm")}
                   </p>
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium">Status</Label>
-                  <div className="mt-1">
-                    <Badge variant={getStatusVariant(selectedBooking.status)}>
-                      {getStatusLabel(selectedBooking.status)}
-                    </Badge>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Pagamento</Label>
-                  <div className="mt-1 flex items-center gap-2">
-                    {selectedBooking.payment ? (
-                      <>
-                        {selectedBooking.payment.status === 'paid' && (
-                          <CreditCard className="h-4 w-4 text-emerald-500" />
-                        )}
-                        {selectedBooking.payment.status === 'pending' && (
-                          <AlertCircle className="h-4 w-4 text-amber-500" />
-                        )}
-                        {selectedBooking.payment.status === 'failed' && (
-                          <XCircle className="h-4 w-4 text-destructive" />
-                        )}
-                        <Badge variant={getPaymentStatusVariant(selectedBooking.payment)}>
-                          {getPaymentStatusLabel(selectedBooking.payment)}
-                        </Badge>
-                      </>
-                    ) : (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Banknote className="h-4 w-4" />
-                        <span className="text-sm">Pagamento no local</span>
-                      </div>
-                    )}
-                  </div>
+                  <div className="mt-1"><Badge variant={getStatusVariant(selectedBooking.status)}>{getStatusLabel(selectedBooking.status)}</Badge></div>
                 </div>
               </div>
-              
               {selectedBooking.notes && (
                 <div>
                   <Label className="text-sm font-medium">Observações</Label>
                   <p className="text-sm">{selectedBooking.notes}</p>
                 </div>
               )}
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium">Valor do Serviço</Label>
-                  <p className="text-sm font-semibold text-success">
-                    R$ {((selectedBooking.service?.price_cents || 0) / 100).toFixed(2)}
-                  </p>
-                </div>
-                {selectedBooking.payment && (
-                  <div>
-                    <Label className="text-sm font-medium">Valor Pago Online</Label>
-                    <p className="text-sm font-semibold text-emerald-500">
-                      R$ {((selectedBooking.payment.amount_cents || 0) / 100).toFixed(2)}
-                    </p>
-                  </div>
+              <div>
+                <Label className="text-sm font-medium">Valor</Label>
+                <p className="text-sm font-semibold">R$ {((selectedBooking.service?.price_cents || 0) / 100).toFixed(2)}</p>
+              </div>
+
+              {/* Quick status actions */}
+              <div className="flex gap-2 pt-2 border-t border-border">
+                {selectedBooking.status === "confirmed" && (
+                  <Button size="sm" variant="outline" onClick={() => { updateBookingStatus(selectedBooking.id, "completed"); setShowDetails(false); }}>
+                    <CheckCircle className="h-4 w-4 mr-1 text-emerald-500" /> Concluir
+                  </Button>
+                )}
+                {selectedBooking.status === "confirmed" && (
+                  <Button size="sm" variant="outline" onClick={() => { updateBookingStatus(selectedBooking.id, "no_show"); setShowDetails(false); }}>
+                    Faltou
+                  </Button>
+                )}
+                {selectedBooking.status !== "cancelled" && (
+                  <Button size="sm" variant="destructive" onClick={() => { updateBookingStatus(selectedBooking.id, "cancelled"); setShowDetails(false); }}>
+                    <XCircle className="h-4 w-4 mr-1" /> Cancelar
+                  </Button>
                 )}
               </div>
             </div>
           )}
-          
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDetails(false)}>
-              Fechar
-            </Button>
+            <Button variant="outline" onClick={() => setShowDetails(false)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }
