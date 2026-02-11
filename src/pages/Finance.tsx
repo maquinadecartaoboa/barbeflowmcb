@@ -524,7 +524,7 @@ export default function Finance() {
           staff={staff}
           staffFilter={staffFilter}
           onStaffFilterChange={setStaffFilter}
-          onExport={exportToCSV}
+          onExportPDF={exportToCSV}
           hasData={!!data && bookings.length > 0}
         />
       </motion.div>
@@ -544,17 +544,17 @@ export default function Finance() {
           label="Recebido"
           value={`R$ ${data ? (data.revenue_received / 100).toLocaleString("pt-BR", { minimumFractionDigits: 0 }) : "0"}`}
           icon={DollarSign}
-          iconColor="text-success"
-          iconBg="bg-success/10"
+          iconColor="text-primary"
+          iconBg="bg-primary/10"
           variation={prevData ? { current: data?.revenue_received || 0, previous: prevData.revenue_received } : undefined}
-          glowColor="hsl(142 71% 45% / 0.08)"
+          glowColor="hsl(160 84% 39% / 0.08)"
         />
         <KpiCard
           label="Agendamentos"
           value={`${data?.bookings_count || 0}`}
           icon={Calendar}
-          iconColor="text-accent"
-          iconBg="bg-accent/10"
+          iconColor="text-primary"
+          iconBg="bg-primary/10"
           variation={prevData ? { current: data?.bookings_count || 0, previous: prevData.bookings_count } : undefined}
           glowColor="hsl(160 84% 39% / 0.08)"
         />
@@ -562,10 +562,10 @@ export default function Finance() {
           label="Ticket Médio"
           value={`R$ ${data ? (data.avg_ticket / 100).toLocaleString("pt-BR", { minimumFractionDigits: 0 }) : "0"}`}
           icon={Wallet}
-          iconColor="text-warning"
-          iconBg="bg-warning/10"
+          iconColor="text-primary"
+          iconBg="bg-primary/10"
           variation={prevData ? { current: data?.avg_ticket || 0, previous: prevData.avg_ticket } : undefined}
-          glowColor="hsl(38 92% 50% / 0.08)"
+          glowColor="hsl(160 84% 39% / 0.08)"
         />
         <KpiCard
           label="Média/Dia Útil"
@@ -595,9 +595,9 @@ export default function Finance() {
               value={`R$ ${(data!.product_sales_profit / 100).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`}
               subtitle={data!.product_sales_revenue > 0 ? `${((data!.product_sales_profit / data!.product_sales_revenue) * 100).toFixed(0)}% margem` : "0%"}
               icon={TrendingUp}
-              iconColor="text-success"
-              iconBg="bg-success/10"
-              glowColor="hsl(142 71% 45% / 0.08)"
+              iconColor="text-primary"
+              iconBg="bg-primary/10"
+              glowColor="hsl(160 84% 39% / 0.08)"
             />
           </div>
         </Section>
