@@ -39,15 +39,15 @@ const getDateRangeFromPreset = (preset: string, customStart?: string, customEnd?
     case 'today':
       return { from: startOfDay(now), to: endOfDay(now) };
     case '7':
-      return { from: subDays(now, 6), to: now };
+      return { from: startOfDay(subDays(now, 6)), to: endOfDay(now) };
     case '14':
-      return { from: subDays(now, 13), to: now };
+      return { from: startOfDay(subDays(now, 13)), to: endOfDay(now) };
     case '30':
-      return { from: subDays(now, 29), to: now };
+      return { from: startOfDay(subDays(now, 29)), to: endOfDay(now) };
     case '60':
-      return { from: subDays(now, 59), to: now };
+      return { from: startOfDay(subDays(now, 59)), to: endOfDay(now) };
     case '90':
-      return { from: subDays(now, 89), to: now };
+      return { from: startOfDay(subDays(now, 89)), to: endOfDay(now) };
     case 'week':
       return { from: startOfWeek(now, { locale: ptBR }), to: endOfWeek(now, { locale: ptBR }) };
     case 'month':
