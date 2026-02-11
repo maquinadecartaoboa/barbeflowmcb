@@ -956,13 +956,11 @@ export default function Settings() {
               <div className="rounded-lg border p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden ${
-                      mpConnected ? 'bg-emerald-500/10' : 'bg-muted'
-                    }`}>
+                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-white flex items-center justify-center">
                       {mpLoading ? (
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                       ) : (
-                        <img src={mpIcon} alt="Mercado Pago" className="h-7 w-7 object-contain" />
+                        <img src={mpIcon} alt="Mercado Pago" className="h-8 w-8 object-contain" />
                       )}
                     </div>
                     <div>

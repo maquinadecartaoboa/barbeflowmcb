@@ -175,9 +175,9 @@ export default function Agenda() {
                       </div>
                       <h4 className="font-semibold text-foreground">
                         {booking.is_recurring && <UserCheck className="h-3.5 w-3.5 inline mr-1 text-violet-400" />}
-                        {booking.is_recurring ? `Cliente Fixo — ${booking.customer?.name}` : booking.customer?.name}
+                        {booking.customer?.name}
                       </h4>
-                      <p className="text-sm text-muted-foreground">{booking.is_recurring ? `${booking.service?.name}${booking.notes ? ` • ${booking.notes}` : ''}` : booking.service?.name}</p>
+                      <p className="text-sm text-muted-foreground">{booking.service?.name}{booking.is_recurring && booking.notes ? ` • ${booking.notes}` : ''}</p>
                       <div className="flex items-center space-x-4 mt-2">
                         <div className="flex items-center text-xs text-muted-foreground">
                           <User className="h-3 w-3 mr-1" />
@@ -186,55 +186,54 @@ export default function Agenda() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end space-y-2">
-                      {booking.is_recurring ? (
-                        <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30">
-                          Fixo
-                        </Badge>
-                      ) : (
-                        <>
-                          {/* Payment Status */}
-                          {booking.payment ? (
-                            <div className="flex items-center gap-1">
-                              {booking.payment.status === 'paid' && (
-                                <CreditCard className="h-3 w-3 text-emerald-500" />
-                              )}
-                              {booking.payment.status === 'pending' && (
-                                <AlertCircle className="h-3 w-3 text-amber-500" />
-                              )}
-                              <span className={`text-xs ${
-                                booking.payment.status === 'paid' ? 'text-emerald-500' :
-                                booking.payment.status === 'pending' ? 'text-amber-500' :
-                                'text-muted-foreground'
-                              }`}>
-                                {booking.payment.status === 'paid' ? 'Pago' : 
-                                 booking.payment.status === 'pending' ? 'Aguardando' : 'Falhou'}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <Banknote className="h-3 w-3" />
-                              <span className="text-xs">No local</span>
-                            </div>
+                      {/* Payment Status */}
+                      {!booking.is_recurring && booking.payment ? (
+                        <div className="flex items-center gap-1">
+                          {booking.payment.status === 'paid' && (
+                            <CreditCard className="h-3 w-3 text-emerald-500" />
                           )}
-                          
-                          {/* Booking Status */}
-                          <Badge variant={
-                            booking.status === 'confirmed' ? 'default' :
-                            booking.status === 'pending' ? 'outline' :
-                            booking.status === 'cancelled' ? 'destructive' :
-                            'secondary'
-                          }>
-                            {booking.status === 'confirmed' ? 'Confirmado' :
-                             booking.status === 'pending' ? 'Aguardando' :
-                             booking.status === 'cancelled' ? 'Cancelado' :
-                             booking.status === 'no_show' ? 'Faltou' : booking.status}
-                          </Badge>
-                          
-                          <span className="text-sm font-medium text-success">
-                            R$ {((booking.service?.price_cents || 0) / 100).toFixed(2)}
+                          {booking.payment.status === 'pending' && (
+                            <AlertCircle className="h-3 w-3 text-amber-500" />
+                          )}
+                          <span className={`text-xs ${
+                            booking.payment.status === 'paid' ? 'text-emerald-500' :
+                            booking.payment.status === 'pending' ? 'text-amber-500' :
+                            'text-muted-foreground'
+                          }`}>
+                            {booking.payment.status === 'paid' ? 'Pago' : 
+                             booking.payment.status === 'pending' ? 'Aguardando' : 'Falhou'}
                           </span>
-                        </>
-                      )}
+                        </div>
+                      ) : !booking.is_recurring ? (
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <Banknote className="h-3 w-3" />
+                          <span className="text-xs">No local</span>
+                        </div>
+                      ) : null}
+                      
+                      {/* Booking Status */}
+                      <div className="flex items-center gap-1.5">
+                        {booking.is_recurring && (
+                          <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30">
+                            Fixo
+                          </Badge>
+                        )}
+                        <Badge variant={
+                          booking.status === 'confirmed' || booking.status === 'recurring' ? 'default' :
+                          booking.status === 'pending' ? 'outline' :
+                          booking.status === 'cancelled' ? 'destructive' :
+                          'secondary'
+                        }>
+                          {booking.status === 'confirmed' || booking.status === 'recurring' ? 'Confirmado' :
+                           booking.status === 'pending' ? 'Aguardando' :
+                           booking.status === 'cancelled' ? 'Cancelado' :
+                           booking.status === 'no_show' ? 'Faltou' : booking.status}
+                        </Badge>
+                      </div>
+                      
+                      <span className="text-sm font-medium text-success">
+                        R$ {((booking.service?.price_cents || 0) / 100).toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 ))}
