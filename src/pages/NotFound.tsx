@@ -1,24 +1,44 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
+import { Scissors, Home, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const NotFound = () => {
   const location = useLocation();
 
   useEffect(() => {
-    console.error(
-      "404 Error: User attempted to access non-existent route:",
-      location.pathname
-    );
+    console.error("404 Error: User attempted to access non-existent route:", location.pathname);
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
-        <a href="/" className="text-blue-500 hover:text-blue-700 underline">
-          Return to Home
-        </a>
+    <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-4">
+      <div className="w-full max-w-md text-center">
+        <div className="w-20 h-20 bg-emerald-500/10 border border-emerald-500/30 rounded-full flex items-center justify-center mx-auto mb-6">
+          <Scissors className="h-10 w-10 text-emerald-400" />
+        </div>
+
+        <h1 className="text-6xl font-bold text-emerald-400 mb-2">404</h1>
+        <h2 className="text-xl font-semibold mb-2">Página não encontrada</h2>
+        <p className="text-zinc-400 mb-8">
+          A página que você está procurando não existe ou foi movida.
+        </p>
+
+        <div className="space-y-3">
+          <Button asChild className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 rounded-xl font-medium">
+            <Link to="/">
+              <Home className="h-4 w-4 mr-2" />
+              Ir para a página inicial
+            </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => window.history.back()}
+            className="w-full h-12 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-xl"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar à página anterior
+          </Button>
+        </div>
       </div>
     </div>
   );

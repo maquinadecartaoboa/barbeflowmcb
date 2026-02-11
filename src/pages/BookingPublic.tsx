@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { TenantNotFound } from "@/components/TenantNotFound";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -53,6 +54,7 @@ const BookingPublic = () => {
   const [occupiedSlots, setOccupiedSlots] = useState<any[]>([]);
   const [allTimeSlots, setAllTimeSlots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tenantNotFound, setTenantNotFound] = useState(false);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [step, setStep] = useState(1);
@@ -115,11 +117,8 @@ const BookingPublic = () => {
         .single();
 
       if (tenantError || !tenantData) {
-        toast({
-          title: "Barbearia não encontrada",
-          description: "Verifique o link e tente novamente.",
-          variant: "destructive",
-        });
+        setTenantNotFound(true);
+        setLoading(false);
         return;
       }
 
@@ -908,6 +907,11 @@ END:VCALENDAR`;
     </div>
   );
 
+  // Tenant not found
+  if (tenantNotFound) {
+    return <TenantNotFound slug={slug} />;
+  }
+
   // Confirmation Screen
   if (step === 6) {
     const bookingDateTime = formatBookingDateTime(createdBooking);
@@ -971,6 +975,18 @@ END:VCALENDAR`;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
+      {/* Cover Banner */}
+      {tenant?.cover_url && (
+        <div className="w-full h-40 sm:h-52 overflow-hidden relative">
+          <img
+            src={tenant.cover_url}
+            alt={`Capa ${tenant.name}`}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-zinc-950" />
+        </div>
+      )}
+
       {/* Header */}
       <header className="border-b border-zinc-800/50">
         <div className="max-w-lg mx-auto px-4 py-6">
