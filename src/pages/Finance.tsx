@@ -567,25 +567,15 @@ export default function Finance() {
           variation={prevData ? { current: data?.avg_ticket || 0, previous: prevData.avg_ticket } : undefined}
           glowColor="hsl(38 92% 50% / 0.08)"
         />
-        <motion.div variants={itemVariants} className="col-span-2 lg:col-span-1">
-          <Card className="group relative overflow-hidden border-border/50 bg-card/80 backdrop-blur-xl hover:border-primary/30 transition-all duration-500 hover:shadow-accent/5 hover:shadow-lg">
-            <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-2xl bg-primary/10" />
-            <CardContent className="p-4 md:p-5 relative">
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1 space-y-1">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Média/Dia Útil</p>
-                  <p className="text-xl md:text-2xl font-bold text-foreground tracking-tight">
-                    R$ {(avgPerWorkDay / 100).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}
-                  </p>
-                  <span className="text-[10px] text-muted-foreground">Dias com atendimento</span>
-                </div>
-                <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 ml-3 ring-1 ring-white/5 group-hover:scale-110 transition-transform duration-300">
-                  <BarChart3 className="h-4.5 w-4.5 md:h-5 md:w-5 text-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+        <KpiCard
+          label="Média/Dia Útil"
+          value={`R$ ${(avgPerWorkDay / 100).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`}
+          subtitle="Dias com atendimento"
+          icon={BarChart3}
+          iconColor="text-primary"
+          iconBg="bg-primary/10"
+          glowColor="hsl(160 84% 39% / 0.08)"
+        />
       </motion.div>
 
       {/* 3. Product KPIs (conditional) */}
