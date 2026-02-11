@@ -128,6 +128,11 @@ export function BookingModal() {
     }
   }, [watchedDate, watchedServiceId, watchedStaffId, currentTenant]);
 
+  // Reset selected time when extra slots change (filtered slots change)
+  useEffect(() => {
+    form.setValue("time", "");
+  }, [watchedExtraSlots]);
+
   const loadFormData = async () => {
     if (!currentTenant) return;
     try {
@@ -508,48 +513,7 @@ export function BookingModal() {
               )}
             />
 
-            {/* Available Time Slots */}
-            <FormField
-              control={form.control}
-              name="time"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Horário *</FormLabel>
-                  {!watchedDate ? (
-                    <p className="text-sm text-muted-foreground">Selecione uma data primeiro</p>
-                  ) : loadingSlots ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Carregando horários disponíveis...
-                    </div>
-                  ) : availableSlots.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-2">Nenhum horário disponível para esta data</p>
-                  ) : (
-                    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-40 overflow-y-auto p-1">
-                      {availableSlots.map((slot) => (
-                        <button
-                          key={slot.time}
-                          type="button"
-                          className={cn(
-                            "flex items-center justify-center gap-1 px-2 py-2 rounded-md text-sm font-medium border transition-colors",
-                            field.value === slot.time
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-background text-foreground border-border hover:bg-accent hover:text-accent-foreground"
-                          )}
-                          onClick={() => field.onChange(slot.time)}
-                        >
-                          <Clock className="h-3 w-3" />
-                          {slot.time}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Extra time slots */}
+            {/* Extra time - before time selection so slots adapt */}
             {watchedServiceId && (
               <FormField
                 control={form.control}
@@ -592,6 +556,76 @@ export function BookingModal() {
                 }}
               />
             )}
+
+            {/* Available Time Slots - filtered by total duration */}
+            <FormField
+              control={form.control}
+              name="time"
+              render={({ field }) => {
+                const selectedService = services.find(s => s.id === watchedServiceId);
+                const extraSlotDuration = (currentTenant as any)?.settings?.extra_slot_duration || 5;
+                const slotDuration = (currentTenant as any)?.settings?.slot_duration || 15;
+                const baseDuration = selectedService?.duration_minutes || 60;
+                const totalDuration = baseDuration + (watchedExtraSlots || 0) * extraSlotDuration;
+
+                // Filter slots: ensure enough consecutive available time
+                const filteredSlots = availableSlots.filter((slot) => {
+                  const [h, m] = slot.time.split(':').map(Number);
+                  const startMin = h * 60 + m;
+                  const endMin = startMin + totalDuration;
+
+                  // Check all slot intervals within the needed duration are available
+                  for (let t = startMin + slotDuration; t < endMin; t += slotDuration) {
+                    const checkH = String(Math.floor(t / 60)).padStart(2, '0');
+                    const checkM = String(t % 60).padStart(2, '0');
+                    const checkTime = `${checkH}:${checkM}`;
+                    const found = availableSlots.find(s => s.time === checkTime);
+                    if (!found) return false;
+                  }
+                  return true;
+                });
+
+                return (
+                  <FormItem>
+                    <FormLabel>Horário *</FormLabel>
+                    {!watchedDate ? (
+                      <p className="text-sm text-muted-foreground">Selecione uma data primeiro</p>
+                    ) : loadingSlots ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Carregando horários disponíveis...
+                      </div>
+                    ) : filteredSlots.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-2">
+                        {availableSlots.length > 0
+                          ? `Nenhum horário comporta ${totalDuration} min seguidos`
+                          : 'Nenhum horário disponível para esta data'}
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-40 overflow-y-auto p-1">
+                        {filteredSlots.map((slot) => (
+                          <button
+                            key={slot.time}
+                            type="button"
+                            className={cn(
+                              "flex items-center justify-center gap-1 px-2 py-2 rounded-md text-sm font-medium border transition-colors",
+                              field.value === slot.time
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background text-foreground border-border hover:bg-accent hover:text-accent-foreground"
+                            )}
+                            onClick={() => field.onChange(slot.time)}
+                          >
+                            <Clock className="h-3 w-3" />
+                            {slot.time}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
 
             {/* Notes */}
             <FormField
