@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -16,8 +16,6 @@ export const useAuth = () => {
     loading: true,
   });
   const { toast } = useToast();
-  const hasShownWelcomeToast = useRef(false);
-
   useEffect(() => {
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -28,15 +26,15 @@ export const useAuth = () => {
           loading: false,
         });
 
-        // Only show welcome toast on actual sign in event, not on session restoration
-        if (event === 'SIGNED_IN' && !hasShownWelcomeToast.current) {
-          hasShownWelcomeToast.current = true;
+        // Only show welcome toast on explicit sign-in, not token refresh or session restore
+        if (event === 'SIGNED_IN' && !sessionStorage.getItem('bf_welcomed')) {
+          sessionStorage.setItem('bf_welcomed', '1');
           toast({
             title: "Bem-vindo!",
             description: "Login realizado com sucesso.",
           });
         } else if (event === 'SIGNED_OUT') {
-          hasShownWelcomeToast.current = false;
+          sessionStorage.removeItem('bf_welcomed');
           toast({
             title: "Logout realizado",
             description: "Você foi desconectado com sucesso.",
