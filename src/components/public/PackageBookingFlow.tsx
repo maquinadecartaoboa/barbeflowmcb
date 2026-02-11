@@ -11,6 +11,8 @@ interface PackageBookingFlowProps {
   tenant: any;
   serviceId: string;
   serviceName: string;
+  customerPhone: string;
+  customerName: string;
   customerPackageId?: string;
   customerSubscriptionId?: string;
   benefitLabel: string;
@@ -20,7 +22,8 @@ interface PackageBookingFlowProps {
 }
 
 export function PackageBookingFlow({
-  tenant, serviceId, serviceName, customerPackageId, customerSubscriptionId,
+  tenant, serviceId, serviceName, customerPhone, customerName,
+  customerPackageId, customerSubscriptionId,
   benefitLabel, slug, onSuccess, onCancel,
 }: PackageBookingFlowProps) {
   const { toast } = useToast();
@@ -103,8 +106,8 @@ export function PackageBookingFlow({
           slug,
           service_id: serviceId,
           staff_id: selectedStaff,
-          customer_name: 'via_benefit',
-          customer_phone: '0000000000',
+          customer_name: customerName,
+          customer_phone: customerPhone,
           starts_at: startsAt.toISOString(),
           payment_method: 'onsite',
           customer_package_id: customerPackageId,
