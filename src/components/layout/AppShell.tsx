@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { dashPath } from "@/lib/hostname";
 import { TenantSelector } from "@/components/TenantSelector";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -74,7 +75,7 @@ interface NavItem {
   children?: { title: string; url: string; icon: any }[];
 }
 
-const navigationItems: NavItem[] = [
+const baseNavigationItems: NavItem[] = [
   { title: "Dashboard", url: "/app/dashboard", icon: Home },
   { title: "Agendamentos", url: "/app/bookings", icon: FileText },
   { 
@@ -111,12 +112,22 @@ const navigationItems: NavItem[] = [
   { title: "Configurações", url: "/app/settings", icon: Settings },
 ];
 
-const bottomTabItems = [
+const baseBottomTabItems = [
   { title: "Home", url: "/app/dashboard", icon: Home },
   { title: "Agenda", url: "/app/bookings", icon: CalendarCheck },
   { title: "Clientes", url: "/app/customers", icon: User },
   { title: "Financeiro", url: "/app/finance", icon: Wallet },
 ];
+
+// Apply dashPath to resolve URLs based on hostname
+const applyDashPath = (items: NavItem[]): NavItem[] => items.map(item => ({
+  ...item,
+  url: dashPath(item.url),
+  children: item.children?.map(child => ({ ...child, url: dashPath(child.url) })),
+}));
+
+const navigationItems = applyDashPath(baseNavigationItems);
+const bottomTabItems = baseBottomTabItems.map(item => ({ ...item, url: dashPath(item.url) }));
 
 function NavItemLink({ item, isActive, onClick }: { item: { title: string; url: string; icon: any }; isActive: boolean; onClick?: () => void }) {
   return (
@@ -367,7 +378,7 @@ function BottomTabs() {
       <div className="grid grid-cols-4 max-w-md mx-auto">
         {bottomTabItems.map((item) => {
           const isActive = location.pathname === item.url || 
-            (item.url === "/app/finance" && location.pathname === "/app/commissions");
+            (item.url === dashPath("/app/finance") && location.pathname === dashPath("/app/commissions"));
           return (
             <button
               key={item.title}

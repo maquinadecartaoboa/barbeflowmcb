@@ -2,9 +2,13 @@
  * Hostname-based routing configuration
  * 
  * barberflow.store → public pages (landing, booking, payment)
- * app.barberflow.store → dashboard (login, register, /app/*)
+ * app.barberflow.store → dashboard (login, register, dashboard, etc.)
  * 
- * In development/preview, all routes are available.
+ * On the dashboard domain, routes drop the /app prefix:
+ *   /app/login → /login
+ *   /app/dashboard → /dashboard
+ * 
+ * In development/preview, all routes use the /app prefix.
  */
 
 const DASHBOARD_HOST = 'app.barberflow.store';
@@ -25,10 +29,24 @@ export function isPreviewOrLocal(): boolean {
   return host === 'localhost' || host.includes('lovable.app') || host.includes('lovableproject.com') || host.includes('127.0.0.1');
 }
 
+/**
+ * Resolves a dashboard path based on the current hostname.
+ * On app.barberflow.store: /app/dashboard → /dashboard
+ * On preview/local: /app/dashboard → /app/dashboard (unchanged)
+ */
+export function dashPath(path: string): string {
+  if (isDashboardDomain()) {
+    return path.replace(/^\/app/, '');
+  }
+  return path;
+}
+
 /** Returns the full URL for the dashboard domain */
 export function getDashboardUrl(path = ''): string {
   if (isPreviewOrLocal()) return path || '/app/login';
-  return `https://${DASHBOARD_HOST}${path}`;
+  // Remove /app prefix for the dashboard domain
+  const cleanPath = path.replace(/^\/app/, '') || '/login';
+  return `https://${DASHBOARD_HOST}${cleanPath}`;
 }
 
 /** Returns the full URL for the public domain */

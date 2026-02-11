@@ -34,6 +34,18 @@ const queryClient = new QueryClient();
 const showPublic = isPublicDomain() || isPreviewOrLocal();
 const showDashboard = isDashboardDomain() || isPreviewOrLocal();
 
+// On dashboard domain, routes have no /app prefix
+// On preview/local, routes use /app prefix
+const dashPrefix = isDashboardDomain() ? '' : '/app';
+
+const ProtectedAppShell = () => (
+  <ProtectedRoute>
+    <DateRangeProvider>
+      <AppShell />
+    </DateRangeProvider>
+  </ProtectedRoute>
+);
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -53,20 +65,14 @@ const App = () => (
               </>
             )}
 
-            {/* Dashboard routes - app.barberflow.store */}
+            {/* Dashboard routes */}
             {showDashboard && (
               <>
-                <Route path="/app/login" element={<Login />} />
-                <Route path="/app/register" element={<Login />} />
+                <Route path={`${dashPrefix}/login`} element={<Login />} />
+                <Route path={`${dashPrefix}/register`} element={<Login />} />
                 
-                <Route path="/app" element={
-                  <ProtectedRoute>
-                    <DateRangeProvider>
-                      <AppShell />
-                    </DateRangeProvider>
-                  </ProtectedRoute>
-                }>
-                  <Route path="dashboard" element={<Dashboard />} />
+                <Route path={dashPrefix || '/'} element={<ProtectedAppShell />}>
+                  <Route path={dashPrefix ? 'dashboard' : 'dashboard'} element={<Dashboard />} />
                   <Route path="bookings" element={<Bookings />} />
                   <Route path="services" element={<Services />} />
                   <Route path="packages" element={<PackagesPage />} />
@@ -83,7 +89,7 @@ const App = () => (
               </>
             )}
 
-            {/* On dashboard domain, redirect root to login */}
+            {/* On dashboard domain, redirect root to login (handled by AuthWatcher if logged in) */}
             {isDashboardDomain() && (
               <Route path="/" element={<Login />} />
             )}

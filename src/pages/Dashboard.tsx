@@ -5,6 +5,7 @@ import { useDateRange } from "@/contexts/DateRangeContext";
 import { DateRangeSelector } from "@/components/DateRangeSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { dashPath } from "@/lib/hostname";
 import { NoTenantState } from "@/components/NoTenantState";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -247,7 +248,7 @@ const Dashboard = () => {
       >
         <motion.div 
           variants={fadeInUp}
-          onClick={() => navigate('/app/bookings')}
+          onClick={() => navigate(dashPath('/app/bookings'))}
           className="group p-3 md:p-5 rounded-xl md:rounded-2xl bg-zinc-900/50 border border-zinc-800/50 hover:border-zinc-700/50 cursor-pointer transition-all duration-300"
         >
           <div className="flex items-start justify-between mb-2 md:mb-4">
@@ -264,7 +265,7 @@ const Dashboard = () => {
 
         <motion.div 
           variants={fadeInUp}
-          onClick={() => navigate('/app/services')}
+          onClick={() => navigate(dashPath('/app/services'))}
           className="group p-3 md:p-5 rounded-xl md:rounded-2xl bg-zinc-900/50 border border-zinc-800/50 hover:border-zinc-700/50 cursor-pointer transition-all duration-300"
         >
           <div className="flex items-start justify-between mb-2 md:mb-4">
@@ -281,7 +282,7 @@ const Dashboard = () => {
 
         <motion.div 
           variants={fadeInUp}
-          onClick={() => navigate('/app/staff')}
+          onClick={() => navigate(dashPath('/app/staff'))}
           className="group p-3 md:p-5 rounded-xl md:rounded-2xl bg-zinc-900/50 border border-zinc-800/50 hover:border-zinc-700/50 cursor-pointer transition-all duration-300"
         >
           <div className="flex items-start justify-between mb-2 md:mb-4">
@@ -298,7 +299,7 @@ const Dashboard = () => {
 
         <motion.div 
           variants={fadeInUp}
-          onClick={() => navigate('/app/finance')}
+          onClick={() => navigate(dashPath('/app/finance'))}
           className="group p-3 md:p-5 rounded-xl md:rounded-2xl bg-zinc-900/50 border border-zinc-800/50 hover:border-zinc-700/50 cursor-pointer transition-all duration-300"
         >
           <div className="flex items-start justify-between mb-2 md:mb-4">
@@ -334,7 +335,7 @@ const Dashboard = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate('/app/bookings')}
+              onClick={() => navigate(dashPath('/app/bookings'))}
               className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 text-xs md:text-sm"
             >
               Ver Todos
