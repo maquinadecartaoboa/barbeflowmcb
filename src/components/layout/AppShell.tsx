@@ -111,9 +111,9 @@ const navigationItems: NavItem[] = [
 
 const bottomTabItems = [
   { title: "Home", url: "/app/dashboard", icon: Home },
-  { title: "Agendamentos", url: "/app/bookings", icon: FileText },
+  { title: "Agenda", url: "/app/bookings", icon: CalendarCheck },
+  { title: "Clientes", url: "/app/customers", icon: User },
   { title: "Financeiro", url: "/app/finance", icon: Wallet },
-  { title: "Mais", url: "/app/settings", icon: Menu },
 ];
 
 function NavItemLink({ item, isActive, onClick }: { item: { title: string; url: string; icon: any }; isActive: boolean; onClick?: () => void }) {
@@ -254,6 +254,8 @@ function AppSidebar() {
 function MobileDrawer() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const { user, signOut } = useAuth();
+  const { currentTenant } = useTenant();
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -262,38 +264,52 @@ function MobileDrawer() {
           <Menu className="h-5 w-5" />
         </Button>
       </DrawerTrigger>
-      <DrawerContent className="bg-zinc-900 border-zinc-800">
-        <DrawerHeader className="border-b border-zinc-800/50">
-          <DrawerTitle className="text-zinc-100">Menu</DrawerTitle>
-          <DrawerDescription className="text-zinc-500">
-            Navegue pelas funcionalidades do sistema
-          </DrawerDescription>
+      <DrawerContent className="bg-zinc-950 border-zinc-800 max-h-[85vh]">
+        <DrawerHeader className="border-b border-zinc-800/50 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center">
+              <Scissors className="h-5 w-5 text-zinc-950" />
+            </div>
+            <div className="flex-1">
+              <DrawerTitle className="text-zinc-100 text-left">{currentTenant?.name || 'BarberFlow'}</DrawerTitle>
+              <DrawerDescription className="text-zinc-500 text-left text-xs">
+                {user?.email}
+              </DrawerDescription>
+            </div>
+          </div>
         </DrawerHeader>
-        <div className="p-4">
-          <div className="space-y-1">
+        <div className="p-3 overflow-y-auto flex-1">
+          <div className="space-y-0.5">
             {navigationItems.map((item) => {
               if (item.children) {
+                const isAnyChildActive = item.children.some(c => location.pathname === c.url);
                 return (
-                  <div key={item.title}>
-                    <p className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">{item.title}</p>
-                    {item.children.map((child) => {
-                      const isActive = location.pathname === child.url;
-                      return (
-                        <NavLink
-                          key={child.url}
-                          to={child.url}
-                          onClick={() => setOpen(false)}
-                          className={`flex items-center gap-3 p-3 pl-6 rounded-xl transition-all duration-200 ${
-                            isActive 
-                              ? 'bg-emerald-500/10 text-emerald-400' 
-                              : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50'
-                          }`}
-                        >
-                          <child.icon className="h-5 w-5" />
-                          <span className="font-medium">{child.title}</span>
-                        </NavLink>
-                      );
-                    })}
+                  <div key={item.title} className="mt-3 first:mt-0">
+                    <div className={`flex items-center gap-2.5 px-3 py-2 ${isAnyChildActive ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                      <item.icon className="h-4 w-4" />
+                      <span className="text-xs font-semibold uppercase tracking-wider">{item.title}</span>
+                    </div>
+                    <div className="ml-2 border-l border-zinc-800/60 pl-2 space-y-0.5">
+                      {item.children.map((child) => {
+                        const isActive = location.pathname === child.url;
+                        return (
+                          <NavLink
+                            key={child.url}
+                            to={child.url}
+                            onClick={() => setOpen(false)}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                              isActive 
+                                ? 'bg-emerald-500/10 text-emerald-400' 
+                                : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 active:bg-zinc-800'
+                            }`}
+                          >
+                            <child.icon className="h-4 w-4" />
+                            <span className="text-sm font-medium">{child.title}</span>
+                            {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+                          </NavLink>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               }
@@ -303,18 +319,29 @@ function MobileDrawer() {
                   key={item.title}
                   to={item.url}
                   onClick={() => setOpen(false)}
-                  className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${
                     isActive 
                       ? 'bg-emerald-500/10 text-emerald-400' 
-                      : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50'
+                      : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 active:bg-zinc-800'
                   }`}
                 >
-                  <item.icon className="h-5 w-5" />
-                  <span className="font-medium">{item.title}</span>
+                  <item.icon className="h-4 w-4" />
+                  <span className="text-sm font-medium">{item.title}</span>
+                  {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400" />}
                 </NavLink>
               );
             })}
           </div>
+        </div>
+        <div className="p-3 border-t border-zinc-800/50">
+          <Button 
+            variant="ghost" 
+            onClick={() => { signOut(); setOpen(false); }}
+            className="w-full justify-start text-zinc-400 hover:text-red-400 hover:bg-red-500/10 h-10"
+          >
+            <LogOut className="h-4 w-4 mr-3" />
+            <span className="text-sm">Sair da conta</span>
+          </Button>
         </div>
       </DrawerContent>
     </Drawer>
@@ -326,22 +353,26 @@ function BottomTabs() {
   const navigate = useNavigate();
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800/50 safe-area-pb">
-      <div className="grid grid-cols-4">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-950/95 backdrop-blur-xl border-t border-zinc-800/50 safe-area-pb z-50">
+      <div className="grid grid-cols-4 max-w-md mx-auto">
         {bottomTabItems.map((item) => {
-          const isActive = location.pathname === item.url;
+          const isActive = location.pathname === item.url || 
+            (item.url === "/app/finance" && location.pathname === "/app/commissions");
           return (
             <button
               key={item.title}
               onClick={() => navigate(item.url)}
-              className={`flex flex-col items-center gap-1 py-3 transition-colors ${
+              className={`flex flex-col items-center gap-0.5 py-2.5 transition-all duration-150 relative ${
                 isActive 
                   ? 'text-emerald-400' 
-                  : 'text-zinc-500'
+                  : 'text-zinc-600 active:text-zinc-300'
               }`}
             >
-              <item.icon className="h-5 w-5" />
-              <span className="text-xs font-medium">{item.title}</span>
+              {isActive && (
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-emerald-400 rounded-full" />
+              )}
+              <item.icon className={`h-5 w-5 ${isActive ? 'scale-105' : ''} transition-transform`} />
+              <span className="text-[10px] font-medium">{item.title}</span>
             </button>
           );
         })}
