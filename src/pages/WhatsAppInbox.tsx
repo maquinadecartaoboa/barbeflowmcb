@@ -172,6 +172,13 @@ export default function WhatsAppInbox() {
     if (currentTenant?.id) checkConnectionStatus();
   }, [currentTenant?.id, checkConnectionStatus]);
 
+  // Auto-open settings sheet when WhatsApp is not connected
+  useEffect(() => {
+    if (!connectionLoading && connectionStatus && !connectionStatus.connected) {
+      setSettingsOpen(true);
+    }
+  }, [connectionLoading, connectionStatus]);
+
   const syncMessages = async (remoteJid?: string) => {
     if (!currentTenant?.id) return;
 

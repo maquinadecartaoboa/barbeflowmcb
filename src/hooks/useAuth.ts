@@ -104,8 +104,14 @@ export const useAuth = () => {
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
+    // Use local scope to avoid invalidating sessions on other devices/tabs
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
     if (error) {
+      // If session is already invalid, just clear state locally
+      if (error.message?.includes('session_not_found') || error.status === 403) {
+        setAuthState({ user: null, session: null, loading: false });
+        return;
+      }
       toast({
         title: "Erro no logout",
         description: error.message,
