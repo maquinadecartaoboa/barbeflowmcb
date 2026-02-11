@@ -42,6 +42,7 @@ function canonicalPhone(phone: string): string {
 export function MyPackagesSection({ open, onOpenChange, tenant, slug }: MyPackagesSectionProps) {
   const { toast } = useToast();
   const [phone, setPhone] = useState('');
+  const [customerName, setCustomerName] = useState('');
   const [loading, setLoading] = useState(false);
   const [benefits, setBenefits] = useState<BenefitItem[]>([]);
   const [searched, setSearched] = useState(false);
@@ -70,14 +71,16 @@ export function MyPackagesSection({ open, onOpenChange, tenant, slug }: MyPackag
     try {
       // Find customer
       const { data: allCustomers } = await supabase
-        .from('customers').select('id, phone').eq('tenant_id', tenant.id);
+        .from('customers').select('id, phone, name').eq('tenant_id', tenant.id);
       const matched = allCustomers?.find(c => canonicalPhone(c.phone) === canonical);
 
       if (!matched) {
         setBenefits([]);
+        setCustomerName('');
         setLoading(false);
         return;
       }
+      setCustomerName(matched.name || '');
 
       const items: BenefitItem[] = [];
 
@@ -187,6 +190,8 @@ export function MyPackagesSection({ open, onOpenChange, tenant, slug }: MyPackag
             tenant={tenant}
             serviceId={bookingService.serviceId}
             serviceName={bookingService.serviceName}
+            customerPhone={phone.replace(/\D/g, '')}
+            customerName={customerName}
             customerPackageId={bookingService.customerPackageId}
             customerSubscriptionId={bookingService.customerSubscriptionId}
             benefitLabel={bookingService.benefitLabel}
