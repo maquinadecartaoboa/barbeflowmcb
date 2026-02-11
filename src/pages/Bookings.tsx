@@ -464,7 +464,12 @@ export default function Bookings() {
                           <div className="flex items-center gap-3">
                             <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: booking.service?.color || "#3B82F6" }} />
                             <div className="min-w-0">
-                              <p className="font-medium text-foreground truncate">{booking.customer?.name}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="font-medium text-foreground truncate">{booking.customer?.name}</p>
+                                {recurringCustomerIds.has(booking.customer_id) && (
+                                  <span className="flex-shrink-0 text-[9px] font-semibold bg-violet-500/20 text-violet-400 px-1.5 py-0.5 rounded">Fixo</span>
+                                )}
+                              </div>
                               <p className="text-sm text-muted-foreground">{booking.service?.name}</p>
                             </div>
                           </div>
@@ -507,7 +512,12 @@ export default function Bookings() {
                         ) : filteredBookings.map((booking) => (
                           <TableRow key={booking.id}>
                             <TableCell>
-                              <div className="font-medium">{booking.customer?.name}</div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-medium">{booking.customer?.name}</span>
+                                {recurringCustomerIds.has(booking.customer_id) && (
+                                  <span className="text-[9px] font-semibold bg-violet-500/20 text-violet-400 px-1.5 py-0.5 rounded">Fixo</span>
+                                )}
+                              </div>
                               <div className="text-sm text-muted-foreground flex items-center"><Phone className="h-3 w-3 mr-1" />{booking.customer?.phone}</div>
                             </TableCell>
                             <TableCell>
