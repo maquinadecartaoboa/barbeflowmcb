@@ -12,6 +12,25 @@ export interface SubscriptionData {
   cancel_at_period_end?: boolean;
 }
 
+const SHARED_FEATURES = [
+  "Agendamento online",
+  "Gestão de clientes",
+  "Financeiro completo",
+  "Notificações automáticas (WhatsApp e e-mail)",
+  "Página pública de agendamento",
+  "Pacotes e assinaturas",
+  "Pagamentos online",
+  "Relatórios",
+  "IA para melhoria de imagens",
+  "Order bump de produtos",
+  "Proteção contra cancelamentos",
+];
+
+const EXCLUSIVE_FEATURES = [
+  "Agendamento direto pelo WhatsApp (chatbot)",
+  "Domínio personalizado para página pública",
+];
+
 export const PLANS = {
   essencial: {
     product_id: "prod_Ty1Jvoc0qpDOUu",
@@ -28,20 +47,8 @@ export const PLANS = {
       display: "R$ 47,90/mês",
       display_yearly: "R$ 574,80/ano",
     },
-    features: [
-      "Agendamento online",
-      "Gestão de clientes",
-      "Financeiro completo",
-      "Notificações automáticas (WhatsApp e e-mail)",
-      "Página pública de agendamento",
-      "Pacotes e assinaturas",
-      "Pagamentos online",
-      "Relatórios",
-      "IA para melhoria de imagens",
-      "Order bump de produtos",
-      "Proteção contra cancelamentos",
-    ],
-    upgradeIncentive: "",
+    features: SHARED_FEATURES,
+    exclusiveFeatures: [] as string[],
   },
   profissional: {
     product_id: "prod_Ty1KYrBniQmXyi",
@@ -58,12 +65,8 @@ export const PLANS = {
       display: "R$ 71,90/mês",
       display_yearly: "R$ 862,80/ano",
     },
-    features: [
-      "Tudo do Essencial",
-      "Agendamento direto pelo WhatsApp (chatbot)",
-      "Domínio personalizado para página pública",
-    ],
-    upgradeIncentive: "A partir de R$ 2.000/mês em transações, o upgrade já se paga sozinho.",
+    features: SHARED_FEATURES,
+    exclusiveFeatures: EXCLUSIVE_FEATURES,
   },
 };
 
