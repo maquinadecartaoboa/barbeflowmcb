@@ -1,75 +1,61 @@
 
 
-# Corrigir configuracao de JWT nas Edge Functions
+# Notificacoes WhatsApp que estao faltando
 
-## Problema
+## Situacao atual
 
-O arquivo `supabase/config.toml` so lista 4 funcoes com `verify_jwt = false`. As demais funcoes -- incluindo `mp-webhook` -- usam o comportamento padrao que exige JWT valido. Como o Mercado Pago envia webhooks sem JWT, as chamadas sao rejeitadas com **401**.
+Eventos que JA enviam notificacao WhatsApp:
+- Agendamento confirmado (create-booking)
+- Lembrete de agendamento (send-booking-reminders, cron)
+- Agendamento cancelado (Bookings.tsx envia via send-whatsapp-notification)
+- Agendamento expirado por falta de pagamento (expire-pending-bookings)
+- Pagamento recebido (mp-webhook, pagamento avulso)
+- Assinatura ativada via cartao (mp-create-subscription)
 
-### Situacao atual do config.toml
+## Eventos que NAO notificam e podem ser adicionados
 
-```text
-Configuradas (verify_jwt = false):
-  - generate-cover
-  - mp-create-subscription
-  - mp-cancel-subscription
-  - mp-pause-subscription
+### 1. Assinatura cancelada
+- **Onde**: `mp-cancel-subscription/index.ts`
+- **Quando**: Admin cancela assinatura do cliente
+- **Mensagem**: Informar que a assinatura foi cancelada e convidar a reagendar
 
-NAO configuradas (rejeitam chamadas sem JWT):
-  - mp-webhook              <-- CAUSA DO PROBLEMA
-  - mp-create-checkout
-  - mp-oauth-callback
-  - mp-oauth-start
-  - mp-process-payment
-  - mp-get-public-key
-  - mp-disconnect
-  - whatsapp-webhook
-  - create-booking
-  - get-available-slots
-  - public-customer-bookings
-  - send-whatsapp-notification
-  - send-booking-reminders
-  - auto-complete-bookings
-  - expire-pending-bookings
-  - process-recurring-bookings
-  - wa-booking-engine
-  - whatsapp-send-message
-  - evolution-*
-```
+### 2. Assinatura pausada
+- **Onde**: `mp-pause-subscription/index.ts`
+- **Quando**: Admin pausa a assinatura
+- **Mensagem**: Informar que a assinatura foi pausada e que pode ser reativada
 
-## Correcao
+### 3. Assinatura renovada (pagamento recorrente aprovado)
+- **Onde**: `mp-webhook/index.ts` dentro de `handleSubscriptionPayment`
+- **Quando**: Mercado Pago cobra automaticamente e pagamento e aprovado
+- **Mensagem**: Informar que a renovacao foi processada, valor pago e nova validade (30 dias)
 
-### Arquivo: `supabase/config.toml`
+### 4. Assinatura ativada via redirect (checkout externo)
+- **Onde**: `mp-webhook/index.ts` dentro de `handleSubscriptionPreapproval`
+- **Quando**: Cliente assina via link de checkout MP (fluxo sem cartao in-site) e MP notifica ativacao
+- **Mensagem**: Mesma mensagem de ativacao que ja existe no fluxo de cartao
 
-Adicionar `verify_jwt = false` para TODAS as Edge Functions do projeto. Conforme a arquitetura ja documentada do projeto, todas as funcoes usam `verify_jwt = false` e tratam autenticacao internamente quando necessario.
+## Implementacao tecnica
 
-Funcoes que serao adicionadas ao config.toml:
+Todos os 4 casos seguem o mesmo padrao que ja existe em `mp-create-subscription`:
+1. Buscar dados do cliente e plano no banco
+2. Buscar conexao WhatsApp ativa do tenant
+3. Montar mensagem formatada
+4. Enviar para o `N8N_WEBHOOK_URL` com o payload padrao (type, phone, message, evolution_instance)
 
-- `mp-webhook` -- recebe webhooks do Mercado Pago (causa raiz do problema)
-- `mp-create-checkout` -- chamado pelo frontend publico
-- `mp-oauth-callback` -- callback OAuth do MP
-- `mp-oauth-start` -- inicio do fluxo OAuth
-- `mp-process-payment` -- processamento de pagamentos
-- `mp-get-public-key` -- chave publica MP
-- `mp-disconnect` -- desconectar MP
-- `whatsapp-webhook` -- recebe webhooks do WhatsApp
-- `create-booking` -- criacao de agendamentos
-- `get-available-slots` -- horarios disponiveis (publico)
-- `public-customer-bookings` -- dados do cliente (publico)
-- `send-whatsapp-notification` -- envio de notificacoes
-- `send-booking-reminders` -- lembretes automaticos
-- `auto-complete-bookings` -- completar agendamentos (cron)
-- `expire-pending-bookings` -- expirar pendentes (cron)
-- `process-recurring-bookings` -- agendamentos recorrentes
-- `wa-booking-engine` -- motor de agendamento WhatsApp
-- `whatsapp-send-message` -- envio de mensagens WhatsApp
-- `evolution-check-status` -- status Evolution API
-- `evolution-create-instance` -- criar instancia Evolution
-- `evolution-disconnect` -- desconectar Evolution
-- `evolution-get-qrcode` -- QR code Evolution
-- `evolution-sync-messages` -- sincronizar mensagens
+Nenhuma alteracao no n8n e necessaria -- o workflow existente ja aceita qualquer `type` e simplesmente encaminha a `message` para a Evolution API.
 
-### Impacto
+### Arquivos que serao editados
 
-Apenas a alteracao do `config.toml` -- nenhum codigo de funcao precisa ser modificado. Apos o deploy, o Mercado Pago conseguira enviar webhooks com sucesso para processar pagamentos e ativar assinaturas.
+| Arquivo | Notificacao adicionada |
+|---------|----------------------|
+| `supabase/functions/mp-cancel-subscription/index.ts` | Assinatura cancelada |
+| `supabase/functions/mp-pause-subscription/index.ts` | Assinatura pausada |
+| `supabase/functions/mp-webhook/index.ts` | Assinatura renovada + Assinatura ativada via redirect |
+
+### Detalhes
+
+- Cada funcao precisara buscar o `customer` (nome, telefone) e o `plan` (nome, preco) via join na subscription
+- A notificacao sera enviada APOS a atualizacao do status no banco, para nao bloquear o fluxo principal
+- Erros de notificacao serao logados mas nao impedirao o processamento (try/catch isolado, mesmo padrao atual)
+- As mensagens serao em portugues com emojis, seguindo o estilo existente
 
