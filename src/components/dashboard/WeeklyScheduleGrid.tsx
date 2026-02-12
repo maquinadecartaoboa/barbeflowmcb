@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, isToday as checkIsToday } from "date-fns";
+import { format, eachDayOfInterval, isSameDay, isToday as checkIsToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, Clock, ChevronRight } from "lucide-react";
@@ -47,9 +47,7 @@ const ease = [0.16, 1, 0.3, 1] as const;
 
 // --- Mobile: compact day list ---
 function MobileScheduleList({ bookings, dateRange, onSelectBooking }: WeeklyScheduleGridProps) {
-  const weekStart = startOfWeek(dateRange.from, { weekStartsOn: 0 });
-  const weekEnd = endOfWeek(dateRange.from, { weekStartsOn: 0 });
-  const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
+  const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
 
   const daysWithBookings = useMemo(() => {
     return days.map(day => ({
@@ -140,9 +138,7 @@ function MobileScheduleList({ bookings, dateRange, onSelectBooking }: WeeklySche
 
 // --- Desktop: full grid ---
 function DesktopScheduleGrid({ bookings, dateRange, onSelectBooking }: WeeklyScheduleGridProps) {
-  const weekStart = startOfWeek(dateRange.from, { weekStartsOn: 0 });
-  const weekEnd = endOfWeek(dateRange.from, { weekStartsOn: 0 });
-  const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
+  const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
 
   const bookingsByDay = useMemo(() => {
     const map = new Map<string, Booking[]>();
@@ -166,7 +162,7 @@ function DesktopScheduleGrid({ bookings, dateRange, onSelectBooking }: WeeklySch
   return (
     <>
       {/* Day headers */}
-      <div className="grid grid-cols-[50px_repeat(7,1fr)] border-b border-zinc-800/30">
+      <div className={`grid border-b border-zinc-800/30`} style={{ gridTemplateColumns: `50px repeat(${days.length}, 1fr)` }}>
         <div className="p-2" />
         {days.map((day) => {
           const isToday = checkIsToday(day);
@@ -191,7 +187,7 @@ function DesktopScheduleGrid({ bookings, dateRange, onSelectBooking }: WeeklySch
       </div>
 
       {/* Time grid */}
-      <div className="grid grid-cols-[50px_repeat(7,1fr)] relative" style={{ height: HOURS.length * SLOT_HEIGHT }}>
+      <div className="grid relative" style={{ gridTemplateColumns: `50px repeat(${days.length}, 1fr)`, height: HOURS.length * SLOT_HEIGHT }}>
         <div className="relative">
           {HOURS.map((hour) => (
             <div
@@ -260,8 +256,8 @@ function DesktopScheduleGrid({ bookings, dateRange, onSelectBooking }: WeeklySch
 
 export function WeeklyScheduleGrid({ bookings, dateRange, onSelectBooking }: WeeklyScheduleGridProps) {
   const isMobile = useIsMobile();
-  const weekStart = startOfWeek(dateRange.from, { weekStartsOn: 0 });
-  const weekEnd = endOfWeek(dateRange.from, { weekStartsOn: 0 });
+  const weekStart = dateRange.from;
+  const weekEnd = dateRange.to;
 
   return (
     <div className="rounded-2xl glass-panel overflow-hidden">
