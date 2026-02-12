@@ -1243,6 +1243,162 @@ export type Database = {
           },
         ]
       }
+      stripe_customers: {
+        Row: {
+          created_at: string
+          id: string
+          stripe_customer_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          stripe_customer_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          stripe_customer_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stripe_customers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stripe_invoices: {
+        Row: {
+          amount_due: number
+          amount_paid: number
+          created_at: string
+          currency: string
+          id: string
+          invoice_pdf: string | null
+          invoice_url: string | null
+          paid_at: string | null
+          period_end: string | null
+          period_start: string | null
+          status: string
+          stripe_invoice_id: string
+          tenant_id: string
+        }
+        Insert: {
+          amount_due: number
+          amount_paid?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          invoice_pdf?: string | null
+          invoice_url?: string | null
+          paid_at?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          status: string
+          stripe_invoice_id: string
+          tenant_id: string
+        }
+        Update: {
+          amount_due?: number
+          amount_paid?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          invoice_pdf?: string | null
+          invoice_url?: string | null
+          paid_at?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          status?: string
+          stripe_invoice_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stripe_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stripe_subscriptions: {
+        Row: {
+          additional_professionals: number
+          billing_interval: string
+          cancel_at_period_end: boolean | null
+          canceled_at: string | null
+          commission_rate: number
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          plan_name: string
+          status: string
+          stripe_price_id: string
+          stripe_subscription_id: string
+          tenant_id: string
+          trial_end: string | null
+          trial_start: string | null
+          updated_at: string
+        }
+        Insert: {
+          additional_professionals?: number
+          billing_interval: string
+          cancel_at_period_end?: boolean | null
+          canceled_at?: string | null
+          commission_rate?: number
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan_name: string
+          status?: string
+          stripe_price_id: string
+          stripe_subscription_id: string
+          tenant_id: string
+          trial_end?: string | null
+          trial_start?: string | null
+          updated_at?: string
+        }
+        Update: {
+          additional_professionals?: number
+          billing_interval?: string
+          cancel_at_period_end?: boolean | null
+          canceled_at?: string | null
+          commission_rate?: number
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan_name?: string
+          status?: string
+          stripe_price_id?: string
+          stripe_subscription_id?: string
+          tenant_id?: string
+          trial_end?: string | null
+          trial_start?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stripe_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_payments: {
         Row: {
           amount_cents: number
@@ -1500,6 +1656,7 @@ export type Database = {
           phone: string | null
           settings: Json | null
           slug: string
+          subscription_status: string | null
           updated_at: string
         }
         Insert: {
@@ -1513,6 +1670,7 @@ export type Database = {
           phone?: string | null
           settings?: Json | null
           slug: string
+          subscription_status?: string | null
           updated_at?: string
         }
         Update: {
@@ -1526,6 +1684,7 @@ export type Database = {
           phone?: string | null
           settings?: Json | null
           slug?: string
+          subscription_status?: string | null
           updated_at?: string
         }
         Relationships: []
