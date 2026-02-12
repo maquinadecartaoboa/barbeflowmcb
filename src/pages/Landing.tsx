@@ -13,6 +13,8 @@ import mobileMockup from "@/assets/mobile-mockup.png";
 import testimonialCarlos from "@/assets/testimonial-carlos.jpg";
 import testimonialRafael from "@/assets/testimonial-rafael.jpg";
 import testimonialAndre from "@/assets/testimonial-andre.jpg";
+import testimonialD from "@/assets/testimonial-d.jpg";
+import testimonialE from "@/assets/testimonial-e.jpg";
 
 const Landing = () => {
   const heroRef = useRef(null);
@@ -202,13 +204,8 @@ const Landing = () => {
           >
             <div className="flex items-center gap-3">
               <div className="flex -space-x-2">
-                {[testimonialCarlos, testimonialRafael, testimonialAndre].map((photo, i) => (
+                {[testimonialCarlos, testimonialRafael, testimonialAndre, testimonialD, testimonialE].map((photo, i) => (
                   <img key={i} src={photo} alt="" className="w-8 h-8 rounded-full border-2 border-zinc-900 object-cover" />
-                ))}
-                {[...Array(2)].map((_, i) => (
-                  <div key={`placeholder-${i}`} className="w-8 h-8 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 border-2 border-zinc-900 flex items-center justify-center text-[10px] font-bold text-zinc-400">
-                    {String.fromCharCode(68 + i)}
-                  </div>
                 ))}
               </div>
               <div>
