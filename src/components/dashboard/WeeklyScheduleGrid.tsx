@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { format, eachDayOfInterval, isSameDay, isToday as checkIsToday } from "date-fns";
+import { format, eachDayOfInterval, isSameDay, isToday as checkIsToday, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, Clock, ChevronRight } from "lucide-react";
@@ -138,7 +138,10 @@ function MobileScheduleList({ bookings, dateRange, onSelectBooking }: WeeklySche
 
 // --- Desktop: full grid ---
 function DesktopScheduleGrid({ bookings, dateRange, onSelectBooking }: WeeklyScheduleGridProps) {
-  const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
+  // Limit to max 7 days to prevent horizontal overflow
+  const MAX_DAYS = 7;
+  const allDays = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
+  const days = allDays.length > MAX_DAYS ? allDays.slice(-MAX_DAYS) : allDays;
 
   const bookingsByDay = useMemo(() => {
     const map = new Map<string, Booking[]>();
@@ -256,8 +259,11 @@ function DesktopScheduleGrid({ bookings, dateRange, onSelectBooking }: WeeklySch
 
 export function WeeklyScheduleGrid({ bookings, dateRange, onSelectBooking }: WeeklyScheduleGridProps) {
   const isMobile = useIsMobile();
-  const weekStart = dateRange.from;
-  const weekEnd = dateRange.to;
+  
+  // For display: show at most last 7 days
+  const allDays = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
+  const displayFrom = allDays.length > 7 ? allDays[allDays.length - 7] : dateRange.from;
+  const displayTo = dateRange.to;
 
   return (
     <div className="rounded-2xl glass-panel overflow-hidden">
@@ -269,7 +275,7 @@ export function WeeklyScheduleGrid({ bookings, dateRange, onSelectBooking }: Wee
           <div>
             <h2 className="text-sm font-bold text-zinc-100 tracking-tight">Agenda Semanal</h2>
             <p className="text-[11px] text-zinc-600">
-              {format(weekStart, "dd/MM", { locale: ptBR })} — {format(weekEnd, "dd/MM/yyyy", { locale: ptBR })}
+              {format(displayFrom, "dd/MM", { locale: ptBR })} — {format(displayTo, "dd/MM/yyyy", { locale: ptBR })}
             </p>
           </div>
         </div>
