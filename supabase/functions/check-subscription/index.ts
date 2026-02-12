@@ -70,7 +70,7 @@ serve(async (req) => {
       });
     }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-04-30.basil" });
 
     // Find Stripe customer
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
@@ -111,8 +111,18 @@ serve(async (req) => {
       commissionRate = 0.010;
     }
 
-    const subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
-    const trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
+    // Safe date helper — Stripe may return seconds (number) or ISO string depending on API version
+    const safeDate = (val: any): string | null => {
+      if (!val) return null;
+      try {
+        const d = typeof val === "number" ? new Date(val * 1000) : new Date(val);
+        if (isNaN(d.getTime())) return null;
+        return d.toISOString();
+      } catch { return null; }
+    };
+
+    const subscriptionEnd = safeDate(sub.current_period_end) ?? new Date().toISOString();
+    const trialEnd = safeDate(sub.trial_end);
 
     logStep("Subscription found", { status: sub.status, planName, subscriptionEnd });
 
@@ -125,12 +135,12 @@ serve(async (req) => {
       billing_interval: sub.items.data[0]?.price?.recurring?.interval || "month",
       status: sub.status,
       commission_rate: commissionRate,
-      trial_start: sub.trial_start ? new Date(sub.trial_start * 1000).toISOString() : null,
+      trial_start: safeDate(sub.trial_start),
       trial_end: trialEnd,
-      current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
+      current_period_start: safeDate(sub.current_period_start) ?? new Date().toISOString(),
       current_period_end: subscriptionEnd,
       cancel_at_period_end: sub.cancel_at_period_end,
-      canceled_at: sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null,
+      canceled_at: safeDate(sub.canceled_at),
       updated_at: new Date().toISOString(),
     }, { onConflict: "tenant_id" });
 
