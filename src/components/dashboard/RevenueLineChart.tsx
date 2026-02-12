@@ -54,9 +54,7 @@ export function RevenueLineChart({ bookings, dateRange }: RevenueLineChartProps)
             <p className="text-[10px] text-zinc-600">Acumulada no período</p>
           </div>
         </div>
-        <span className="text-lg font-bold text-emerald-400 tabular-nums">
-          R$ {data.length > 0 ? data[data.length - 1].cumulative.toLocaleString("pt-BR") : 0}
-        </span>
+        
       </div>
       <div className="p-3 md:p-4 h-44 md:h-48">
         <ResponsiveContainer width="100%" height="100%">
