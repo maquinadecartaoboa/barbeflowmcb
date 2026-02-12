@@ -89,9 +89,6 @@ export default function Bookings() {
   const [editStaff, setEditStaff] = useState<any[]>([]);
 
   // List view state
-  const [listBookings, setListBookings] = useState<any[]>([]);
-  const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
-  const [listLoading, setListLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -120,70 +117,33 @@ export default function Bookings() {
   useEffect(() => {
     if (prevModalOpen.current && !modalIsOpen) {
       refetch();
-      if (viewMode === "list") loadListData();
     }
     prevModalOpen.current = modalIsOpen;
   }, [modalIsOpen]);
 
-  // Load list view data
-  useEffect(() => {
-    if (viewMode === "list" && currentTenant) {
-      loadListData();
-    }
-  }, [viewMode, currentTenant, selectedDate]);
+  // Helper to check if a booking is virtual (recurring)
+  const isVirtualBooking = (bookingId: string) => bookingId.startsWith("recurring-");
 
-  useEffect(() => {
-    if (viewMode === "list") filterListBookings();
-  }, [listBookings, searchTerm, statusFilter]);
-
-  const loadListData = async () => {
-    if (!currentTenant) return;
-    setListLoading(true);
-    try {
-      const dateStr = format(selectedDate, "yyyy-MM-dd");
-      const dayStart = `${dateStr}T00:00:00-03:00`;
-      const dayEnd = `${dateStr}T23:59:59-03:00`;
-
-      const { data, error } = await supabase
-        .from("bookings")
-        .select(`*, service:services(name, color, duration_minutes, price_cents), staff:staff(name, color), customer:customers(name, phone, email)`)
-        .eq("tenant_id", currentTenant.id)
-        .gte("starts_at", dayStart)
-        .lte("starts_at", dayEnd)
-        .neq("status", "cancelled")
-        .order("starts_at", { ascending: true });
-
-      if (error) throw error;
-
-      const bookingIds = (data || []).map((b) => b.id);
-      let paymentsMap: Record<string, any> = {};
-      if (bookingIds.length > 0) {
-        const { data: payments } = await supabase.from("payments").select("*").in("booking_id", bookingIds);
-        if (payments) paymentsMap = payments.reduce((acc, p) => { acc[p.booking_id] = p; return acc; }, {} as Record<string, any>);
-      }
-
-      setListBookings((data || []).map((b) => ({ ...b, payment: paymentsMap[b.id] || null })));
-    } catch (err) {
-      console.error("Error loading list bookings:", err);
-    } finally {
-      setListLoading(false);
-    }
-  };
-
-  const filterListBookings = () => {
-    let filtered = [...listBookings];
+  // Filtered list from grid data (includes virtual recurring bookings)
+  const filteredBookings = useMemo(() => {
+    let filtered = [...gridBookings];
     if (searchTerm) {
+      const term = searchTerm.toLowerCase();
       filtered = filtered.filter((b) =>
-        b.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        b.customer?.name?.toLowerCase().includes(term) ||
         b.customer?.phone?.includes(searchTerm) ||
-        b.service?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+        b.service?.name?.toLowerCase().includes(term)
       );
     }
     if (statusFilter !== "all") filtered = filtered.filter((b) => b.status === statusFilter);
-    setFilteredBookings(filtered);
-  };
+    return filtered.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+  }, [gridBookings, searchTerm, statusFilter]);
 
   const updateBookingStatus = async (bookingId: string, newStatus: string) => {
+    if (isVirtualBooking(bookingId)) {
+      toast({ title: "Ação indisponível", description: "Este é um horário fixo virtual. Crie um agendamento real primeiro.", variant: "destructive" });
+      return;
+    }
     try {
       // If cancelling, check for benefit-linked booking and refund session
       if (newStatus === "cancelled") {
@@ -261,7 +221,7 @@ export default function Bookings() {
       setShowDetails(false);
       setSelectedBooking(null);
       refetch();
-      if (viewMode === "list") loadListData();
+      // Data refreshes via refetch() above
     } catch (err) {
       toast({ title: "Erro", description: "Erro ao atualizar status", variant: "destructive" });
     }
@@ -343,7 +303,7 @@ export default function Bookings() {
       setShowDetails(false);
       setEditMode(false);
       refetch();
-      if (viewMode === "list") loadListData();
+      // Data refreshes via refetch() above
     } catch (err: any) {
       toast({ title: "Erro", description: err.message || "Erro ao atualizar", variant: "destructive" });
     } finally {
@@ -362,7 +322,7 @@ export default function Bookings() {
 
   if (!currentTenant) return <NoTenantState />;
 
-  const loading = viewMode === "grid" ? gridLoading : listLoading;
+  const loading = gridLoading;
 
   const StaffFilter = () => (
     <div className="space-y-2">
@@ -593,8 +553,8 @@ export default function Bookings() {
                             </TableCell>
                             <TableCell><span className="font-medium">R$ {((booking.service?.price_cents || 0) / 100).toFixed(2)}</span></TableCell>
                             <TableCell>
-                              {booking.payment ? (
-                                <Badge variant={getPaymentStatusVariant(booking.payment)}>{getPaymentStatusLabel(booking.payment)}</Badge>
+                              {(booking as any).payment ? (
+                                <Badge variant={getPaymentStatusVariant((booking as any).payment)}>{getPaymentStatusLabel((booking as any).payment)}</Badge>
                               ) : (
                                 <span className="text-sm text-muted-foreground">No local</span>
                               )}
