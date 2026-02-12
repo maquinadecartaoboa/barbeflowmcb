@@ -26,7 +26,7 @@ serve(async (req) => {
 
     const { data: subscription, error: subError } = await supabase
       .from('customer_subscriptions')
-      .select('id, mp_preapproval_id, tenant_id, status')
+      .select('id, mp_preapproval_id, tenant_id, status, customer:customers(name, phone), plan:subscription_plans(name, price_cents, tenant:tenants(name, slug))')
       .eq('id', subscription_id)
       .single();
 
@@ -78,6 +78,49 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Failed to update subscription' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Send WhatsApp notification
+    try {
+      const customer = subscription.customer as any;
+      const plan = subscription.plan as any;
+      const tenantName = plan?.tenant?.name || 'BarberFlow';
+      const tenantSlug = plan?.tenant?.slug || '';
+
+      if (customer?.phone && plan) {
+        const { data: whatsappConn } = await supabase
+          .from('whatsapp_connections')
+          .select('evolution_instance_name, whatsapp_connected')
+          .eq('tenant_id', subscription.tenant_id)
+          .eq('whatsapp_connected', true)
+          .maybeSingle();
+
+        if (whatsappConn) {
+          let phone = customer.phone.replace(/\D/g, '');
+          if (!phone.startsWith('55')) phone = '55' + phone;
+
+          const message = `❌ *Assinatura Cancelada*\n\nOlá ${customer.name}!\n\nSua assinatura do plano *${plan.name}* foi cancelada.\n\nSe desejar, você pode assinar novamente a qualquer momento pelo nosso link de agendamento.\n\n${tenantName} agradece pela preferência! 🙏`;
+
+          const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL');
+          if (n8nWebhookUrl) {
+            const resp = await fetch(n8nWebhookUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'subscription_cancelled',
+                phone,
+                message,
+                evolution_instance: whatsappConn.evolution_instance_name,
+                tenant_id: subscription.tenant_id,
+                tenant_slug: tenantSlug,
+              }),
+            });
+            console.log('WhatsApp cancel notification sent, status:', resp.status);
+          }
+        }
+      }
+    } catch (notifErr) {
+      console.error('Error sending cancel WhatsApp notification:', notifErr);
     }
 
     return new Response(JSON.stringify({ success: true }), {
