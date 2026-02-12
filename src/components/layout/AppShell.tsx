@@ -527,7 +527,7 @@ export default function AppShell() {
           </header>
 
           {/* Mobile Content */}
-          <main className="pb-28 bg-zinc-950">
+          <main className="pb-28 bg-zinc-950 overflow-x-hidden">
             <div className="pt-3">
               <Outlet />
             </div>
@@ -579,7 +579,7 @@ export default function AppShell() {
             </header>
 
             {/* Desktop Content */}
-            <main className="flex-1 p-6 bg-zinc-950">
+            <main className="flex-1 p-4 md:p-6 bg-zinc-950 overflow-x-hidden">
               <Outlet />
             </main>
           </div>

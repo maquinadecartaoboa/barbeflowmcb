@@ -250,7 +250,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-5 px-4 md:px-0">
+    <div className="space-y-5 px-3 md:px-0 overflow-x-hidden">
       {/* Date Range */}
       <DateRangeSelector className="overflow-x-auto" />
 
