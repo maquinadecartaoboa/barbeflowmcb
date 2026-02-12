@@ -31,9 +31,17 @@ export const PLANS = {
     features: [
       "Agendamento online",
       "Gestão de clientes",
-      "Financeiro básico",
-      "Notificações por e-mail",
+      "Financeiro completo",
+      "Notificações automáticas (WhatsApp e e-mail)",
+      "Página pública de agendamento",
+      "Pacotes e assinaturas",
+      "Pagamentos online",
+      "Relatórios",
+      "IA para melhoria de imagens",
+      "Order bump de produtos",
+      "Proteção contra cancelamentos",
     ],
+    upgradeIncentive: "",
   },
   profissional: {
     product_id: "prod_Ty1KYrBniQmXyi",
@@ -52,12 +60,10 @@ export const PLANS = {
     },
     features: [
       "Tudo do Essencial",
-      "Pacotes e assinaturas via MP",
-      "Pagamentos online",
-      "Relatórios completos",
-      "Integração WhatsApp",
-      "Página pública personalizada",
+      "Agendamento direto pelo WhatsApp (chatbot)",
+      "Domínio personalizado para página pública",
     ],
+    upgradeIncentive: "A partir de R$ 2.000/mês em transações, o upgrade já se paga sozinho.",
   },
 };
 
