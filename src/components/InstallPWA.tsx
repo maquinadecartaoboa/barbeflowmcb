@@ -82,7 +82,7 @@ const InstallPWA = () => {
             </div>
             <div className="flex-1 pr-4">
               <p className="text-sm font-semibold text-foreground">
-                Instalar BarberFlow
+                Instalar modoGESTOR
               </p>
               {isIOS ? (
                 <p className="mt-1 text-xs text-muted-foreground leading-relaxed">

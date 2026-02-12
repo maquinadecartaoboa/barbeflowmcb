@@ -1,11 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Scissors, ArrowLeft, Mail, Lock, Sparkles } from "lucide-react";
+import { ArrowLeft, Mail, Lock, Sparkles } from "lucide-react";
 import { getPublicUrl } from "@/lib/hostname";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
+import logoBranca from "@/assets/modoGESTOR_branca.png";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -36,7 +37,7 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
       {/* Background gradient */}
-      <div className="fixed inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 pointer-events-none" />
+      <div className="fixed inset-0 bg-gradient-to-br from-yellow-500/5 via-transparent to-amber-500/5 pointer-events-none" />
       
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
@@ -60,10 +61,7 @@ const Login = () => {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-center mb-8"
         >
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl mb-4">
-            <Scissors className="h-7 w-7 text-zinc-950" />
-          </div>
-          <h1 className="text-2xl font-bold text-zinc-100">BarberFlow</h1>
+          <img src={logoBranca} alt="modoGESTOR" className="h-10 mx-auto mb-4" />
           <p className="text-zinc-500 mt-1">
             {isSignUp ? "Crie sua conta" : "Entre na sua conta"}
           </p>
@@ -82,7 +80,7 @@ const Login = () => {
             </h2>
             <p className="text-zinc-500 text-sm mt-1">
               {isSignUp 
-                ? "Crie sua conta para gerenciar sua barbearia" 
+                ? "Crie sua conta para gerenciar seu negócio" 
                 : "Entre com seus dados para acessar o painel"
               }
             </p>
@@ -102,7 +100,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="h-12 pl-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-500/50 focus:ring-emerald-500/20"
+                  className="h-12 pl-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 placeholder:text-zinc-600 focus:border-primary/50 focus:ring-primary/20"
                 />
               </div>
             </div>
@@ -120,7 +118,7 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="h-12 pl-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-500/50 focus:ring-emerald-500/20"
+                  className="h-12 pl-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 placeholder:text-zinc-600 focus:border-primary/50 focus:ring-primary/20"
                 />
               </div>
             </div>
@@ -129,7 +127,7 @@ const Login = () => {
               <div className="flex justify-end">
                 <a
                   href="/app/forgot-password"
-                  className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
+                  className="text-sm text-primary hover:text-primary-hover transition-colors"
                 >
                   Esqueci minha senha
                 </a>
@@ -140,7 +138,7 @@ const Login = () => {
               type="submit"
               size="lg"
               disabled={isLoading}
-              className="w-full h-12 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold"
+              className="w-full h-12 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold"
             >
               {isLoading 
                 ? (isSignUp ? "Criando conta..." : "Entrando...") 
@@ -155,7 +153,7 @@ const Login = () => {
               <button
                 type="button"
                 onClick={() => setIsSignUp(!isSignUp)}
-                className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+                className="text-primary hover:text-primary-hover font-medium transition-colors"
               >
                 {isSignUp ? "Fazer login" : "Criar conta"}
               </button>
@@ -171,8 +169,8 @@ const Login = () => {
           className="mt-6 bg-zinc-900/30 border border-zinc-800/30 rounded-xl p-5"
         >
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-emerald-400" />
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-primary" />
             </div>
             <p className="text-sm text-zinc-400">
               Quer testar antes?
@@ -182,9 +180,9 @@ const Login = () => {
             variant="ghost"
             size="sm" 
             className="w-full bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-zinc-100"
-            onClick={() => window.location.href = '/booking/barbearia-premium'}
+            onClick={() => window.location.href = '/booking/demo'}
           >
-            Ver Demo da Barbearia
+            Ver Demonstração
           </Button>
         </motion.div>
       </motion.div>

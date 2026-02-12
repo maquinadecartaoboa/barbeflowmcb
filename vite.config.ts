@@ -15,19 +15,19 @@ export default defineConfig(({ mode }) => ({
     mode === 'development' && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "icons/icon-192x192.png", "icons/icon-512x512.png"],
+      includeAssets: ["favicon.png", "icons/icon-192x192.png", "icons/icon-512x512.png"],
       workbox: {
         navigateFallbackDenylist: [/^\/~oauth/],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,jpg,webp,woff,woff2}"],
       },
       manifest: {
-        name: "BarberFlow - Agendamento para Barbearias",
-        short_name: "BarberFlow",
-        description: "Sistema completo de agendamento online para barbearias.",
+        name: "modoGESTOR - Gestão para Profissionais",
+        short_name: "modoGESTOR",
+        description: "Plataforma completa de gestão e agendamento online para profissionais de serviços.",
         start_url: "/",
         display: "standalone",
         background_color: "#0f0f11",
-        theme_color: "#10b981",
+        theme_color: "#FFC300",
         orientation: "portrait-primary",
         icons: [
           {
