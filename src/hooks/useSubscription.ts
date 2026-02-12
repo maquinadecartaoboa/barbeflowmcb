@@ -60,12 +60,24 @@ export const PLANS = {
   },
 };
 
+// Tenants isentos do fluxo de assinatura (slugs)
+const EXEMPT_TENANT_SLUGS = ["barbeariaws", "barberflow"];
+
 export function useSubscription() {
   const { currentTenant } = useTenant();
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const isExempt = EXEMPT_TENANT_SLUGS.some(
+    (slug) => currentTenant?.slug?.toLowerCase().startsWith(slug)
+  );
+
   const checkSubscription = useCallback(async () => {
+    if (isExempt) {
+      setSubscription({ subscribed: true, status: "active", plan_name: "profissional" });
+      setLoading(false);
+      return;
+    }
     try {
       const { data, error } = await supabase.functions.invoke("check-subscription");
       if (error) throw error;
@@ -76,7 +88,7 @@ export function useSubscription() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isExempt]);
 
   useEffect(() => {
     checkSubscription();
