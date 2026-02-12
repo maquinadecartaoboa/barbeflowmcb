@@ -15,6 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Plus, X, Upload, Loader2 } from "lucide-react";
+import { AiTextButton } from "@/components/AiContentButtons";
 
 interface PlanServiceItem {
   service_id: string;
@@ -171,6 +172,19 @@ export function SubscriptionPlanForm({ open, onOpenChange, plan, services, onSav
           <DialogTitle>{plan ? "Editar Plano" : "Novo Plano de Assinatura"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Nome e Descrição</span>
+            <AiTextButton
+              table="subscription_plans"
+              currentName={name}
+              currentDescription={description}
+              onResult={(title, desc) => {
+                setName(title);
+                setDescription(desc);
+              }}
+            />
+          </div>
+
           <div className="space-y-2">
             <Label>Nome do plano</Label>
             <Input placeholder="Ex: Plano Premium" value={name} onChange={(e) => setName(e.target.value)} />

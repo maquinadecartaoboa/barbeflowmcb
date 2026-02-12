@@ -44,6 +44,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { AiTextButton, AiGenerateImageButton } from "@/components/AiContentButtons";
 import {
   Form,
   FormControl,
@@ -407,6 +408,12 @@ export default function Services() {
                   </div>
                   
                   <div className="flex items-center space-x-1">
+                    <AiGenerateImageButton
+                      table="services"
+                      itemId={service.id}
+                      hasImage={!!service.photo_url}
+                      onGenerated={loadServices}
+                    />
                     {service.photo_url && (
                       <Button
                         variant="ghost"
@@ -500,6 +507,19 @@ export default function Services() {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Nome e Descrição</span>
+                <AiTextButton
+                  table="services"
+                  currentName={form.watch("name")}
+                  currentDescription={form.watch("description")}
+                  onResult={(title, desc) => {
+                    form.setValue("name", title);
+                    form.setValue("description", desc);
+                  }}
+                />
+              </div>
+
               <FormField
                 control={form.control}
                 name="name"
