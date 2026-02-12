@@ -77,7 +77,7 @@ export function BookingStatusChart({ allBookings, payments }: BookingStatusChart
                     <Cell key={i} fill={entry.color} fillOpacity={0.85} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string) => [`${value} (${((value / total) * 100).toFixed(0)}%)`, name]} />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: "hsl(240 5% 55%)", fontSize: 11 }} itemStyle={{ color: "hsl(240 5% 85%)", fontSize: 12, fontWeight: 600 }} formatter={(value: number, name: string) => [`${value} (${((value / total) * 100).toFixed(0)}%)`, name]} />
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

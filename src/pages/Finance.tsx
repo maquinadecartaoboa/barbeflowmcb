@@ -444,7 +444,7 @@ export default function Finance() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(240 4% 14%)" strokeOpacity={0.6} />
                   <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} tick={{ fontSize: 11, fill: "hsl(240 5% 40%)" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: "hsl(240 5% 40%)" }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`R$ ${(value / 100).toFixed(2)}`, "Faturamento"]} />
+                  <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: "hsl(240 5% 55%)", fontSize: 11 }} itemStyle={{ color: "hsl(160 84% 60%)", fontSize: 12, fontWeight: 700 }} formatter={(value: number) => [`R$ ${(value / 100).toFixed(2)}`, "Faturamento"]} cursor={{ fill: "hsl(0 0% 100% / 0.06)" }} />
                   <Bar dataKey="revenue" radius={[8, 8, 0, 0]}>
                     {(data?.top_services || []).map((_, index) => (
                       <Cell key={index} fill={`url(#barGrad${index % COLORS.length})`} />
