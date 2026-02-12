@@ -108,26 +108,38 @@ Enhance the overall quality while keeping the original subject intact.`,
 Enhance quality and presentation while keeping the original subject.`,
     };
 
-    // Call Google Gemini API directly
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_GEMINI_API_KEY}`;
+    // Call Lovable AI Gateway for image editing
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      return new Response(JSON.stringify({ error: 'LOVABLE_API_KEY not configured' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    const aiResponse = await fetch(geminiUrl, {
+    const sourceDataUrl = `data:${contentType};base64,${imgBase64}`;
+
+    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompts[finalTable] },
-            { inlineData: { mimeType: contentType, data: imgBase64 } },
+        model: 'google/gemini-2.5-flash-image',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: prompts[finalTable] },
+            { type: 'image_url', image_url: { url: sourceDataUrl } },
           ],
         }],
-        generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
+        modalities: ['image', 'text'],
       }),
     });
 
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
-      console.error('Gemini API error:', aiResponse.status, errText);
+      console.error('AI Gateway error:', aiResponse.status, errText);
       if (aiResponse.status === 429) {
         return new Response(JSON.stringify({ error: 'Limite de requisições excedido. Tente novamente em alguns segundos.' }), {
           status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -140,27 +152,22 @@ Enhance quality and presentation while keeping the original subject.`,
 
     const aiData = await aiResponse.json();
 
-    // Extract generated image
-    let generatedImageData: string | null = null;
-    let generatedMimeType = 'image/png';
-
-    for (const candidate of (aiData.candidates || [])) {
-      for (const part of (candidate.content?.parts || [])) {
-        if (part.inlineData) {
-          generatedImageData = part.inlineData.data;
-          generatedMimeType = part.inlineData.mimeType || 'image/png';
-          break;
-        }
-      }
-      if (generatedImageData) break;
-    }
-
-    if (!generatedImageData) {
-      console.error('No image in Gemini response:', JSON.stringify(aiData).substring(0, 500));
+    const imageUrl = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    if (!imageUrl || !imageUrl.startsWith('data:image')) {
+      console.error('No image in AI response:', JSON.stringify(aiData).substring(0, 500));
       return new Response(JSON.stringify({ error: 'IA não retornou imagem' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const base64Match = imageUrl.match(/^data:image\/(png|jpeg|webp);base64,(.+)$/);
+    if (!base64Match) {
+      return new Response(JSON.stringify({ error: 'Formato de imagem inválido' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const generatedMimeType = `image/${base64Match[1]}`;
+    const generatedImageData = base64Match[2];
 
     // Upload to storage
     const binaryData = Uint8Array.from(atob(generatedImageData), c => c.charCodeAt(0));
