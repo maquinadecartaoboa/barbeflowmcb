@@ -11,17 +11,17 @@
  * In development/preview, all routes use the /app prefix.
  */
 
-const DASHBOARD_HOST = 'app.modogestor.com.br';
-const PUBLIC_HOST = 'modogestor.com.br';
+const DASHBOARD_HOSTS = ['app.modogestor.com.br', 'app.barberflow.store'];
+const PUBLIC_HOSTS = ['modogestor.com.br', 'barberflow.store'];
 
 export function isDashboardDomain(): boolean {
   const host = window.location.hostname;
-  return host === DASHBOARD_HOST;
+  return DASHBOARD_HOSTS.includes(host);
 }
 
 export function isPublicDomain(): boolean {
   const host = window.location.hostname;
-  return host === PUBLIC_HOST || host === `www.${PUBLIC_HOST}`;
+  return PUBLIC_HOSTS.includes(host) || PUBLIC_HOSTS.some(h => host === `www.${h}`);
 }
 
 export function isPreviewOrLocal(): boolean {
@@ -44,13 +44,12 @@ export function dashPath(path: string): string {
 /** Returns the full URL for the dashboard domain */
 export function getDashboardUrl(path = ''): string {
   if (isPreviewOrLocal()) return path || '/app/login';
-  // Remove /app prefix for the dashboard domain
   const cleanPath = path.replace(/^\/app/, '') || '/login';
-  return `https://${DASHBOARD_HOST}${cleanPath}`;
+  return `https://${DASHBOARD_HOSTS[0]}${cleanPath}`;
 }
 
 /** Returns the full URL for the public domain */
 export function getPublicUrl(path = ''): string {
   if (isPreviewOrLocal()) return path || '/';
-  return `https://${PUBLIC_HOST}${path}`;
+  return `https://${PUBLIC_HOSTS[0]}${path}`;
 }
