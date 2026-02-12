@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Calendar, Users, Clock, Shield, Smartphone, CreditCard, ArrowRight, Check, Sparkles, BarChart3, Zap, Star, ChevronRight, Play, TrendingUp, MessageCircle, LayoutDashboard, Minus, Globe, UserPlus, Settings, CalendarCheck } from "lucide-react";
+import { Calendar, Users, Clock, Shield, Smartphone, CreditCard, ArrowRight, Check, Sparkles, BarChart3, Zap, Star, ChevronRight, Play, TrendingUp, MessageCircle, LayoutDashboard, Minus, Globe, UserPlus, Settings, CalendarCheck, Crown } from "lucide-react";
+import { PLANS } from "@/hooks/useSubscription";
+import { Badge } from "@/components/ui/badge";
 import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { getDashboardUrl, getPublicUrl } from "@/lib/hostname";
 import { useRef, useState } from "react";
@@ -469,7 +471,7 @@ const Landing = () => {
                 onClick={() => setBillingCycle('monthly')}
                 className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   billingCycle === 'monthly'
-                    ? 'bg-zinc-800 text-zinc-100 shadow-sm'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-zinc-500 hover:text-zinc-300'
                 }`}
               >
@@ -479,19 +481,19 @@ const Landing = () => {
                 onClick={() => setBillingCycle('annual')}
                 className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
                   billingCycle === 'annual'
-                    ? 'bg-zinc-800 text-zinc-100 shadow-sm'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-zinc-500 hover:text-zinc-300'
                 }`}
               >
                 Anual
-                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">
-                  -20%
-                </span>
+                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-[10px]">
+                  2 meses grátis
+                </Badge>
               </button>
             </div>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-5 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-5 max-w-3xl mx-auto">
             {/* Essencial */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -500,46 +502,37 @@ const Landing = () => {
               transition={{ delay: 0.1 }}
               className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800/40 flex flex-col"
             >
-              <p className="text-sm font-semibold text-zinc-300 mb-1">Essencial</p>
-              <p className="text-zinc-500 text-xs mb-5">Para profissionais que querem digitalizar a operação</p>
-              <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-4xl font-bold text-zinc-100">
-                  R$ {billingCycle === 'monthly' ? '59,90' : '47,90'}
-                </span>
-                <span className="text-zinc-500 text-sm">/mês</span>
+              <p className="text-lg font-semibold text-zinc-100 mb-3">Essencial</p>
+              <div className="mb-1">
+                {billingCycle === 'annual' ? (
+                  <>
+                    <span className="text-sm text-zinc-500 line-through">R$ 59,90/mês</span>{" "}
+                    <span className="text-3xl font-bold text-zinc-100">R$ 47,90</span>
+                    <span className="text-zinc-400 text-sm">/mês</span>
+                    <p className="text-xs text-zinc-500 mt-1">Cobrado R$ 574,80/ano</p>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-3xl font-bold text-zinc-100">R$ 59,90</span>
+                    <span className="text-zinc-400 text-sm">/mês</span>
+                  </>
+                )}
               </div>
-              {billingCycle === 'annual' && (
-                <p className="text-primary text-xs mb-4">
-                  R$ 574,80/ano — economia de R$ 143,40
-                </p>
-              )}
-              <div className="flex items-center gap-2 mt-2 mb-6 px-3 py-2 rounded-lg bg-amber-500/[0.06] border border-amber-500/15">
-                <span className="text-amber-400 text-sm font-semibold">2,5%</span>
-                <span className="text-zinc-400 text-xs">por transação processada</span>
-              </div>
-              <ul className="space-y-3 mb-8 flex-1">
-                {[
-                  "Agendamento online 24/7",
-                  "Gestão de clientes",
-                  "Financeiro completo",
-                  "Notificações WhatsApp e e-mail",
-                  "Pacotes de serviços",
-                  "Assinaturas recorrentes",
-                  "Pagamento online (PIX/Cartão)",
-                  "Taxa de cancelamento (50%)",
-                  "Relatórios completos",
-                  "Página pública de agendamento",
-                  "1 profissional incluso",
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2.5 text-sm text-zinc-300">
-                    <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                    {item}
+              <ul className="space-y-2.5 my-6 flex-1">
+                {PLANS.essencial.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-zinc-300">
+                    <Check className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                    {f}
                   </li>
                 ))}
               </ul>
+              <div className="space-y-0.5 mb-6">
+                <p className="text-xs text-zinc-500">Taxa sobre transações: {PLANS.essencial.commission}</p>
+                <p className="text-[11px] text-zinc-600 leading-tight">{PLANS.essencial.commissionNote}</p>
+              </div>
               <a href={getDashboardUrl('/app/register')}>
                 <Button variant="outline" className="w-full rounded-xl h-12 border-zinc-700/50 text-zinc-100 hover:bg-zinc-800 font-semibold">
-                  Começar 14 dias grátis
+                  Escolher
                 </Button>
               </a>
             </motion.div>
@@ -553,93 +546,72 @@ const Landing = () => {
               className="relative p-8 rounded-2xl bg-zinc-900/60 border border-primary/30 shadow-xl shadow-primary/5 flex flex-col"
             >
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="px-4 py-1 rounded-full bg-primary text-primary-foreground text-xs font-bold shadow-lg shadow-primary/25">
-                  Mais popular
-                </span>
+                <Badge className="bg-primary text-primary-foreground">
+                  <Star className="h-3 w-3 mr-1" />
+                  Recomendado
+                </Badge>
               </div>
-              <p className="text-sm font-semibold text-primary mb-1">Profissional</p>
-              <p className="text-zinc-500 text-xs mb-5">Para quem quer escalar e pagar menos por transação</p>
-              <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-4xl font-bold text-zinc-100">
-                  R$ {billingCycle === 'monthly' ? '89,90' : '71,90'}
-                </span>
-                <span className="text-zinc-500 text-sm">/mês</span>
+              <p className="text-lg font-semibold text-zinc-100 mb-3">Profissional</p>
+              <div className="mb-1">
+                {billingCycle === 'annual' ? (
+                  <>
+                    <span className="text-sm text-zinc-500 line-through">R$ 89,90/mês</span>{" "}
+                    <span className="text-3xl font-bold text-zinc-100">R$ 71,90</span>
+                    <span className="text-zinc-400 text-sm">/mês</span>
+                    <p className="text-xs text-zinc-500 mt-1">Cobrado R$ 862,80/ano</p>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-3xl font-bold text-zinc-100">R$ 89,90</span>
+                    <span className="text-zinc-400 text-sm">/mês</span>
+                  </>
+                )}
               </div>
-              {billingCycle === 'annual' && (
-                <p className="text-primary text-xs mb-4">
-                  R$ 862,80/ano — economia de R$ 215,40
-                </p>
-              )}
-              <div className="flex items-center gap-2 mt-2 mb-6 px-3 py-2 rounded-lg bg-primary/[0.06] border border-primary/15">
-                <span className="text-primary text-sm font-semibold">1,0%</span>
-                <span className="text-zinc-400 text-xs">por transação processada</span>
-              </div>
-              <ul className="space-y-3 mb-8 flex-1">
-                {[
-                  "Tudo do plano Essencial",
-                  "Agendamento direto pelo WhatsApp",
-                  "Domínio personalizado",
-                  "Taxa de transação 60% menor",
-                  "1 profissional incluso",
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2.5 text-sm text-zinc-300">
-                    <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                    {item}
+              <ul className="space-y-2.5 my-6 flex-1">
+                {PLANS.profissional.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-zinc-300">
+                    <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    {f}
                   </li>
                 ))}
-                {/* Exclusive features highlighted */}
-                <li className="flex items-start gap-2.5 text-sm text-yellow-200/90 pt-2 border-t border-zinc-800/40">
-                  <MessageCircle className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                  Chatbot de agendamento via WhatsApp
-                </li>
-                <li className="flex items-start gap-2.5 text-sm text-yellow-200/90">
-                  <Globe className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                  meunegocio.modogestor.com.br
-                </li>
               </ul>
+              {PLANS.profissional.exclusiveFeatures.length > 0 && (
+                <>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="flex-1 h-px bg-primary/20" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/70">Exclusivo do Profissional</span>
+                    <div className="flex-1 h-px bg-primary/20" />
+                  </div>
+                  <ul className="space-y-2.5 mb-6">
+                    {PLANS.profissional.exclusiveFeatures.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-sm text-zinc-300">
+                        <Star className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              <div className="space-y-0.5 mb-6">
+                <p className="text-xs text-zinc-500">Taxa sobre transações: {PLANS.profissional.commission}</p>
+                <p className="text-[11px] text-zinc-600 leading-tight">{PLANS.profissional.commissionNote}</p>
+              </div>
               <a href={getDashboardUrl('/app/register')}>
                 <Button className="w-full rounded-xl h-12 bg-primary hover:bg-primary-hover text-primary-foreground font-bold shadow-lg shadow-primary/20">
-                  Começar 14 dias grátis
+                  <Crown className="h-4 w-4 mr-2" />
+                  Começar grátis
                 </Button>
               </a>
             </motion.div>
           </div>
 
-          {/* Additional staff pricing */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.3 }}
-            className="max-w-4xl mx-auto mt-6 text-center"
-          >
-            <div className="inline-flex items-center gap-3 px-5 py-3 rounded-xl bg-zinc-900/40 border border-zinc-800/40 text-sm">
-              <Users className="h-4 w-4 text-zinc-400" />
-              <span className="text-zinc-400">Profissional adicional:</span>
-              <span className="font-semibold text-zinc-200">+R$ 24,90/mês</span>
-            </div>
-          </motion.div>
-
-          {/* Break-even callout */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.4 }}
-            className="max-w-3xl mx-auto mt-8 p-5 rounded-2xl bg-gradient-to-r from-primary/[0.04] to-transparent border border-primary/10"
-          >
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <TrendingUp className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-zinc-200 mb-1">Quando o upgrade se paga sozinho?</p>
-                <p className="text-xs text-zinc-400 leading-relaxed">
-                  Acima de <span className="text-primary font-semibold">R$ 2.000/mês</span> em transações, o Profissional fica mais barato que o Essencial — e ainda inclui agendamento pelo WhatsApp e domínio próprio.
-                </p>
-              </div>
-            </div>
-          </motion.div>
+          {/* Footer info */}
+          <div className="text-center mt-8 space-y-1">
+            <p className="text-xs text-zinc-500 font-medium">+R$ 24,90/mês por profissional adicional</p>
+            <p className="text-xs text-zinc-600">
+              Após 14 dias, a cobrança é automática. Cancele quando quiser pelo painel.
+            </p>
+          </div>
         </div>
       </section>
 
