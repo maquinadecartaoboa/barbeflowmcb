@@ -157,6 +157,9 @@ export default function Onboarding() {
                 <p className="text-xs text-zinc-500">Taxa sobre transações: {PLANS.profissional.commission}</p>
                 <p className="text-[11px] text-zinc-600 leading-tight">{PLANS.profissional.commissionNote}</p>
               </div>
+              {PLANS.profissional.upgradeIncentive && (
+                <p className="text-xs text-emerald-400/80 leading-tight font-medium">{PLANS.profissional.upgradeIncentive}</p>
+              )}
               <Button
                 onClick={() => handleSubscribe("profissional")}
                 disabled={!!checkoutLoading}
@@ -173,9 +176,12 @@ export default function Onboarding() {
           </Card>
         </div>
 
-        <p className="text-center text-xs text-zinc-600">
-          Após 14 dias, a cobrança é automática. Cancele quando quiser pelo painel.
-        </p>
+        <div className="text-center space-y-1">
+          <p className="text-xs text-zinc-500 font-medium">+R$ 24,90/mês por profissional adicional</p>
+          <p className="text-xs text-zinc-600">
+            Após 14 dias, a cobrança é automática. Cancele quando quiser pelo painel.
+          </p>
+        </div>
       </div>
     </div>
   );

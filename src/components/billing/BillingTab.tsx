@@ -361,6 +361,9 @@ export function BillingTab() {
               <p className="text-xs text-muted-foreground">Taxa sobre transações: {PLANS.profissional.commission}</p>
               <p className="text-[11px] text-muted-foreground/60 leading-tight">{PLANS.profissional.commissionNote}</p>
             </div>
+            {PLANS.profissional.upgradeIncentive && (
+              <p className="text-xs text-emerald-400/80 leading-tight font-medium">{PLANS.profissional.upgradeIncentive}</p>
+            )}
             <Button
               onClick={() => handleSubscribe("profissional")}
               disabled={!!checkoutLoading}
