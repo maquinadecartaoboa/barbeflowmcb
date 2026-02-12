@@ -1,54 +1,83 @@
 
+# Correções na Integracão Mercado Pago -- Assinaturas
 
-# Corrigir fluxo de assinatura publica -- erro 401 ao criar cliente
+## Diagnostico
 
-## Problema
+- Os tokens MP estao validos (nao expirados) para todos os tenants
+- Existem 2 subscriptions "pending" sem `checkout_url` nem `mp_preapproval_id` -- a chamada ao MP falhou
+- Nao ha logs da Edge Function `mp-create-subscription` -- possivelmente a funcao nao foi deployada ou o erro ocorre no invoke do frontend (ex: FunctionsHttpError tratado incorretamente)
+- A rota `/:slug/subscription/callback` e o componente `SubscriptionCallback.tsx` ja existem no codigo
+- O secret `FRONT_BASE_URL` ja esta configurado
 
-O componente `SubscriptionPurchaseFlow` tenta buscar e criar clientes diretamente pelo frontend usando o cliente Supabase com chave anon. A politica RLS da tabela `customers` so permite SELECT para usuarios autenticados do tenant (`user_belongs_to_tenant`), causando erro 401 para visitantes publicos.
+## Plano de Correcoes
 
-## Solucao
+### 1. Edge Function `mp-create-subscription` -- Melhorar diagnostico e robustez
 
-Mover a logica de buscar/criar cliente para dentro da Edge Function `mp-create-subscription`, que ja usa `SUPABASE_SERVICE_ROLE_KEY` e tem acesso total.
+**Arquivo:** `supabase/functions/mp-create-subscription/index.ts`
 
-## Mudancas
+Alteracoes:
+- Substituir validacao generica por validacao campo a campo com log dos campos faltantes
+- Na busca da conexao MP: incluir `token_expires_at` no select, validar token nao-vazio e nao-expirado, com mensagens de erro claras em portugues
+- Apos chamada ao MP: tratar status 401 separadamente (token expirado/invalido)
+- Alterar fallback do `FRONT_BASE_URL` para `https://www.barberflow.store`
 
-### 1. Edge Function `mp-create-subscription` (supabase/functions/mp-create-subscription/index.ts)
+### 2. Frontend `SubscriptionPurchaseFlow` -- Extrair mensagem real do erro
 
-- Aceitar campos `customer_name`, `customer_phone`, `customer_email` e `tenant_id` no body, alem de `plan_id`
-- Adicionar logica de find-or-create customer (mesma logica de `create-booking`: normalizar telefone, buscar existente, criar se nao existir)
-- Criar o registro `customer_subscriptions` dentro da Edge Function (ao inves de no frontend)
-- Manter o fluxo existente de criar preapproval no Mercado Pago
+**Arquivo:** `src/components/public/SubscriptionPurchaseFlow.tsx`
 
-O body passara a ser:
+Alteracoes:
+- No catch do `handleSubscribe`: extrair a mensagem do `data?.error` quando `supabase.functions.invoke` retorna erro HTTP (o body com a mensagem real fica em `data`)
+- Adicionar `console.error` para debug
+- Melhorar texto do toast de erro
+
+### 3. Edge Function `mp-webhook` -- Melhorar busca de subscription no pagamento recorrente
+
+**Arquivo:** `supabase/functions/mp-webhook/index.ts`
+
+Alteracoes:
+- Na funcao `handleSubscriptionPayment` (linha 403): adicionar `mpPaymentData.preapproval_id` como fallback para encontrar o `preapproval_id`
+- Adicionar log do campo encontrado
+
+### 4. Deploy das Edge Functions
+
+Deployar `mp-create-subscription` e `mp-webhook` apos as correcoes.
+
+### 5. Instrucao manual para o usuario
+
+Informar sobre a necessidade de configurar os topicos de webhook no painel do Mercado Pago:
+- URL: `https://iagzodcwctvydmgrwjsy.supabase.co/functions/v1/mp-webhook`
+- Eventos: `subscription_preapproval` e `subscription_authorized_payment`
+
+---
+
+## Detalhes Tecnicos
+
+### mp-create-subscription -- Validacao detalhada
 ```text
-{
-  tenant_id: string,
-  plan_id: string,
-  customer_name: string,
-  customer_phone: string,
-  customer_email: string
-}
+- Listar campos faltantes individualmente
+- Logar tenant_id na busca da conexao MP
+- Verificar access_token nao-vazio
+- Verificar token_expires_at nao expirado
+- Tratar mpResponse.status === 401
+- Fallback FRONT_BASE_URL -> https://www.barberflow.store
 ```
 
-Ao inves do atual `{ subscription_id }`.
-
-### 2. Frontend `SubscriptionPurchaseFlow` (src/components/public/SubscriptionPurchaseFlow.tsx)
-
-- Remover toda a logica de buscar/criar cliente (queries diretas a `customers`)
-- Remover a criacao de `customer_subscriptions` no frontend
-- Chamar `mp-create-subscription` passando os dados do cliente e do plano diretamente
-- A Edge Function retorna `checkout_url` e o frontend redireciona
-
-O fluxo simplificado sera:
+### SubscriptionPurchaseFlow -- Tratamento de erro
 ```text
-1. Usuario preenche nome, telefone, email
-2. Frontend chama mp-create-subscription com os dados
-3. Edge Function cria/encontra cliente, cria subscription, cria preapproval no MP
-4. Retorna checkout_url
-5. Frontend redireciona para MP
+- Quando supabase.functions.invoke retorna error (FunctionsHttpError),
+  o body da resposta com a mensagem real pode estar em data?.error
+- Extrair: data?.error || error.message
+- Logar erro completo no console
 ```
 
-### 3. Manter compatibilidade
+### mp-webhook -- Fallback preapproval_id
+```text
+Linha 403: adicionar || mpPaymentData.preapproval_id ao chain de resolucao
+```
 
-- O `PackagePurchaseFlow` tem o mesmo problema (queries diretas a customers), mas como a tabela `customers` tem INSERT publico permitido (`Public insert customers` policy com `true`), o INSERT funciona. O SELECT que falha e o de busca. Porem, o escopo desta correcao e apenas o fluxo de assinatura conforme solicitado.
+### Arquivos alterados
+1. `supabase/functions/mp-create-subscription/index.ts`
+2. `src/components/public/SubscriptionPurchaseFlow.tsx`
+3. `supabase/functions/mp-webhook/index.ts`
 
+Nenhuma migration necessaria. Nenhum componente novo.
