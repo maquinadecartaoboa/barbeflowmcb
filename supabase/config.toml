@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.evolution-sync-messages]
 verify_jwt = false
+
+[functions.enhance-product-image]
+verify_jwt = false
