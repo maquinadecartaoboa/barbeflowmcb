@@ -357,13 +357,27 @@ export function BillingTab() {
                 </li>
               ))}
             </ul>
+            {PLANS.profissional.exclusiveFeatures.length > 0 && (
+              <>
+                <div className="flex items-center gap-2 pt-1">
+                  <div className="flex-1 h-px bg-primary/20" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/70">Exclusivo do Profissional</span>
+                  <div className="flex-1 h-px bg-primary/20" />
+                </div>
+                <ul className="space-y-2">
+                  {PLANS.profissional.exclusiveFeatures.map((f) => (
+                    <li key={f} className="flex items-center gap-2 text-sm">
+                      <Star className="h-4 w-4 text-amber-400 shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
             <div className="space-y-0.5">
               <p className="text-xs text-muted-foreground">Taxa sobre transações: {PLANS.profissional.commission}</p>
               <p className="text-[11px] text-muted-foreground/60 leading-tight">{PLANS.profissional.commissionNote}</p>
             </div>
-            {PLANS.profissional.upgradeIncentive && (
-              <p className="text-xs text-emerald-400/80 leading-tight font-medium">{PLANS.profissional.upgradeIncentive}</p>
-            )}
             <Button
               onClick={() => handleSubscribe("profissional")}
               disabled={!!checkoutLoading}
