@@ -36,7 +36,7 @@ export function ClientRevenuePanel({ bookings, totalRevenue }: ClientRevenuePane
       className="rounded-2xl glass-panel overflow-hidden"
     >
       {/* Header with total */}
-      <div className="px-5 py-4 border-b border-zinc-800/30">
+      <div className="px-4 md:px-5 py-3 md:py-4 border-b border-zinc-800/30">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 flex items-center justify-center">
             <TrendingUp className="h-5 w-5 text-emerald-400" />

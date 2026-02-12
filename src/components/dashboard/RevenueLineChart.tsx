@@ -44,7 +44,7 @@ export function RevenueLineChart({ bookings, dateRange }: RevenueLineChartProps)
       transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
       className="rounded-2xl glass-panel overflow-hidden"
     >
-      <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800/30">
+      <div className="flex items-center justify-between px-4 md:px-5 py-3 md:py-4 border-b border-zinc-800/30">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center">
             <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
@@ -58,9 +58,9 @@ export function RevenueLineChart({ bookings, dateRange }: RevenueLineChartProps)
           R$ {data.length > 0 ? data[data.length - 1].cumulative.toLocaleString("pt-BR") : 0}
         </span>
       </div>
-      <div className="p-4 h-48">
+      <div className="p-3 md:p-4 h-44 md:h-48">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+          <AreaChart data={data} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
             <defs>
               <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="hsl(160 84% 39%)" stopOpacity={0.3} />

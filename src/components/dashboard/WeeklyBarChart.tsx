@@ -25,14 +25,14 @@ export function WeeklyBarChart({ bookings, dateRange }: WeeklyBarChartProps) {
   const maxCount = Math.max(...data.map(d => d.count), 1);
 
   return (
-    <div className="rounded-2xl glass-panel p-5">
+    <div className="rounded-2xl glass-panel p-4 md:p-5">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center">
           <BarChart3 className="h-3.5 w-3.5 text-emerald-400" />
         </div>
         <h3 className="text-sm font-bold text-zinc-100 tracking-tight">Volume Semanal</h3>
       </div>
-      <div className="flex items-end gap-2 h-32">
+      <div className="flex items-end gap-1.5 md:gap-2 h-28 md:h-32">
         {data.map((d, i) => {
           const pct = (d.count / maxCount) * 100;
           const isToday = format(d.day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
