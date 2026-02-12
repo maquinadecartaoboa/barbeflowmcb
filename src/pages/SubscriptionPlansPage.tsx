@@ -75,7 +75,16 @@ export default function SubscriptionPlansPage() {
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from('subscription_plans').delete().eq('id', id);
-    if (!error) { toast({ title: "Plano removido" }); loadData(); }
+    if (error) {
+      if (error.code === '23503') {
+        toast({ title: "Não é possível excluir", description: "Este plano possui assinantes vinculados. Cancele as assinaturas primeiro.", variant: "destructive" });
+      } else {
+        toast({ title: "Erro ao excluir plano", description: error.message, variant: "destructive" });
+      }
+    } else {
+      toast({ title: "Plano removido" });
+      loadData();
+    }
   };
 
   const handleEdit = (plan: any) => {
