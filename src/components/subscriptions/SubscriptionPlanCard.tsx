@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Pencil, Trash2, Users, EyeOff, Sparkles, Loader2 } from "lucide-react";
+import { AiGenerateImageButton } from "@/components/AiContentButtons";
 
 interface SubscriptionPlanCardProps {
   plan: any;
@@ -93,6 +94,12 @@ export function SubscriptionPlanCard({ plan, onEdit, onDelete, onToggleActive, o
         )}
 
         <div className="flex items-center gap-1 pt-2 border-t border-border">
+          <AiGenerateImageButton
+            table="subscription_plans"
+            itemId={plan.id}
+            hasImage={!!plan.photo_url}
+            onGenerated={() => onReload?.()}
+          />
           {plan.photo_url && (
             <Button
               variant="ghost"

@@ -16,6 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Plus, Package, Loader2, Trash2, Pencil, X, Eye, EyeOff, Upload, Sparkles, ImageIcon } from "lucide-react";
+import { AiTextButton, AiGenerateImageButton } from "@/components/AiContentButtons";
 
 interface PackageServiceItem {
   service_id: string;
@@ -315,6 +316,12 @@ export function ServicePackagesTab() {
                 </div>
 
                 <div className="flex items-center gap-1 pt-2 border-t border-border">
+                  <AiGenerateImageButton
+                    table="service_packages"
+                    itemId={pkg.id}
+                    hasImage={!!pkg.photo_url}
+                    onGenerated={loadData}
+                  />
                   {pkg.photo_url && (
                     <Button
                       variant="ghost"
@@ -351,7 +358,14 @@ export function ServicePackagesTab() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Nome do pacote</Label>
+              <div className="flex items-center justify-between">
+                <Label>Nome do pacote</Label>
+                <AiTextButton
+                  table="service_packages"
+                  currentName={formData.name}
+                  onResult={(title) => setFormData(p => ({ ...p, name: title }))}
+                />
+              </div>
               <Input
                 placeholder="Ex: Pacote Completo"
                 value={formData.name}

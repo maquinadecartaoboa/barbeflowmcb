@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.enhance-product-image]
 verify_jwt = false
+
+[functions.ai-generate-content]
+verify_jwt = false

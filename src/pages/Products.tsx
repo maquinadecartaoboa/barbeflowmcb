@@ -31,8 +31,10 @@ import {
   ImagePlus,
   TrendingUp,
   DollarSign,
-  Sparkles
+  Sparkles,
+  Wand2
 } from "lucide-react";
+import { AiGenerateImageButton } from "@/components/AiContentButtons";
 
 interface Product {
   id: string;
@@ -483,6 +485,12 @@ const Products = () => {
                         </div>
                       </div>
                       <div className="flex gap-2 mt-4">
+                        <AiGenerateImageButton
+                          table="products"
+                          itemId={product.id}
+                          hasImage={!!product.photo_url}
+                          onGenerated={loadProducts}
+                        />
                         {product.photo_url && (
                           <Button 
                             variant="ghost" 
