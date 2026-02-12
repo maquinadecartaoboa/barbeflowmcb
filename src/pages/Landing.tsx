@@ -5,6 +5,7 @@ import { getDashboardUrl } from "@/lib/hostname";
 import { useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import dashboardMockup from "@/assets/dashboard-mockup.png";
+import logoBranca from "@/assets/modoGESTOR_branca.png";
 import mobileMockup from "@/assets/mobile-mockup.png";
 
 const Landing = () => {
@@ -38,7 +39,7 @@ const Landing = () => {
                 <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
                   <Scissors className="h-4 w-4 text-zinc-950" />
                 </div>
-                <span className="text-lg font-bold tracking-tight">BarberFlow</span>
+                <span className="text-lg font-bold tracking-tight">modoGESTOR</span>
               </div>
               <div className="hidden md:flex items-center gap-8">
                 {["Recursos", "Preços", "Depoimentos"].map((item) => (
@@ -85,7 +86,7 @@ const Landing = () => {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/[0.08] border border-emerald-500/20 text-emerald-400 text-sm font-medium mb-8 backdrop-blur-sm"
           >
             <Sparkles className="h-3.5 w-3.5" />
-            <span>O sistema #1 para barbearias modernas</span>
+            <span>A plataforma #1 para gestão de serviços</span>
             <ChevronRight className="h-3.5 w-3.5" />
           </motion.div>
 
@@ -95,7 +96,7 @@ const Landing = () => {
             transition={{ duration: 0.8, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
             className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 leading-[1.05]"
           >
-            Sua barbearia no
+            Seu negócio no
             <br />
             <span className="relative">
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-500">
@@ -188,11 +189,11 @@ const Landing = () => {
               </div>
               <div className="flex-1 flex justify-center">
                 <div className="bg-zinc-800/80 rounded-lg px-4 py-1 text-xs text-zinc-500 font-mono">
-                  app.barberflow.com.br/dashboard
+                  app.modogestor.com.br/dashboard
                 </div>
               </div>
             </div>
-            <img src={dashboardMockup} alt="BarberFlow Dashboard" className="w-full" />
+            <img src={dashboardMockup} alt="modoGESTOR Dashboard" className="w-full" />
           </div>
         </motion.div>
       </section>
@@ -220,7 +221,7 @@ const Landing = () => {
                     <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
-                <p className="text-xs text-zinc-500 mt-0.5">+500 barbearias confiam no BarberFlow</p>
+                <p className="text-xs text-zinc-500 mt-0.5">+500 profissionais confiam no modoGESTOR</p>
               </div>
             </div>
             <div className="flex items-center gap-12 text-center">
@@ -262,7 +263,7 @@ const Landing = () => {
               <span className="text-zinc-400">nada que você não precisa</span>
             </h2>
             <p className="text-zinc-500 text-lg max-w-xl mx-auto">
-              Ferramentas profissionais construídas para o dia a dia da sua barbearia
+              Ferramentas profissionais construídas para o dia a dia do seu negócio
             </p>
           </motion.div>
 
@@ -317,7 +318,7 @@ const Landing = () => {
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             >
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium mb-6 uppercase tracking-wider">
-                Para sua Barbearia
+                Para seu Negócio
               </div>
               <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-6 leading-tight">
                 Aumente sua receita em até{" "}
@@ -362,7 +363,7 @@ const Landing = () => {
             >
               <div className="absolute -inset-8 bg-gradient-to-br from-emerald-500/10 via-transparent to-blue-500/10 rounded-3xl blur-3xl opacity-50" />
               <div className="relative">
-                <img src={mobileMockup} alt="BarberFlow Mobile" className="w-64 rounded-[2rem] shadow-2xl shadow-black/60 border border-zinc-800/50" />
+                <img src={mobileMockup} alt="modoGESTOR Mobile" className="w-64 rounded-[2rem] shadow-2xl shadow-black/60 border border-zinc-800/50" />
                 <motion.div
                   initial={{ opacity: 0, scale: 0.8, x: -20 }}
                   whileInView={{ opacity: 1, scale: 1, x: 0 }}
@@ -422,7 +423,7 @@ const Landing = () => {
 
           <div className="grid md:grid-cols-3 gap-4">
             {[
-              { name: "Carlos Mendes", role: "Barbearia Premium", quote: "Depois do BarberFlow, minhas faltas caíram pela metade. Os clientes adoram agendar pelo celular." },
+              { name: "Carlos Mendes", role: "Barbearia Premium", quote: "Depois do modoGESTOR, minhas faltas caíram pela metade. Os clientes adoram agendar pelo celular." },
               { name: "Rafael Costa", role: "Studio RC Barber", quote: "O dashboard financeiro me deu uma visão que eu nunca tive. Consegui aumentar minha receita em 35%." },
               { name: "André Silva", role: "Barber House", quote: "Setup em 10 minutos e já estava funcionando. O WhatsApp automático economiza horas do meu dia." },
             ].map((testimonial, index) => (
@@ -604,7 +605,7 @@ const Landing = () => {
                 </li>
                 <li className="flex items-start gap-2.5 text-sm text-emerald-300/90">
                   <Globe className="h-4 w-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                  minhabarbearia.com.br
+                  meunegocio.modogestor.com.br
                 </li>
               </ul>
               <a href={getDashboardUrl('/app/register')}>
@@ -668,7 +669,7 @@ const Landing = () => {
             <h2 className="text-3xl sm:text-5xl font-bold tracking-tight mb-5 leading-tight">
               Pronto para transformar
               <br />
-              sua barbearia?
+              seu negócio?
             </h2>
             <p className="text-zinc-400 text-lg mb-10 max-w-lg mx-auto">
               Configure em 5 minutos. Teste grátis por 14 dias. Cancele quando quiser.
@@ -678,7 +679,7 @@ const Landing = () => {
               <a href={getDashboardUrl('/app/register')}>
                 <Button size="lg" className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold h-13 px-10 text-base rounded-xl shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all duration-300 hover:scale-[1.02]">
                   <Scissors className="mr-2 h-5 w-5" />
-                  Criar Minha Barbearia
+                  Criar Meu Negócio
                 </Button>
               </a>
             </div>
@@ -690,13 +691,10 @@ const Landing = () => {
       <footer className="py-8 px-6 border-t border-zinc-800/30">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-lg flex items-center justify-center">
-              <Scissors className="h-3 w-3 text-zinc-950" />
-            </div>
-            <span className="font-bold text-sm">BarberFlow</span>
+            <img src={logoBranca} alt="modoGESTOR" className="h-6" />
           </div>
           <p className="text-zinc-600 text-xs">
-            © 2026 BarberFlow. Todos os direitos reservados.
+            © 2026 modoGESTOR. Todos os direitos reservados.
           </p>
         </div>
       </footer>

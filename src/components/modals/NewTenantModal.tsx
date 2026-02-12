@@ -118,7 +118,7 @@ export function NewTenantModal({ open, onOpenChange }: NewTenantModalProps) {
 
       toast({
         title: "Sucesso!",
-        description: "Nova barbearia criada com sucesso.",
+        description: "Novo estabelecimento criado com sucesso.",
       });
 
       form.reset();
@@ -130,7 +130,7 @@ export function NewTenantModal({ open, onOpenChange }: NewTenantModalProps) {
       console.error('Error creating tenant:', error);
       toast({
         title: "Erro",
-        description: "Erro ao criar nova barbearia. Tente novamente.",
+        description: "Erro ao criar novo estabelecimento. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -142,9 +142,9 @@ export function NewTenantModal({ open, onOpenChange }: NewTenantModalProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Nova Barbearia</DialogTitle>
+          <DialogTitle>Novo Estabelecimento</DialogTitle>
           <DialogDescription>
-            Crie uma nova barbearia para gerenciar separadamente.
+            Crie um novo estabelecimento para gerenciar separadamente.
           </DialogDescription>
         </DialogHeader>
         
@@ -155,7 +155,7 @@ export function NewTenantModal({ open, onOpenChange }: NewTenantModalProps) {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome da Barbearia *</FormLabel>
+                  <FormLabel>Nome do Estabelecimento *</FormLabel>
                   <FormControl>
                     <Input placeholder="Barbearia Central" {...field} />
                   </FormControl>
@@ -234,7 +234,7 @@ export function NewTenantModal({ open, onOpenChange }: NewTenantModalProps) {
                 Cancelar
               </Button>
               <Button type="submit" disabled={loading}>
-                {loading ? "Criando..." : "Criar Barbearia"}
+                {loading ? "Criando..." : "Criar Estabelecimento"}
               </Button>
             </DialogFooter>
           </form>

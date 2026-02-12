@@ -331,7 +331,7 @@ export default function Services() {
     <div className="space-y-4 md:space-y-6 px-4 md:px-0">
       <div>
         <h1 className="text-xl md:text-2xl font-bold text-foreground">Serviços</h1>
-        <p className="text-sm md:text-base text-muted-foreground">Gerencie os serviços oferecidos pela barbearia</p>
+        <p className="text-sm md:text-base text-muted-foreground">Gerencie os serviços oferecidos</p>
       </div>
       <div className="flex justify-end">
         <Button onClick={() => { setEditingService(null); form.reset(); setShowForm(true); }} className="w-full sm:w-auto">
@@ -476,7 +476,7 @@ export default function Services() {
                 Nenhum serviço cadastrado
               </h3>
               <p className="text-muted-foreground mb-4">
-                Adicione o primeiro serviço da sua barbearia
+                Adicione o primeiro serviço do seu negócio
               </p>
               <Button
                 onClick={() => {

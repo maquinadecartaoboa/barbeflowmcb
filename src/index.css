@@ -8,7 +8,7 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Barbershop Brand Colors - Dark Theme by Default for Admin */
+    /* modoGESTOR Brand Colors - Dark Theme by Default for Admin */
     --background: 240 6% 6%;
     --foreground: 0 0% 95%;
 
@@ -18,20 +18,20 @@ All colors MUST be HSL.
     --popover: 240 5% 10%;
     --popover-foreground: 0 0% 95%;
 
-    /* Primary: Emerald Green */
-    --primary: 160 84% 39%;
-    --primary-foreground: 240 6% 6%;
-    --primary-hover: 160 84% 45%;
+    /* Primary: Golden Yellow #FFC300 */
+    --primary: 45 100% 50%;
+    --primary-foreground: 0 0% 10%;
+    --primary-hover: 45 100% 45%;
 
     /* Secondary: Dark zinc */
     --secondary: 240 4% 16%;
     --secondary-foreground: 0 0% 95%;
     --secondary-hover: 240 4% 20%;
 
-    /* Accent: Emerald */
-    --accent: 160 84% 39%;
-    --accent-foreground: 240 6% 6%;
-    --accent-hover: 160 84% 45%;
+    /* Accent: Golden Yellow */
+    --accent: 45 100% 50%;
+    --accent-foreground: 0 0% 10%;
+    --accent-hover: 45 100% 45%;
 
     --muted: 240 4% 16%;
     --muted-foreground: 240 5% 65%;
@@ -41,7 +41,7 @@ All colors MUST be HSL.
 
     --border: 240 4% 16%;
     --input: 240 4% 16%;
-    --ring: 160 84% 39%;
+    --ring: 45 100% 50%;
 
     /* Success */
     --success: 142 71% 45%;
@@ -52,16 +52,16 @@ All colors MUST be HSL.
     --warning-foreground: 0 0% 98%;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 50%));
-    --gradient-accent: linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 50%));
-    --gradient-hero: linear-gradient(135deg, hsl(240 6% 6%) 0%, hsl(240 5% 10%) 50%, hsl(160 84% 39%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(45 100% 50%), hsl(45 100% 60%));
+    --gradient-accent: linear-gradient(135deg, hsl(45 100% 50%), hsl(45 100% 60%));
+    --gradient-hero: linear-gradient(135deg, hsl(240 6% 6%) 0%, hsl(240 5% 10%) 50%, hsl(45 100% 50%) 100%);
 
     /* Shadows */
     --shadow-soft: 0 2px 8px -2px hsl(0 0% 0% / 0.3);
     --shadow-medium: 0 4px 16px -4px hsl(0 0% 0% / 0.4);
     --shadow-large: 0 8px 32px -8px hsl(0 0% 0% / 0.5);
-    --shadow-accent: 0 4px 16px -4px hsl(160 84% 39% / 0.3);
-    --shadow-glow-emerald: 0 0 20px -4px hsl(160 84% 39% / 0.25);
+    --shadow-accent: 0 4px 16px -4px hsl(45 100% 50% / 0.3);
+    --shadow-glow-primary: 0 0 20px -4px hsl(45 100% 50% / 0.25);
     --shadow-glow-blue: 0 0 20px -4px hsl(217 91% 60% / 0.2);
     --shadow-glow-violet: 0 0 20px -4px hsl(263 70% 50% / 0.2);
     --shadow-glow-amber: 0 0 20px -4px hsl(38 92% 50% / 0.2);
@@ -79,15 +79,15 @@ All colors MUST be HSL.
 
     --sidebar-background: 240 6% 6%;
     --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 160 84% 39%;
-    --sidebar-primary-foreground: 240 6% 6%;
+    --sidebar-primary: 45 100% 50%;
+    --sidebar-primary-foreground: 0 0% 10%;
     --sidebar-accent: 240 5% 12%;
     --sidebar-accent-foreground: 0 0% 90%;
     --sidebar-border: 240 4% 16%;
-    --sidebar-ring: 160 84% 39%;
+    --sidebar-ring: 45 100% 50%;
 
     /* Chart colors */
-    --chart-1: 160 84% 39%;
+    --chart-1: 45 100% 50%;
     --chart-2: 217 91% 60%;
     --chart-3: 263 70% 50%;
     --chart-4: 38 92% 50%;
@@ -105,17 +105,17 @@ All colors MUST be HSL.
     --popover: 240 5% 10%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 160 84% 39%;
-    --primary-foreground: 240 6% 6%;
-    --primary-hover: 160 84% 45%;
+    --primary: 45 100% 50%;
+    --primary-foreground: 0 0% 10%;
+    --primary-hover: 45 100% 45%;
 
     --secondary: 240 4% 16%;
     --secondary-foreground: 0 0% 95%;
     --secondary-hover: 240 4% 20%;
 
-    --accent: 160 84% 39%;
-    --accent-foreground: 240 6% 6%;
-    --accent-hover: 160 84% 45%;
+    --accent: 45 100% 50%;
+    --accent-foreground: 0 0% 10%;
+    --accent-hover: 45 100% 45%;
 
     --muted: 240 4% 16%;
     --muted-foreground: 240 5% 65%;
@@ -125,7 +125,7 @@ All colors MUST be HSL.
 
     --border: 240 4% 16%;
     --input: 240 4% 16%;
-    --ring: 160 84% 39%;
+    --ring: 45 100% 50%;
 
     --success: 142 71% 45%;
     --success-foreground: 0 0% 98%;
@@ -133,23 +133,23 @@ All colors MUST be HSL.
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 98%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 50%));
-    --gradient-accent: linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 50%));
-    --gradient-hero: linear-gradient(135deg, hsl(240 6% 6%) 0%, hsl(240 5% 10%) 50%, hsl(160 84% 39%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(45 100% 50%), hsl(45 100% 60%));
+    --gradient-accent: linear-gradient(135deg, hsl(45 100% 50%), hsl(45 100% 60%));
+    --gradient-hero: linear-gradient(135deg, hsl(240 6% 6%) 0%, hsl(240 5% 10%) 50%, hsl(45 100% 50%) 100%);
 
     --shadow-soft: 0 2px 8px -2px hsl(0 0% 0% / 0.3);
     --shadow-medium: 0 4px 16px -4px hsl(0 0% 0% / 0.4);
     --shadow-large: 0 8px 32px -8px hsl(0 0% 0% / 0.5);
-    --shadow-accent: 0 4px 16px -4px hsl(160 84% 39% / 0.3);
+    --shadow-accent: 0 4px 16px -4px hsl(45 100% 50% / 0.3);
 
     --sidebar-background: 240 6% 6%;
     --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 160 84% 39%;
-    --sidebar-primary-foreground: 240 6% 6%;
+    --sidebar-primary: 45 100% 50%;
+    --sidebar-primary-foreground: 0 0% 10%;
     --sidebar-accent: 240 5% 12%;
     --sidebar-accent-foreground: 0 0% 90%;
     --sidebar-border: 240 4% 16%;
-    --sidebar-ring: 160 84% 39%;
+    --sidebar-ring: 45 100% 50%;
   }
 }
 
@@ -177,8 +177,8 @@ All colors MUST be HSL.
 }
 
 /* Gradient text utility */
-.text-gradient-emerald {
-  background: linear-gradient(135deg, hsl(160 84% 45%), hsl(160 84% 60%));
+.text-gradient-primary {
+  background: linear-gradient(135deg, hsl(45 100% 50%), hsl(45 100% 65%));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -205,7 +205,7 @@ All colors MUST be HSL.
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, hsl(160 84% 39% / 0.3), hsl(217 91% 60% / 0.1), transparent);
+  background: linear-gradient(135deg, hsl(45 100% 50% / 0.3), hsl(217 91% 60% / 0.1), transparent);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;

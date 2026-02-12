@@ -71,12 +71,13 @@ import { useBookingModal } from "@/hooks/useBookingModal";
 import { BookingModal } from "@/components/modals/BookingModal";
 import InstallPWA from "@/components/InstallPWA";
 import { motion, AnimatePresence } from "framer-motion";
+import logoBranca from "@/assets/modoGESTOR_branca.png";
 
 interface NavItem {
   title: string;
   url: string;
   icon: any;
-  statusDot?: boolean; // show a connected/disconnected dot
+  statusDot?: boolean;
   children?: { title: string; url: string; icon: any; statusDot?: boolean }[];
 }
 
@@ -150,14 +151,14 @@ function NavItemLink({ item, isActive, onClick, statusDot }: { item: { title: st
       onClick={onClick}
       className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-500 relative overflow-hidden ${
         isActive 
-          ? 'text-emerald-400' 
+          ? 'text-primary' 
           : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/30'
       }`}
     >
       {isActive && (
         <motion.div 
           layoutId="activeNav"
-          className="absolute inset-0 bg-emerald-500/[0.08] rounded-xl border border-emerald-500/20"
+          className="absolute inset-0 bg-primary/[0.08] rounded-xl border border-primary/20"
           transition={{ type: "spring", stiffness: 180, damping: 24, mass: 0.8 }}
         />
       )}
@@ -166,7 +167,7 @@ function NavItemLink({ item, isActive, onClick, statusDot }: { item: { title: st
         transition={{ type: "spring", stiffness: 200, damping: 20 }}
         className="relative z-10"
       >
-        <item.icon className={`h-4 w-4 transition-colors duration-500 ${isActive ? 'text-emerald-400' : 'text-zinc-600 group-hover:text-zinc-400'}`} />
+        <item.icon className={`h-4 w-4 transition-colors duration-500 ${isActive ? 'text-primary' : 'text-zinc-600 group-hover:text-zinc-400'}`} />
       </motion.div>
       <span className="text-sm font-medium relative z-10">{item.title}</span>
       {statusDot && (
@@ -177,7 +178,7 @@ function NavItemLink({ item, isActive, onClick, statusDot }: { item: { title: st
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.1 }}
-          className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 relative z-10"
+          className="ml-auto w-1.5 h-1.5 rounded-full bg-primary relative z-10"
         />
       )}
     </NavLink>
@@ -196,10 +197,10 @@ function CollapsibleNavItem({ item, location, waConnected }: { item: NavItem; lo
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 w-full ${
         isAnyChildActive 
-          ? 'text-emerald-400' 
+          ? 'text-primary' 
           : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/30'
       }`}>
-        <item.icon className={`h-4 w-4 ${isAnyChildActive ? 'text-emerald-400' : 'text-zinc-600'}`} />
+        <item.icon className={`h-4 w-4 ${isAnyChildActive ? 'text-primary' : 'text-zinc-600'}`} />
         <span className="text-sm font-medium">{item.title}</span>
         <ChevronDown className={`h-3.5 w-3.5 ml-auto transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
       </CollapsibleTrigger>
@@ -238,19 +239,16 @@ function AppSidebar() {
           {currentTenant?.logo_url ? (
             <div className="relative">
               <img src={currentTenant.logo_url} alt={currentTenant.name} className="w-10 h-10 rounded-xl object-cover ring-1 ring-zinc-800/50" />
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-zinc-950" />
+              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full border-2 border-zinc-950" />
             </div>
           ) : (
             <div className="relative">
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                <Scissors className="h-5 w-5 text-white" />
-              </div>
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-zinc-950" />
+              <img src={logoBranca} alt="modoGESTOR" className="h-6" />
             </div>
           )}
           <div className="flex-1 min-w-0">
             <h1 className="text-sm font-bold text-zinc-100 truncate tracking-tight">
-              {currentTenant?.name || 'BarberFlow'}
+              {currentTenant?.name || 'modoGESTOR'}
             </h1>
             <p className="text-[11px] text-zinc-600 font-medium">
               {currentTenant?.slug ? `@${currentTenant.slug}` : 'Dashboard'}
@@ -348,12 +346,10 @@ function MobileDrawer() {
             {currentTenant?.logo_url ? (
               <img src={currentTenant.logo_url} alt={currentTenant.name} className="w-11 h-11 rounded-xl object-cover ring-1 ring-zinc-800/50" />
             ) : (
-              <div className="w-11 h-11 bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                <Scissors className="h-5 w-5 text-white" />
-              </div>
+              <img src={logoBranca} alt="modoGESTOR" className="h-7" />
             )}
             <div className="flex-1">
-              <DrawerTitle className="text-zinc-100 text-left font-bold tracking-tight">{currentTenant?.name || 'BarberFlow'}</DrawerTitle>
+              <DrawerTitle className="text-zinc-100 text-left font-bold tracking-tight">{currentTenant?.name || 'modoGESTOR'}</DrawerTitle>
               <DrawerDescription className="text-zinc-600 text-left text-xs">
                 {user?.email}
               </DrawerDescription>
@@ -371,7 +367,7 @@ function MobileDrawer() {
                 });
                 return (
                   <div key={item.title} className="mt-4 first:mt-0">
-                    <div className={`flex items-center gap-2.5 px-3 py-2 ${isAnyChildActive ? 'text-emerald-400' : 'text-zinc-600'}`}>
+                    <div className={`flex items-center gap-2.5 px-3 py-2 ${isAnyChildActive ? 'text-primary' : 'text-zinc-600'}`}>
                       <item.icon className="h-3.5 w-3.5" />
                       <span className="text-[11px] font-bold uppercase tracking-widest">{item.title}</span>
                     </div>
@@ -387,7 +383,7 @@ function MobileDrawer() {
                             onClick={() => setOpen(false)}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
                               isActive 
-                                ? 'bg-emerald-500/[0.08] text-emerald-400 border border-emerald-500/20' 
+                                ? 'bg-primary/[0.08] text-primary border border-primary/20' 
                                 : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/30 active:bg-zinc-800/50 border border-transparent'
                             }`}
                           >
@@ -396,7 +392,7 @@ function MobileDrawer() {
                             {child.statusDot && (
                               <span className={`ml-auto w-2 h-2 rounded-full ${waConnected ? 'bg-emerald-400' : 'bg-zinc-600'}`} />
                             )}
-                            {!child.statusDot && isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+                            {!child.statusDot && isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
                           </NavLink>
                         );
                       })}
@@ -412,7 +408,7 @@ function MobileDrawer() {
                   onClick={() => setOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
                     isActive 
-                      ? 'bg-emerald-500/[0.08] text-emerald-400 border border-emerald-500/20' 
+                      ? 'bg-primary/[0.08] text-primary border border-primary/20' 
                       : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/30 active:bg-zinc-800/50 border border-transparent'
                   }`}
                 >
@@ -421,7 +417,7 @@ function MobileDrawer() {
                   {item.statusDot && (
                     <span className={`ml-auto w-2 h-2 rounded-full ${waConnected ? 'bg-emerald-400' : 'bg-zinc-600'}`} />
                   )}
-                  {!item.statusDot && isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+                  {!item.statusDot && isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
                 </NavLink>
               );
             })}
@@ -458,14 +454,14 @@ function BottomTabs() {
               onClick={() => navigate(item.url)}
               className={`flex flex-col items-center gap-1 py-3 min-h-[56px] transition-all duration-300 relative ${
                 isActive 
-                  ? 'text-emerald-400' 
+                  ? 'text-primary' 
                   : 'text-zinc-600 active:text-zinc-300'
               }`}
             >
               {isActive && (
                 <motion.div 
                   layoutId="bottomTab"
-                  className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-[2px] bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full"
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-[2px] bg-gradient-to-r from-primary to-amber-400 rounded-full"
                   transition={{ type: "spring", stiffness: 220, damping: 22, mass: 0.6 }}
                 />
               )}
@@ -499,7 +495,7 @@ function FloatingActionButton() {
       <Button
         onClick={() => openBookingModal()}
         size="lg"
-        className="rounded-full w-14 h-14 shadow-xl shadow-emerald-500/25 bg-gradient-to-br from-emerald-400 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white border-0"
+        className="rounded-full w-14 h-14 shadow-xl shadow-primary/25 bg-gradient-to-br from-primary to-amber-500 hover:from-primary hover:to-amber-400 text-primary-foreground border-0"
       >
         <Plus className="h-6 w-6" />
       </Button>
@@ -526,13 +522,11 @@ export default function AppShell() {
                   {currentTenant?.logo_url ? (
                     <img src={currentTenant.logo_url} alt={currentTenant.name} className="w-7 h-7 rounded-lg object-cover ring-1 ring-zinc-800/50" />
                   ) : (
-                    <div className="w-7 h-7 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-lg flex items-center justify-center shadow-sm shadow-emerald-500/20">
-                      <Scissors className="h-3.5 w-3.5 text-white" />
-                    </div>
+                    <img src={logoBranca} alt="modoGESTOR" className="h-5" />
                   )}
                   <div>
                     <h1 className="text-sm font-bold text-zinc-100 tracking-tight">
-                      {currentTenant?.name || 'BarberFlow'}
+                      {currentTenant?.name || 'modoGESTOR'}
                     </h1>
                   </div>
                   <TenantSelector />
@@ -613,7 +607,7 @@ export default function AppShell() {
                     <Button 
                       size="sm" 
                       onClick={() => openBookingModal()}
-                      className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-semibold shadow-lg shadow-emerald-500/20 border-0 rounded-xl px-4"
+                      className="bg-gradient-to-r from-primary to-amber-500 hover:from-primary hover:to-amber-400 text-primary-foreground font-semibold shadow-lg shadow-primary/20 border-0 rounded-xl px-4"
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Novo Agendamento
