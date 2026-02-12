@@ -315,7 +315,7 @@ async function handleSubscriptionPreapproval(supabase: any, mpPreapprovalId: str
   // Find internal subscription
   const { data: subscription } = await supabase
     .from('customer_subscriptions')
-    .select('*')
+    .select('*, customer:customers(name, phone), plan:subscription_plans(name, price_cents, tenant:tenants(name, slug))')
     .or(`mp_preapproval_id.eq.${mpPreapprovalId},id.eq.${mpSubData.external_reference || 'none'}`)
     .maybeSingle();
 
@@ -364,6 +364,17 @@ async function handleSubscriptionPreapproval(supabase: any, mpPreapprovalId: str
 
   await supabase.from('customer_subscriptions').update(updateData).eq('id', subscription.id);
 
+  // Send WhatsApp notification for activation via redirect
+  if (newStatus === 'active' && subscription.status !== 'active') {
+    await sendSubscriptionWhatsApp(supabase, subscription, 'subscription_activated_redirect', (customer: any, plan: any, tenantName: string) => {
+      const validityEnd = new Date();
+      validityEnd.setDate(validityEnd.getDate() + 30);
+      const formattedEnd = validityEnd.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' });
+      const formattedPrice = `R$ ${(plan.price_cents / 100).toFixed(2)}`;
+      return `✅ *Assinatura Ativada!*\n\nOlá ${customer.name}!\n\nSua assinatura foi ativada com sucesso.\n\n📋 *Plano:* ${plan.name}\n💰 *Valor:* ${formattedPrice}/mês\n📅 *Válida até:* ${formattedEnd}\n\nSua assinatura será renovada automaticamente a cada 30 dias.\n\n${tenantName} agradece! 🙏`;
+    });
+  }
+
   return new Response(JSON.stringify({ received: true, status: newStatus }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
@@ -407,7 +418,7 @@ async function handleSubscriptionPayment(supabase: any, mpPaymentId: string, con
   if (preapprovalId) {
     const { data } = await supabase
       .from('customer_subscriptions')
-      .select('*')
+      .select('*, customer:customers(name, phone), plan:subscription_plans(name, price_cents, tenant:tenants(name, slug))')
       .eq('mp_preapproval_id', preapprovalId)
       .maybeSingle();
     subscription = data;
@@ -417,7 +428,7 @@ async function handleSubscriptionPayment(supabase: any, mpPaymentId: string, con
     // Try via external_reference
     const { data } = await supabase
       .from('customer_subscriptions')
-      .select('*')
+      .select('*, customer:customers(name, phone), plan:subscription_plans(name, price_cents, tenant:tenants(name, slug))')
       .eq('mp_preapproval_id', mpPaymentData.metadata?.preapproval_id || '')
       .maybeSingle();
     subscription = data;
@@ -475,6 +486,16 @@ async function handleSubscriptionPayment(supabase: any, mpPaymentId: string, con
 
     // Reset usage for new cycle
     await initializeUsage(supabase, subscription.id, subscription.plan_id, now, periodEnd);
+
+    // Send WhatsApp renewal notification
+    const amountPaid = mpPaymentData.transaction_amount;
+    await sendSubscriptionWhatsApp(supabase, subscription, 'subscription_renewed', (customer: any, plan: any, tenantName: string) => {
+      const validityEnd = new Date();
+      validityEnd.setDate(validityEnd.getDate() + 30);
+      const formattedEnd = validityEnd.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' });
+      const formattedPrice = `R$ ${amountPaid.toFixed(2)}`;
+      return `🔄 *Assinatura Renovada!*\n\nOlá ${customer.name}!\n\nSua assinatura do plano *${plan.name}* foi renovada automaticamente.\n\n💰 *Valor cobrado:* ${formattedPrice}\n📅 *Nova validade:* ${formattedEnd}\n\nContinue agendando normalmente pelo nosso link.\n\n${tenantName} agradece! 🙏`;
+    });
   }
 
   return new Response(JSON.stringify({ received: true }), {
@@ -508,5 +529,65 @@ async function initializeUsage(supabase: any, subscriptionId: string, planId: st
     }, {
       onConflict: 'subscription_id,service_id,period_start',
     });
+  }
+}
+
+// =============================================
+// SEND SUBSCRIPTION WHATSAPP NOTIFICATION
+// =============================================
+async function sendSubscriptionWhatsApp(
+  supabase: any,
+  subscription: any,
+  eventType: string,
+  buildMessage: (customer: any, plan: any, tenantName: string) => string
+) {
+  try {
+    const customer = subscription.customer;
+    const plan = subscription.plan;
+    const tenantName = plan?.tenant?.name || 'BarberFlow';
+    const tenantSlug = plan?.tenant?.slug || '';
+
+    if (!customer?.phone || !plan) {
+      console.log('Missing customer/plan data for WhatsApp notification');
+      return;
+    }
+
+    const { data: whatsappConn } = await supabase
+      .from('whatsapp_connections')
+      .select('evolution_instance_name, whatsapp_connected')
+      .eq('tenant_id', subscription.tenant_id)
+      .eq('whatsapp_connected', true)
+      .maybeSingle();
+
+    if (!whatsappConn) {
+      console.log('No WhatsApp connection for tenant, skipping notification');
+      return;
+    }
+
+    let phone = customer.phone.replace(/\D/g, '');
+    if (!phone.startsWith('55')) phone = '55' + phone;
+
+    const message = buildMessage(customer, plan, tenantName);
+
+    const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL');
+    if (n8nWebhookUrl) {
+      const resp = await fetch(n8nWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: eventType,
+          phone,
+          message,
+          evolution_instance: whatsappConn.evolution_instance_name,
+          tenant_id: subscription.tenant_id,
+          tenant_slug: tenantSlug,
+        }),
+      });
+      console.log(`WhatsApp ${eventType} notification sent, status:`, resp.status);
+    } else {
+      console.log('N8N_WEBHOOK_URL not configured, skipping WhatsApp notification');
+    }
+  } catch (err) {
+    console.error(`Error sending ${eventType} WhatsApp notification:`, err);
   }
 }
