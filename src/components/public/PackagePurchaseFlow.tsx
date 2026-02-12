@@ -45,23 +45,14 @@ export function PackagePurchaseFlow({ tenant, pkg, onSuccess, onCancel, onSchedu
     try {
       const canonical = canonicalPhone(phone);
 
-      // Find or create customer
-      const { data: allCusts } = await supabase
-        .from('customers').select('id, phone').eq('tenant_id', tenant.id);
-      let customerId: string;
-      const matched = allCusts?.find(c => canonicalPhone(c.phone) === canonical);
-
-      if (matched) {
-        customerId = matched.id;
-        await supabase.from('customers').update({ name: name.trim(), email: email || null }).eq('id', customerId);
-      } else {
-        const { data: newCust, error } = await supabase
-          .from('customers')
-          .insert({ tenant_id: tenant.id, name: name.trim(), phone: canonical, email: email || null })
-          .select('id').single();
-        if (error) throw error;
-        customerId = newCust.id;
+      // Find or create customer via edge function (bypasses RLS for anonymous users)
+      const { data: custResult, error: custErr } = await supabase.functions.invoke('public-customer-bookings', {
+        body: { action: 'find-or-create', phone: canonical, tenant_id: tenant.id, name: name.trim(), email: email || null },
+      });
+      if (custErr || !custResult?.customer_id) {
+        throw new Error('Erro ao identificar cliente');
       }
+      const customerId = custResult.customer_id;
 
       // Load package services
       const { data: pkgSvcs } = await supabase

@@ -2,13 +2,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-// Normalize phone to canonical Brazilian format: DDD (2) + 9-digit mobile = 11 digits
 function canonicalPhone(phone: string): string {
   let digits = phone.replace(/\D/g, "");
   if (digits.startsWith("55") && digits.length >= 12) {
@@ -22,18 +21,30 @@ function canonicalPhone(phone: string): string {
 
 function buildPhoneVariants(phone: string): string[] {
   const canonical = canonicalPhone(phone);
-  // Generate all possible stored formats for this canonical number
   const variants = new Set<string>();
-  variants.add(canonical);                              // 75999038366
-  variants.add("55" + canonical);                       // 5575999038366
-  variants.add("+" + "55" + canonical);                 // +5575999038366
-  // Also add old 10-digit format (without 9th digit)
+  variants.add(canonical);
+  variants.add("55" + canonical);
+  variants.add("+" + "55" + canonical);
   if (canonical.length === 11) {
     const oldFormat = canonical.slice(0, 2) + canonical.slice(3);
-    variants.add(oldFormat);                            // 7599038366
-    variants.add("55" + oldFormat);                     // 557599038366
+    variants.add(oldFormat);
+    variants.add("55" + oldFormat);
   }
   return [...variants];
+}
+
+async function findCustomerByPhone(supabase: any, tenantId: string, phone: string) {
+  const uniqueVariants = buildPhoneVariants(phone);
+  const { data: customer, error } = await supabase
+    .from("customers")
+    .select("id, name, email, phone, birthday")
+    .eq("tenant_id", tenantId)
+    .or(uniqueVariants.map((p: string) => `phone.eq.${p}`).join(","))
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return customer;
 }
 
 Deno.serve(async (req) => {
@@ -47,44 +58,29 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Handle cancel action
+    // --- Cancel booking ---
     if (action === "cancel" && booking_id && tenant_id) {
       const { error } = await supabase
         .from("bookings")
         .update({ status: "cancelled", updated_at: new Date().toISOString() })
         .eq("id", booking_id)
         .eq("tenant_id", tenant_id);
-
       if (error) throw error;
-
       return new Response(
         JSON.stringify({ success: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Handle customer lookup action — returns name/email for auto-fill
+    // --- Lookup customer ---
     if (action === "lookup" && phone && tenant_id) {
-      const uniqueVariants = buildPhoneVariants(phone);
-
-      const { data: customer, error: customerError } = await supabase
-        .from("customers")
-        .select("id, name, email, phone, birthday")
-        .eq("tenant_id", tenant_id)
-        .or(uniqueVariants.map((p) => `phone.eq.${p}`).join(","))
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (customerError) throw customerError;
-
+      const customer = await findCustomerByPhone(supabase, tenant_id, phone);
       if (!customer) {
         return new Response(
           JSON.stringify({ found: false }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-
       return new Response(
         JSON.stringify({
           found: true,
@@ -99,6 +95,89 @@ Deno.serve(async (req) => {
       );
     }
 
+    // --- Find or create customer ---
+    if (action === "find-or-create" && phone && tenant_id) {
+      const { name, email } = body;
+      if (!name) {
+        return new Response(
+          JSON.stringify({ error: "name is required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const canonical = canonicalPhone(phone);
+      const existing = await findCustomerByPhone(supabase, tenant_id, phone);
+      if (existing) {
+        // Update name/email if provided
+        const updates: any = { name: name.trim() };
+        if (email) updates.email = email;
+        await supabase.from("customers").update(updates).eq("id", existing.id);
+        return new Response(
+          JSON.stringify({ customer_id: existing.id, created: false }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const { data: newCust, error: insertErr } = await supabase
+        .from("customers")
+        .insert({ tenant_id, name: name.trim(), phone: canonical, email: email || null })
+        .select("id")
+        .single();
+      if (insertErr) throw insertErr;
+      return new Response(
+        JSON.stringify({ customer_id: newCust.id, created: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // --- Get customer benefits (packages + subscriptions) ---
+    if (action === "benefits" && phone && tenant_id) {
+      const customer = await findCustomerByPhone(supabase, tenant_id, phone);
+      if (!customer) {
+        return new Response(
+          JSON.stringify({ customer_id: null, packages: [], subscriptions: [] }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const [pkgRes, subRes] = await Promise.all([
+        supabase.from("customer_packages")
+          .select("id, status, payment_status, package:service_packages(*), services:customer_package_services(service_id, sessions_used, sessions_total)")
+          .eq("customer_id", customer.id)
+          .eq("tenant_id", tenant_id)
+          .eq("status", "active")
+          .eq("payment_status", "confirmed"),
+        supabase.from("customer_subscriptions")
+          .select("id, status, plan_id, plan:subscription_plans(name, price_cents), usage:subscription_usage(service_id, sessions_used, sessions_limit, period_start, period_end)")
+          .eq("customer_id", customer.id)
+          .eq("tenant_id", tenant_id)
+          .in("status", ["active", "authorized"]),
+      ]);
+
+      // Also get plan_services for subscriptions
+      const planIds = (subRes.data || []).map((s: any) => s.plan_id).filter(Boolean);
+      let planServices: any[] = [];
+      if (planIds.length > 0) {
+        const { data } = await supabase
+          .from("subscription_plan_services")
+          .select("plan_id, service_id, sessions_per_cycle")
+          .in("plan_id", planIds);
+        planServices = data || [];
+      }
+
+      return new Response(
+        JSON.stringify({
+          customer_id: customer.id,
+          customer_name: customer.name,
+          packages: pkgRes.data || [],
+          subscriptions: (subRes.data || []).map((s: any) => ({
+            ...s,
+            plan_services: planServices.filter((ps: any) => ps.plan_id === s.plan_id),
+          })),
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // --- Default: list future bookings ---
     if (!phone || !tenant_id) {
       return new Response(
         JSON.stringify({ error: "phone and tenant_id are required" }),
@@ -106,14 +185,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Default: list future bookings
     const uniqueVariants = buildPhoneVariants(phone);
 
     const { data: customers, error: customerError } = await supabase
       .from("customers")
       .select("id")
       .eq("tenant_id", tenant_id)
-      .or(uniqueVariants.map((p) => `phone.eq.${p}`).join(","));
+      .or(uniqueVariants.map((p: string) => `phone.eq.${p}`).join(","));
 
     if (customerError) throw customerError;
 
@@ -124,7 +202,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const customerIds = customers.map((c) => c.id);
+    const customerIds = customers.map((c: any) => c.id);
     const now = new Date().toISOString();
 
     const { data: bookings, error: bookingsError } = await supabase
