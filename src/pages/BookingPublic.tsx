@@ -6,6 +6,7 @@ import { TenantNotFound } from "@/components/TenantNotFound";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PackagePurchaseFlow } from "@/components/public/PackagePurchaseFlow";
+import { BenefitBadge } from "@/components/public/BenefitBadge";
 
 import { Calendar as CalendarRac } from "@/components/ui/calendar-rac";
 import { MercadoPagoCheckout } from "@/components/MercadoPagoCheckout";
@@ -97,6 +98,9 @@ const BookingPublic = () => {
   const [subscriptionPlans, setSubscriptionPlans] = useState<any[]>([]);
   const [activeSubscription, setActiveSubscription] = useState<any>(null);
   const [subscriptionCoveredService, setSubscriptionCoveredService] = useState(false);
+  
+  // Benefits map for service cards display
+  const [benefitsMap, setBenefitsMap] = useState<Map<string, any>>(new Map());
 
   useEffect(() => {
     if (slug) {
@@ -486,6 +490,53 @@ const BookingPublic = () => {
     }
   };
 
+  // Fetch all benefits for the customer (for service card badges)
+  const fetchCustomerBenefits = async (phone: string) => {
+    if (!tenant) return;
+    const canonical = canonicalPhone(phone);
+    if (canonical.length < 10) return;
+
+    try {
+      const { data: matchingCustomers } = await supabase
+        .from('customers')
+        .select('id, phone')
+        .eq('tenant_id', tenant.id);
+      const matchedCustomer = matchingCustomers?.find(c => canonicalPhone(c.phone) === canonical);
+      if (!matchedCustomer) { setBenefitsMap(new Map()); return; }
+
+      const [pkgRes, subRes] = await Promise.all([
+        supabase.from('customer_packages')
+          .select('id, status, payment_status, services:customer_package_services(service_id, sessions_used, sessions_total)')
+          .eq('customer_id', matchedCustomer.id).eq('status', 'active').eq('payment_status', 'confirmed'),
+        supabase.from('customer_subscriptions')
+          .select('id, status, plan_id, usage:subscription_usage(service_id, sessions_used, sessions_limit, period_start, period_end)')
+          .eq('customer_id', matchedCustomer.id).in('status', ['active', 'authorized']),
+      ]);
+
+      const map = new Map();
+      (pkgRes.data || []).forEach(pkg => {
+        ((pkg as any).services || []).forEach((svc: any) => {
+          const remaining = svc.sessions_total - svc.sessions_used;
+          if (remaining > 0) map.set(svc.service_id, { type: 'package' as const, remaining, total: svc.sessions_total, customerPackageId: pkg.id });
+        });
+      });
+      const todayStr = new Date().toISOString().split('T')[0];
+      (subRes.data || []).forEach(sub => {
+        ((sub as any).usage || []).forEach((u: any) => {
+          if (u.period_start <= todayStr && u.period_end >= todayStr) {
+            const remaining = u.sessions_limit === null ? null : u.sessions_limit - u.sessions_used;
+            if (remaining === null || remaining > 0) {
+              map.set(u.service_id, { type: 'subscription' as const, remaining, limit: u.sessions_limit, customerSubscriptionId: sub.id });
+            }
+          }
+        });
+      });
+      setBenefitsMap(map);
+    } catch (err) {
+      console.error('Error fetching benefits:', err);
+    }
+  };
+
   const handleStaffSelect = (staffId: string) => {
     setSelectedStaff(staffId === "any" ? null : staffId);
     setSelectedTime(null);
@@ -662,55 +713,6 @@ const BookingPublic = () => {
           return;
         }
 
-        // If buying a package, create the customer_package record
-        if (selectedPackage) {
-          try {
-            const canonical = canonicalPhone(customerPhone);
-            // Find customer
-            const { data: allCusts } = await supabase
-              .from('customers')
-              .select('id, phone')
-              .eq('tenant_id', tenant.id);
-            
-            const matchedCust = allCusts?.find(c => canonicalPhone(c.phone) === canonical);
-            
-            if (matchedCust) {
-              const paymentSt = paymentMethod === 'online' ? 'pending' : 'pending';
-              const { data: newCp } = await supabase
-                .from('customer_packages')
-                .insert({
-                  customer_id: matchedCust.id,
-                  package_id: selectedPackage.id,
-                  tenant_id: tenant.id,
-                  sessions_total: selectedPackage.total_sessions || 0,
-                  sessions_used: 0,
-                  status: 'active',
-                  payment_status: paymentSt,
-                })
-                .select()
-                .single();
-
-              // Store the customer package ID for payment linking
-              if (newCp) {
-                setCreatedCustomerPackageId(newCp.id);
-              }
-
-              // Create per-service tracking
-              if (newCp && selectedPackage.package_services) {
-                const svcRows = selectedPackage.package_services.map((ps: any) => ({
-                  customer_package_id: newCp.id,
-                  service_id: ps.service_id,
-                  sessions_total: ps.sessions_count,
-                  sessions_used: 0,
-                }));
-                await supabase.from('customer_package_services').insert(svcRows);
-              }
-            }
-          } catch (pkgErr) {
-            console.error('Error creating customer package:', pkgErr);
-          }
-        }
-        
         // If user chose online payment, go to checkout step (transparent)
         if (paymentMethod === 'online') {
           setStep(7); // New step for transparent checkout
@@ -1114,6 +1116,12 @@ END:VCALENDAR`;
                             {service.duration_minutes}min
                           </span>
                         </div>
+                        {benefitsMap.has(service.id) && (
+                          <BenefitBadge
+                            type={benefitsMap.get(service.id).type}
+                            remaining={benefitsMap.get(service.id).remaining}
+                          />
+                        )}
                       </div>
                     </div>
                   </button>
@@ -1449,6 +1457,7 @@ END:VCALENDAR`;
                         lookupCustomerByPhone(formatted);
                         checkActivePackage(formatted);
                         checkActiveSubscription(formatted);
+                        fetchCustomerBenefits(formatted);
                       }
                     }}
                     required

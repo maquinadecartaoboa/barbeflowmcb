@@ -6,6 +6,7 @@ import { useBookingModal } from "@/hooks/useBookingModal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -13,7 +14,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Package, CheckCircle, Clock, Loader2, XCircle, Plus, Trash2, Calendar } from "lucide-react";
+import { Package, CheckCircle, Clock, Loader2, XCircle, Plus, Trash2, Calendar, Repeat } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -26,6 +27,7 @@ export function CustomerPackagesTab({ customerId }: CustomerPackagesTabProps) {
   const { toast } = useToast();
   const { openBookingModal } = useBookingModal();
   const [customerPackages, setCustomerPackages] = useState<any[]>([]);
+  const [customerSubscriptions, setCustomerSubscriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -75,6 +77,32 @@ export function CustomerPackagesTab({ customerId }: CustomerPackagesTabProps) {
         .eq("active", true)
         .order("name");
       setAvailablePackages(available || []);
+
+      // Load customer subscriptions with plan and usage info
+      const { data: subsData } = await supabase
+        .from("customer_subscriptions")
+        .select(`
+          id, status, current_period_start, current_period_end, next_payment_date, customer_id,
+          plan:subscription_plans(id, name, price_cents, billing_cycle)
+        `)
+        .eq("customer_id", customerId)
+        .eq("tenant_id", currentTenant.id)
+        .in("status", ["active", "authorized"])
+        .order("created_at", { ascending: false });
+
+      const subs = subsData || [];
+      // Load usage for each subscription
+      for (const sub of subs) {
+        const todayStr = new Date().toISOString().split("T")[0];
+        const { data: usageData } = await supabase
+          .from("subscription_usage")
+          .select("*, service:services(name)")
+          .eq("subscription_id", sub.id)
+          .lte("period_start", todayStr)
+          .gte("period_end", todayStr);
+        (sub as any).usage = usageData || [];
+      }
+      setCustomerSubscriptions(subs);
     } catch (err) {
       console.error(err);
     } finally {
@@ -186,7 +214,7 @@ export function CustomerPackagesTab({ customerId }: CustomerPackagesTabProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold">Pacotes</h3>
+      <h3 className="text-base font-semibold">Pacotes e Assinaturas</h3>
         <Button size="sm" variant="outline" onClick={() => setShowAddForm(!showAddForm)}>
           <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar
         </Button>
@@ -339,6 +367,88 @@ export function CustomerPackagesTab({ customerId }: CustomerPackagesTabProps) {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Subscriptions Section */}
+      {customerSubscriptions.length > 0 && (
+        <>
+          <div className="flex items-center gap-2 pt-4 border-t border-border">
+            <Repeat className="h-4 w-4 text-emerald-400" />
+            <h3 className="text-base font-semibold">Assinaturas</h3>
+          </div>
+          <div className="space-y-3">
+            {customerSubscriptions.map((sub) => (
+              <Card key={sub.id}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h4 className="font-medium text-sm truncate">{sub.plan?.name || "Plano"}</h4>
+                      <p className="text-xs text-muted-foreground">
+                        R$ {((sub.plan?.price_cents || 0) / 100).toFixed(2)}/{sub.plan?.billing_cycle === 'monthly' ? 'mês' : 'ciclo'}
+                      </p>
+                    </div>
+                    <Badge className={sub.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]' : 'bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px]'}>
+                      {sub.status === 'active' ? 'Ativo' : 'Autorizado'}
+                    </Badge>
+                  </div>
+
+                  {sub.current_period_start && sub.current_period_end && (
+                    <p className="text-xs text-muted-foreground">
+                      Período: {format(parseISO(sub.current_period_start), "dd/MM", { locale: ptBR })} — {format(parseISO(sub.current_period_end), "dd/MM/yyyy", { locale: ptBR })}
+                    </p>
+                  )}
+                  {sub.next_payment_date && (
+                    <p className="text-xs text-muted-foreground">
+                      Próx. cobrança: {format(parseISO(sub.next_payment_date), "dd/MM/yyyy", { locale: ptBR })}
+                    </p>
+                  )}
+
+                  {/* Usage per service */}
+                  <div className="space-y-2">
+                    {(sub.usage || []).map((u: any) => {
+                      const pct = u.sessions_limit != null && u.sessions_limit > 0
+                        ? Math.min(100, (u.sessions_used / u.sessions_limit) * 100)
+                        : 0;
+                      const remaining = u.sessions_limit != null ? u.sessions_limit - u.sessions_used : null;
+                      return (
+                        <div key={u.id} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground truncate">{u.service?.name}</span>
+                            <span className="font-medium shrink-0 ml-2">
+                              {u.sessions_limit != null ? `${remaining}/${u.sessions_limit} restantes` : `${u.sessions_used} usadas (ilimitado)`}
+                            </span>
+                          </div>
+                          {u.sessions_limit != null && (
+                            <Progress value={100 - pct} className="h-1.5" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Schedule button */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                    onClick={() => {
+                      const availableServiceIds = (sub.usage || [])
+                        .filter((u: any) => u.sessions_limit === null || u.sessions_used < u.sessions_limit)
+                        .map((u: any) => u.service_id);
+                      openBookingModal({
+                        customerSubscriptionId: sub.id,
+                        preselectedCustomerId: customerId,
+                        allowedServiceIds: availableServiceIds,
+                      });
+                    }}
+                  >
+                    <Calendar className="h-3.5 w-3.5 mr-1" /> Agendar sessão
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Confirm payment dialog */}

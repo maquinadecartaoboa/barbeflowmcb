@@ -32,7 +32,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Clock, Package, Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const bookingFormSchema = z.object({
@@ -117,6 +118,26 @@ export function BookingModal() {
       setAvailableSlots([]);
     }
   }, [isOpen, currentTenant]);
+
+  // Pre-fill customer when opened via package/subscription
+  useEffect(() => {
+    if (isOpen && preselectedCustomerId && currentTenant) {
+      const loadPreselectedCustomer = async () => {
+        const { data: customer } = await supabase
+          .from('customers')
+          .select('id, name, phone, email')
+          .eq('id', preselectedCustomerId)
+          .single();
+        if (customer) {
+          form.setValue('customer_name', customer.name);
+          form.setValue('customer_phone', customer.phone);
+          form.setValue('customer_email', customer.email || '');
+          setSelectedCustomerId(customer.id);
+        }
+      };
+      loadPreselectedCustomer();
+    }
+  }, [isOpen, preselectedCustomerId, currentTenant]);
 
   // Fetch available slots when date/service/staff changes
   useEffect(() => {
@@ -292,7 +313,19 @@ export function BookingModal() {
     <Dialog open={isOpen} onOpenChange={closeBookingModal}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Novo Agendamento</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            Novo Agendamento
+            {customerPackageId && (
+              <Badge variant="secondary" className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-xs">
+                <Package className="h-3 w-3 mr-1" /> Sessão de pacote
+              </Badge>
+            )}
+            {customerSubscriptionId && (
+              <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-xs">
+                <Repeat className="h-3 w-3 mr-1" /> Sessão de assinatura
+              </Badge>
+            )}
+          </DialogTitle>
           <DialogDescription>
             Criar um novo agendamento para cliente
           </DialogDescription>
@@ -399,7 +432,10 @@ export function BookingModal() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {services.map((service) => (
+                        {(allowedServiceIds
+                          ? services.filter(s => allowedServiceIds.includes(s.id))
+                          : services
+                        ).map((service) => (
                           <SelectItem key={service.id} value={service.id}>
                             <div className="flex items-center space-x-2">
                               <div 
@@ -603,7 +639,7 @@ export function BookingModal() {
                 Cancelar
               </Button>
               <Button type="submit" disabled={formLoading} className="w-full sm:w-auto">
-                {formLoading ? "Criando..." : "Criar Agendamento"}
+                {formLoading ? "Criando..." : customerPackageId ? "Criar Agendamento (sessão do pacote)" : customerSubscriptionId ? "Criar Agendamento (sessão da assinatura)" : "Criar Agendamento"}
               </Button>
             </DialogFooter>
           </form>
