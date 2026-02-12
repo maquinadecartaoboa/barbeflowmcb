@@ -126,6 +126,11 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || Deno.env.get("FRONT_BASE_URL") || "https://barbeflowmcb.lovable.app";
 
+    // On dashboard domains (app.*), routes don't use /app prefix
+    const dashboardHosts = ["app.modogestor.com.br", "app.barberflow.store"];
+    const isDashDomain = dashboardHosts.some((h) => origin.includes(h));
+    const settingsPath = isDashDomain ? "/settings" : "/app/settings";
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
@@ -135,8 +140,8 @@ serve(async (req) => {
         trial_period_days: 14,
         metadata: { tenant_id: tenant.id },
       },
-      success_url: `${origin}/app/settings?tab=billing&success=true`,
-      cancel_url: `${origin}/app/settings?tab=billing&canceled=true`,
+      success_url: `${origin}${settingsPath}?tab=billing&success=true`,
+      cancel_url: `${origin}${settingsPath}?tab=billing&canceled=true`,
       allow_promotion_codes: true,
       locale: "pt-BR",
     });
