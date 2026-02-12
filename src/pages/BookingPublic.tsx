@@ -355,32 +355,20 @@ const BookingPublic = () => {
     if (canonical.length < 10) return;
 
     try {
-      // Get all customers for this tenant and match by canonical phone
-      const { data: matchingCustomers } = await supabase
-        .from('customers')
-        .select('id, phone')
-        .eq('tenant_id', tenant.id);
+      // Use edge function to find customer and get benefits (bypasses RLS for anonymous users)
+      const { data: benefitsData, error: benefitsErr } = await supabase.functions.invoke('public-customer-bookings', {
+        body: { action: 'benefits', phone: canonical, tenant_id: tenant.id },
+      });
 
-      const matchedCustomer = matchingCustomers?.find(c => 
-        canonicalPhone(c.phone) === canonical
-      );
-
-      if (!matchedCustomer) {
+      if (benefitsErr || !benefitsData?.customer_id) {
         setActiveCustomerPackage(null);
         setPackageCoveredService(false);
         return;
       }
 
-      // Check for active packages with remaining sessions for this service
-      const { data: custPkgs } = await supabase
-        .from('customer_packages')
-        .select('*, package:service_packages(*)')
-        .eq('customer_id', matchedCustomer.id)
-        .eq('tenant_id', tenant.id)
-        .eq('status', 'active')
-        .eq('payment_status', 'confirmed');
+      const custPkgs = benefitsData.packages || [];
 
-      if (!custPkgs || custPkgs.length === 0) {
+      if (custPkgs.length === 0) {
         setActiveCustomerPackage(null);
         setPackageCoveredService(false);
         return;
@@ -388,17 +376,11 @@ const BookingPublic = () => {
 
       // Check customer_package_services for remaining sessions
       for (const cp of custPkgs) {
-        const { data: cpServices } = await supabase
-          .from('customer_package_services')
-          .select('*')
-          .eq('customer_package_id', cp.id)
-          .eq('service_id', selectedService);
-
-        const cpService = cpServices?.[0];
-        if (cpService && cpService.sessions_used < cpService.sessions_total) {
+        const svc = (cp.services || []).find((s: any) => s.service_id === selectedService);
+        if (svc && svc.sessions_used < svc.sessions_total) {
           setActiveCustomerPackage({
             ...cp,
-            serviceUsage: cpService,
+            serviceUsage: svc,
           });
           setPackageCoveredService(true);
           return;
@@ -419,30 +401,20 @@ const BookingPublic = () => {
     if (canonical.length < 10) return;
 
     try {
-      const { data: matchingCustomers } = await supabase
-        .from('customers')
-        .select('id, phone')
-        .eq('tenant_id', tenant.id);
+      // Use edge function to find customer and get benefits (bypasses RLS for anonymous users)
+      const { data: benefitsData, error: benefitsErr } = await supabase.functions.invoke('public-customer-bookings', {
+        body: { action: 'benefits', phone: canonical, tenant_id: tenant.id },
+      });
 
-      const matchedCustomer = matchingCustomers?.find(c =>
-        canonicalPhone(c.phone) === canonical
-      );
-
-      if (!matchedCustomer) {
+      if (benefitsErr || !benefitsData?.customer_id) {
         setActiveSubscription(null);
         setSubscriptionCoveredService(false);
         return;
       }
 
-      // Check for active subscription
-      const { data: subs } = await supabase
-        .from('customer_subscriptions')
-        .select('*, plan:subscription_plans(name, price_cents)')
-        .eq('customer_id', matchedCustomer.id)
-        .eq('tenant_id', tenant.id)
-        .in('status', ['active', 'authorized']);
+      const subs = benefitsData.subscriptions || [];
 
-      if (!subs || subs.length === 0) {
+      if (subs.length === 0) {
         setActiveSubscription(null);
         setSubscriptionCoveredService(false);
         return;
@@ -451,32 +423,22 @@ const BookingPublic = () => {
       const activeSub = subs[0];
 
       // Check if selected service is covered by the plan
-      const { data: planServices } = await supabase
-        .from('subscription_plan_services')
-        .select('service_id, sessions_per_cycle')
-        .eq('plan_id', activeSub.plan_id)
-        .eq('service_id', selectedService);
+      const planService = (activeSub.plan_services || []).find((ps: any) => ps.service_id === selectedService);
 
-      if (!planServices || planServices.length === 0) {
+      if (!planService) {
         setActiveSubscription(activeSub);
         setSubscriptionCoveredService(false);
         return;
       }
 
-      const planService = planServices[0];
+      // Check usage from the subscription data
+      const todayStr = new Date().toISOString().split('T')[0];
+      const currentUsage = (activeSub.usage || []).find((u: any) => 
+        u.service_id === selectedService && u.period_start <= todayStr && u.period_end >= todayStr
+      );
 
-      // Check usage
-      const { data: usage } = await supabase
-        .from('subscription_usage')
-        .select('sessions_used, sessions_limit')
-        .eq('subscription_id', activeSub.id)
-        .eq('service_id', selectedService)
-        .order('period_start', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const sessionsUsed = usage?.sessions_used || 0;
-      const sessionsLimit = usage?.sessions_limit ?? planService.sessions_per_cycle;
+      const sessionsUsed = currentUsage?.sessions_used || 0;
+      const sessionsLimit = currentUsage?.sessions_limit ?? planService.sessions_per_cycle;
 
       if (sessionsLimit === null || sessionsUsed < sessionsLimit) {
         setActiveSubscription({ ...activeSub, usage: { used: sessionsUsed, limit: sessionsLimit } });
@@ -497,32 +459,26 @@ const BookingPublic = () => {
     if (canonical.length < 10) return;
 
     try {
-      const { data: matchingCustomers } = await supabase
-        .from('customers')
-        .select('id, phone')
-        .eq('tenant_id', tenant.id);
-      const matchedCustomer = matchingCustomers?.find(c => canonicalPhone(c.phone) === canonical);
-      if (!matchedCustomer) { setBenefitsMap(new Map()); return; }
+      // Use edge function to bypass RLS for anonymous users
+      const { data: benefitsData, error: benefitsErr } = await supabase.functions.invoke('public-customer-bookings', {
+        body: { action: 'benefits', phone: canonical, tenant_id: tenant.id },
+      });
 
-      const [pkgRes, subRes] = await Promise.all([
-        supabase.from('customer_packages')
-          .select('id, status, payment_status, services:customer_package_services(service_id, sessions_used, sessions_total)')
-          .eq('customer_id', matchedCustomer.id).eq('status', 'active').eq('payment_status', 'confirmed'),
-        supabase.from('customer_subscriptions')
-          .select('id, status, plan_id, usage:subscription_usage(service_id, sessions_used, sessions_limit, period_start, period_end)')
-          .eq('customer_id', matchedCustomer.id).in('status', ['active', 'authorized']),
-      ]);
+      if (benefitsErr || !benefitsData?.customer_id) {
+        setBenefitsMap(new Map());
+        return;
+      }
 
       const map = new Map();
-      (pkgRes.data || []).forEach(pkg => {
-        ((pkg as any).services || []).forEach((svc: any) => {
+      (benefitsData.packages || []).forEach((pkg: any) => {
+        (pkg.services || []).forEach((svc: any) => {
           const remaining = svc.sessions_total - svc.sessions_used;
           if (remaining > 0) map.set(svc.service_id, { type: 'package' as const, remaining, total: svc.sessions_total, customerPackageId: pkg.id });
         });
       });
       const todayStr = new Date().toISOString().split('T')[0];
-      (subRes.data || []).forEach(sub => {
-        ((sub as any).usage || []).forEach((u: any) => {
+      (benefitsData.subscriptions || []).forEach((sub: any) => {
+        (sub.usage || []).forEach((u: any) => {
           if (u.period_start <= todayStr && u.period_end >= todayStr) {
             const remaining = u.sessions_limit === null ? null : u.sessions_limit - u.sessions_used;
             if (remaining === null || remaining > 0) {
