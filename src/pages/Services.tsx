@@ -410,8 +410,7 @@ export default function Services() {
                     <Clock className="h-4 w-4 mr-1" />
                     {service.duration_minutes}min
                   </div>
-                  <div className="flex items-center font-semibold text-success">
-                    <DollarSign className="h-4 w-4 mr-1" />
+                  <div className="font-semibold text-success">
                     R$ {(service.price_cents / 100).toFixed(2)}
                   </div>
                 </div>
