@@ -30,11 +30,8 @@ export const PLANS = {
     features: [
       "Agendamento online",
       "Gestão de clientes",
-      "Financeiro completo",
-      "Notificações automáticas",
-      "Pacotes e assinaturas",
-      "Pagamentos online",
-      "Relatórios",
+      "Financeiro básico",
+      "Notificações por e-mail",
     ],
   },
   profissional: {
@@ -53,9 +50,11 @@ export const PLANS = {
     },
     features: [
       "Tudo do Essencial",
-      "Chatbot WhatsApp",
-      "Domínio personalizado",
-      "Taxa reduzida (1,0%)",
+      "Pacotes e assinaturas via MP",
+      "Pagamentos online",
+      "Relatórios completos",
+      "Integração WhatsApp",
+      "Página pública personalizada",
     ],
   },
 };
