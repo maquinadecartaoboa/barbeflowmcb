@@ -30,7 +30,8 @@ import {
   Loader2,
   ImagePlus,
   TrendingUp,
-  DollarSign
+  DollarSign,
+  Sparkles
 } from "lucide-react";
 
 interface Product {
@@ -69,6 +70,7 @@ const Products = () => {
   });
   const [savingProduct, setSavingProduct] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [enhancingProductId, setEnhancingProductId] = useState<string | null>(null);
 
   // Sales state
   const [sales, setSales] = useState<ProductSale[]>([]);
@@ -264,6 +266,35 @@ const Products = () => {
     }
   };
 
+  const handleEnhanceImage = async (product: Product) => {
+    if (!product.photo_url) {
+      toast({ title: "Adicione uma foto primeiro", variant: "destructive" });
+      return;
+    }
+    try {
+      setEnhancingProductId(product.id);
+      toast({ title: "✨ Melhorando imagem com IA...", description: "Isso pode levar alguns segundos" });
+      
+      const { data, error } = await supabase.functions.invoke('enhance-product-image', {
+        body: { product_id: product.id, image_url: product.photo_url },
+      });
+
+      if (error) throw error;
+      if (data?.error) {
+        toast({ title: data.error, variant: "destructive" });
+        return;
+      }
+
+      toast({ title: "Imagem melhorada com sucesso! ✨" });
+      loadProducts();
+    } catch (err) {
+      console.error('Enhance error:', err);
+      toast({ title: "Erro ao melhorar imagem", variant: "destructive" });
+    } finally {
+      setEnhancingProductId(null);
+    }
+  };
+
   const openSaleModal = (sale?: ProductSale) => {
     if (sale) {
       setEditingSale(sale);
@@ -452,6 +483,22 @@ const Products = () => {
                         </div>
                       </div>
                       <div className="flex gap-2 mt-4">
+                        {product.photo_url && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleEnhanceImage(product)} 
+                            disabled={enhancingProductId === product.id}
+                            className="text-orange-400 hover:text-orange-300 hover:bg-orange-500/10"
+                            title="Melhorar imagem com IA"
+                          >
+                            {enhancingProductId === product.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
                         <Button variant="ghost" size="sm" onClick={() => openProductModal(product)} className="flex-1 text-zinc-400 hover:text-zinc-100">
                           <Edit className="h-4 w-4 mr-1" />
                           Editar
