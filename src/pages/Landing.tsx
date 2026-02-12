@@ -76,16 +76,6 @@ const Landing = () => {
       {/* Hero Section */}
       <section ref={heroRef} className="relative pt-36 pb-8 px-6">
         <motion.div style={{ opacity: heroOpacity, scale: heroScale }} className="max-w-5xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/[0.08] border border-primary/20 text-primary text-sm font-medium mb-8 backdrop-blur-sm"
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>A plataforma #1 para gestão de serviços</span>
-            <ChevronRight className="h-3.5 w-3.5" />
-          </motion.div>
 
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
