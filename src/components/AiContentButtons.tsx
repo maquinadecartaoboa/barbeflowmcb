@@ -35,7 +35,11 @@ export function AiTextButton({ table, currentName, currentDescription, onResult 
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        const msg = data?.error || 'Erro ao gerar conteúdo. Tente novamente em alguns segundos.';
+        toast({ title: msg, variant: "destructive" });
+        return;
+      }
       if (data?.error) {
         toast({ title: data.error, variant: "destructive" });
         return;
@@ -47,7 +51,7 @@ export function AiTextButton({ table, currentName, currentDescription, onResult 
       setInstruction("");
     } catch (err) {
       console.error('AI text error:', err);
-      toast({ title: "Erro ao gerar conteúdo", variant: "destructive" });
+      toast({ title: "Erro ao gerar conteúdo. Tente novamente.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -128,7 +132,11 @@ export function AiGenerateImageButton({ table, itemId, hasImage, onGenerated }: 
         body: { type: 'image', table, item_id: itemId },
       });
 
-      if (error) throw error;
+      if (error) {
+        const msg = data?.error || 'Erro ao gerar imagem. Tente novamente em alguns segundos.';
+        toast({ title: msg, variant: "destructive" });
+        return;
+      }
       if (data?.error) {
         toast({ title: data.error, variant: "destructive" });
         return;
@@ -138,7 +146,7 @@ export function AiGenerateImageButton({ table, itemId, hasImage, onGenerated }: 
       onGenerated();
     } catch (err) {
       console.error('AI image error:', err);
-      toast({ title: "Erro ao gerar imagem", variant: "destructive" });
+      toast({ title: "Erro ao gerar imagem. Tente novamente.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
