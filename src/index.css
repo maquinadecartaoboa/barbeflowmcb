@@ -7,40 +7,38 @@ All colors MUST be HSL.
 */
 
 @layer base {
+  /* Light Theme (default) */
   :root {
-    /* modoGESTOR Brand Colors - Dark Theme by Default for Admin */
-    --background: 240 6% 6%;
-    --foreground: 0 0% 95%;
+    --background: 0 0% 98%;
+    --foreground: 240 10% 10%;
 
-    --card: 240 5% 10%;
-    --card-foreground: 0 0% 95%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 10%;
 
-    --popover: 240 5% 10%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 10%;
 
     /* Primary: Golden Yellow #FFC300 */
     --primary: 45 100% 50%;
     --primary-foreground: 0 0% 10%;
     --primary-hover: 45 100% 45%;
 
-    /* Secondary: Dark zinc */
-    --secondary: 240 4% 16%;
-    --secondary-foreground: 0 0% 95%;
-    --secondary-hover: 240 4% 20%;
+    --secondary: 240 5% 92%;
+    --secondary-foreground: 240 6% 10%;
+    --secondary-hover: 240 5% 88%;
 
-    /* Accent: Golden Yellow */
     --accent: 45 100% 50%;
     --accent-foreground: 0 0% 10%;
     --accent-hover: 45 100% 45%;
 
-    --muted: 240 4% 16%;
-    --muted-foreground: 240 5% 65%;
+    --muted: 240 5% 92%;
+    --muted-foreground: 240 4% 46%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 4% 16%;
-    --input: 240 4% 16%;
+    --border: 240 6% 85%;
+    --input: 240 6% 85%;
     --ring: 45 100% 50%;
 
     /* Success */
@@ -54,22 +52,22 @@ All colors MUST be HSL.
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(45 100% 50%), hsl(45 100% 60%));
     --gradient-accent: linear-gradient(135deg, hsl(45 100% 50%), hsl(45 100% 60%));
-    --gradient-hero: linear-gradient(135deg, hsl(240 6% 6%) 0%, hsl(240 5% 10%) 50%, hsl(45 100% 50%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(0 0% 98%) 0%, hsl(0 0% 94%) 50%, hsl(45 100% 50%) 100%);
 
     /* Shadows */
-    --shadow-soft: 0 2px 8px -2px hsl(0 0% 0% / 0.3);
-    --shadow-medium: 0 4px 16px -4px hsl(0 0% 0% / 0.4);
-    --shadow-large: 0 8px 32px -8px hsl(0 0% 0% / 0.5);
-    --shadow-accent: 0 4px 16px -4px hsl(45 100% 50% / 0.3);
-    --shadow-glow-primary: 0 0 20px -4px hsl(45 100% 50% / 0.25);
-    --shadow-glow-blue: 0 0 20px -4px hsl(217 91% 60% / 0.2);
-    --shadow-glow-violet: 0 0 20px -4px hsl(263 70% 50% / 0.2);
-    --shadow-glow-amber: 0 0 20px -4px hsl(38 92% 50% / 0.2);
+    --shadow-soft: 0 2px 8px -2px hsl(0 0% 0% / 0.08);
+    --shadow-medium: 0 4px 16px -4px hsl(0 0% 0% / 0.12);
+    --shadow-large: 0 8px 32px -8px hsl(0 0% 0% / 0.16);
+    --shadow-accent: 0 4px 16px -4px hsl(45 100% 50% / 0.2);
+    --shadow-glow-primary: 0 0 20px -4px hsl(45 100% 50% / 0.15);
+    --shadow-glow-blue: 0 0 20px -4px hsl(217 91% 60% / 0.12);
+    --shadow-glow-violet: 0 0 20px -4px hsl(263 70% 50% / 0.12);
+    --shadow-glow-amber: 0 0 20px -4px hsl(38 92% 50% / 0.12);
 
     /* Glass */
-    --glass-bg: hsl(240 6% 8% / 0.7);
-    --glass-border: hsl(240 4% 20% / 0.5);
-    --glass-hover: hsl(240 4% 14% / 0.8);
+    --glass-bg: hsl(0 0% 100% / 0.7);
+    --glass-border: hsl(240 6% 85% / 0.5);
+    --glass-hover: hsl(0 0% 96% / 0.8);
 
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -77,13 +75,13 @@ All colors MUST be HSL.
 
     --radius: 12px;
 
-    --sidebar-background: 240 6% 6%;
-    --sidebar-foreground: 0 0% 90%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 6% 25%;
     --sidebar-primary: 45 100% 50%;
     --sidebar-primary-foreground: 0 0% 10%;
-    --sidebar-accent: 240 5% 12%;
-    --sidebar-accent-foreground: 0 0% 90%;
-    --sidebar-border: 240 4% 16%;
+    --sidebar-accent: 240 5% 94%;
+    --sidebar-accent-foreground: 240 6% 25%;
+    --sidebar-border: 240 6% 88%;
     --sidebar-ring: 45 100% 50%;
 
     /* Chart colors */
@@ -94,8 +92,8 @@ All colors MUST be HSL.
     --chart-5: 0 72% 51%;
   }
 
+  /* Dark Theme */
   .dark {
-    /* Dark mode - same as root for consistency */
     --background: 240 6% 6%;
     --foreground: 0 0% 95%;
 
@@ -141,6 +139,14 @@ All colors MUST be HSL.
     --shadow-medium: 0 4px 16px -4px hsl(0 0% 0% / 0.4);
     --shadow-large: 0 8px 32px -8px hsl(0 0% 0% / 0.5);
     --shadow-accent: 0 4px 16px -4px hsl(45 100% 50% / 0.3);
+    --shadow-glow-primary: 0 0 20px -4px hsl(45 100% 50% / 0.25);
+    --shadow-glow-blue: 0 0 20px -4px hsl(217 91% 60% / 0.2);
+    --shadow-glow-violet: 0 0 20px -4px hsl(263 70% 50% / 0.2);
+    --shadow-glow-amber: 0 0 20px -4px hsl(38 92% 50% / 0.2);
+
+    --glass-bg: hsl(240 6% 8% / 0.7);
+    --glass-border: hsl(240 4% 20% / 0.5);
+    --glass-hover: hsl(240 4% 14% / 0.8);
 
     --sidebar-background: 240 6% 6%;
     --sidebar-foreground: 0 0% 90%;
@@ -173,12 +179,12 @@ All colors MUST be HSL.
 
 .glass-panel-hover:hover {
   background: var(--glass-hover);
-  border-color: hsl(240 4% 24% / 0.6);
+  border-color: hsl(var(--border) / 0.6);
 }
 
 /* Gradient text utility */
 .text-gradient-primary {
-  background: linear-gradient(135deg, hsl(45 100% 50%), hsl(45 100% 65%));
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -205,7 +211,7 @@ All colors MUST be HSL.
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, hsl(45 100% 50% / 0.3), hsl(217 91% 60% / 0.1), transparent);
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.3), hsl(217 91% 60% / 0.1), transparent);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
