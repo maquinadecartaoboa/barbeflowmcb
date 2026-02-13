@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useWhatsAppStatus } from "@/hooks/useWhatsAppStatus";
 import { CustomerImportExport } from "@/components/CustomerImportExport";
 import WhatsAppConfigEmbed from "@/pages/WhatsAppConfig";
+import { AppearanceTab } from "@/components/settings/AppearanceTab";
 import { BillingTab } from "@/components/billing/BillingTab";
 import { useSearchParams } from "react-router-dom";
 import { useTenant } from "@/hooks/useTenant";
@@ -1324,6 +1325,11 @@ export default function Settings() {
             </Card>
           </TabsContent>
         )}
+
+        {/* Appearance Tab */}
+        <TabsContent value="appearance">
+          <AppearanceTab />
+        </TabsContent>
 
         {/* WhatsApp Tab */}
         <TabsContent value="whatsapp">

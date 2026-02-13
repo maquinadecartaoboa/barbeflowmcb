@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { DateRangeProvider } from "@/contexts/DateRangeContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { isDashboardDomain, isPublicDomain, isPreviewOrLocal } from "@/lib/hostname";
 import Landing from "./pages/Landing";
@@ -43,9 +44,11 @@ const dashPrefix = isDashboardDomain() ? '' : '/app';
 
 const ProtectedAppShell = () => (
   <ProtectedRoute>
-    <DateRangeProvider>
-      <AppShell />
-    </DateRangeProvider>
+    <ThemeProvider>
+      <DateRangeProvider>
+        <AppShell />
+      </DateRangeProvider>
+    </ThemeProvider>
   </ProtectedRoute>
 );
 

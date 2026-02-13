@@ -66,6 +66,7 @@ import {
   Repeat,
   Sparkles,
   Crown,
+  Palette,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { format } from "date-fns";
@@ -123,6 +124,7 @@ const baseNavigationItems: NavItem[] = [
     icon: Settings,
     children: [
       { title: "Geral", url: "/app/settings?tab=general", icon: Settings },
+      { title: "Aparência", url: "/app/settings?tab=appearance", icon: Palette },
       { title: "Agendamento", url: "/app/settings?tab=scheduling", icon: CalendarCheck },
       { title: "Notificações", url: "/app/settings?tab=notifications", icon: MessageCircle },
       { title: "Pagamentos", url: "/app/settings?tab=payments", icon: CreditCard },
@@ -156,7 +158,7 @@ function NavItemLink({ item, isActive, onClick, statusDot }: { item: { title: st
       className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-500 relative overflow-hidden ${
         isActive 
           ? 'text-primary' 
-          : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/30'
+          : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
       }`}
     >
       {isActive && (
@@ -171,7 +173,7 @@ function NavItemLink({ item, isActive, onClick, statusDot }: { item: { title: st
         transition={{ type: "spring", stiffness: 200, damping: 20 }}
         className="relative z-10"
       >
-        <item.icon className={`h-4 w-4 transition-colors duration-500 ${isActive ? 'text-primary' : 'text-zinc-600 group-hover:text-zinc-400'}`} />
+        <item.icon className={`h-4 w-4 transition-colors duration-500 ${isActive ? 'text-primary' : 'text-muted-foreground/60 group-hover:text-muted-foreground'}`} />
       </motion.div>
       <span className="text-sm font-medium relative z-10">{item.title}</span>
       {statusDot && (
@@ -202,9 +204,9 @@ function CollapsibleNavItem({ item, location, waConnected }: { item: NavItem; lo
       <CollapsibleTrigger className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 w-full ${
         isAnyChildActive 
           ? 'text-primary' 
-          : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/30'
+          : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
       }`}>
-        <item.icon className={`h-4 w-4 ${isAnyChildActive ? 'text-primary' : 'text-zinc-600'}`} />
+        <item.icon className={`h-4 w-4 ${isAnyChildActive ? 'text-primary' : 'text-muted-foreground/60'}`} />
         <span className="text-sm font-medium">{item.title}</span>
         <ChevronDown className={`h-3.5 w-3.5 ml-auto transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
       </CollapsibleTrigger>
@@ -237,24 +239,25 @@ function AppSidebar() {
   const waConnected = useWhatsAppStatus();
 
   return (
-    <Sidebar className="border-r border-zinc-800/30 bg-zinc-950/80 backdrop-blur-xl">
-      <SidebarHeader className="p-5 border-b border-zinc-800/30">
+    <Sidebar className="border-r border-border/30 bg-background/80 backdrop-blur-xl">
+      <SidebarHeader className="p-5 border-b border-border/30">
         <div className="flex items-center gap-3">
           {currentTenant?.logo_url ? (
             <div className="relative">
-              <img src={currentTenant.logo_url} alt={currentTenant.name} className="w-10 h-10 rounded-xl object-cover ring-1 ring-zinc-800/50" />
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full border-2 border-zinc-950" />
+              <img src={currentTenant.logo_url} alt={currentTenant.name} className="w-10 h-10 rounded-xl object-cover ring-1 ring-border/50" />
+              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full border-2 border-background" />
             </div>
           ) : (
             <div className="relative">
-              <img src={logoBranca} alt="modoGESTOR" className="h-6" />
+              <img src={logoBranca} alt="modoGESTOR" className="h-6 dark:block hidden" />
+              <img src={logoBranca} alt="modoGESTOR" className="h-6 dark:hidden block invert" />
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <h1 className="text-sm font-bold text-zinc-100 truncate tracking-tight">
+            <h1 className="text-sm font-bold text-foreground truncate tracking-tight">
               {currentTenant?.name || 'modoGESTOR'}
             </h1>
-            <p className="text-[11px] text-zinc-600 font-medium">
+            <p className="text-[11px] text-muted-foreground/60 font-medium">
               {currentTenant?.slug ? `@${currentTenant.slug}` : 'Dashboard'}
             </p>
           </div>
@@ -291,35 +294,35 @@ function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-3 border-t border-zinc-800/30">
+      <SidebarFooter className="p-3 border-t border-border/30">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="w-full justify-start p-2.5 h-auto hover:bg-zinc-800/30 rounded-xl transition-all duration-300">
+            <Button variant="ghost" className="w-full justify-start p-2.5 h-auto hover:bg-muted/30 rounded-xl transition-all duration-300">
               <div className="relative mr-3">
-                <Avatar className="h-9 w-9 ring-2 ring-zinc-800/50">
+                <Avatar className="h-9 w-9 ring-2 ring-border/50">
                   <AvatarImage src={user?.user_metadata?.avatar_url} />
-                  <AvatarFallback className="bg-gradient-to-br from-zinc-700 to-zinc-800 text-zinc-300 text-xs font-bold">
+                  <AvatarFallback className="bg-muted text-muted-foreground text-xs font-bold">
                     {user?.email?.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
               </div>
               <div className="flex-1 text-left">
-                <p className="text-sm font-semibold text-zinc-200 tracking-tight">
+                <p className="text-sm font-semibold text-foreground tracking-tight">
                   {user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuário'}
                 </p>
-                <p className="text-[11px] text-zinc-600 truncate">
+                <p className="text-[11px] text-muted-foreground/60 truncate">
                   {user?.email}
                 </p>
               </div>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 bg-zinc-900/95 backdrop-blur-xl border-zinc-800/50 shadow-xl shadow-black/30">
-            <DropdownMenuItem className="text-zinc-300 focus:bg-zinc-800/50 focus:text-zinc-100 rounded-lg">
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem>
               <User className="h-4 w-4 mr-2" />
               Perfil
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-zinc-800/50" />
-            <DropdownMenuItem onClick={signOut} className="text-zinc-300 focus:bg-red-500/10 focus:text-red-400 rounded-lg">
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={signOut} className="focus:bg-destructive/10 focus:text-destructive">
               <LogOut className="h-4 w-4 mr-2" />
               Sair
             </DropdownMenuItem>
@@ -340,21 +343,24 @@ function MobileDrawer() {
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/30 rounded-xl">
+        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hover:bg-muted/30 rounded-xl">
           <Menu className="h-5 w-5" />
         </Button>
       </DrawerTrigger>
-      <DrawerContent className="bg-zinc-950/95 backdrop-blur-2xl border-zinc-800/30 max-h-[85vh]">
-        <DrawerHeader className="border-b border-zinc-800/30 pb-4">
+      <DrawerContent className="bg-background/95 backdrop-blur-2xl border-border/30 max-h-[85vh]">
+        <DrawerHeader className="border-b border-border/30 pb-4">
           <div className="flex items-center gap-3">
             {currentTenant?.logo_url ? (
-              <img src={currentTenant.logo_url} alt={currentTenant.name} className="w-11 h-11 rounded-xl object-cover ring-1 ring-zinc-800/50" />
+              <img src={currentTenant.logo_url} alt={currentTenant.name} className="w-11 h-11 rounded-xl object-cover ring-1 ring-border/50" />
             ) : (
-              <img src={logoBranca} alt="modoGESTOR" className="h-7" />
+              <>
+                <img src={logoBranca} alt="modoGESTOR" className="h-7 dark:block hidden" />
+                <img src={logoBranca} alt="modoGESTOR" className="h-7 dark:hidden block invert" />
+              </>
             )}
             <div className="flex-1">
-              <DrawerTitle className="text-zinc-100 text-left font-bold tracking-tight">{currentTenant?.name || 'modoGESTOR'}</DrawerTitle>
-              <DrawerDescription className="text-zinc-600 text-left text-xs">
+              <DrawerTitle className="text-foreground text-left font-bold tracking-tight">{currentTenant?.name || 'modoGESTOR'}</DrawerTitle>
+              <DrawerDescription className="text-muted-foreground text-left text-xs">
                 {user?.email}
               </DrawerDescription>
             </div>
@@ -371,11 +377,11 @@ function MobileDrawer() {
                 });
                 return (
                   <div key={item.title} className="mt-4 first:mt-0">
-                    <div className={`flex items-center gap-2.5 px-3 py-2 ${isAnyChildActive ? 'text-primary' : 'text-zinc-600'}`}>
+                    <div className={`flex items-center gap-2.5 px-3 py-2 ${isAnyChildActive ? 'text-primary' : 'text-muted-foreground/60'}`}>
                       <item.icon className="h-3.5 w-3.5" />
                       <span className="text-[11px] font-bold uppercase tracking-widest">{item.title}</span>
                     </div>
-                    <div className="ml-2 border-l border-zinc-800/40 pl-2 space-y-0.5">
+                    <div className="ml-2 border-l border-border/40 pl-2 space-y-0.5">
                       {item.children.map((child) => {
                         const isActive = child.url.includes('?')
                           ? fullUrl === child.url
@@ -388,13 +394,13 @@ function MobileDrawer() {
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
                               isActive 
                                 ? 'bg-primary/[0.08] text-primary border border-primary/20' 
-                                : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/30 active:bg-zinc-800/50 border border-transparent'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/30 active:bg-muted/50 border border-transparent'
                             }`}
                           >
                             <child.icon className="h-4 w-4" />
                             <span className="text-sm font-medium">{child.title}</span>
                             {child.statusDot && (
-                              <span className={`ml-auto w-2 h-2 rounded-full ${waConnected ? 'bg-emerald-400' : 'bg-zinc-600'}`} />
+                              <span className={`ml-auto w-2 h-2 rounded-full ${waConnected ? 'bg-emerald-400' : 'bg-muted-foreground/30'}`} />
                             )}
                             {!child.statusDot && isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
                           </NavLink>
@@ -413,13 +419,13 @@ function MobileDrawer() {
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
                     isActive 
                       ? 'bg-primary/[0.08] text-primary border border-primary/20' 
-                      : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/30 active:bg-zinc-800/50 border border-transparent'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/30 active:bg-muted/50 border border-transparent'
                   }`}
                 >
                   <item.icon className="h-4 w-4" />
                   <span className="text-sm font-medium">{item.title}</span>
                   {item.statusDot && (
-                    <span className={`ml-auto w-2 h-2 rounded-full ${waConnected ? 'bg-emerald-400' : 'bg-zinc-600'}`} />
+                    <span className={`ml-auto w-2 h-2 rounded-full ${waConnected ? 'bg-emerald-400' : 'bg-muted-foreground/30'}`} />
                   )}
                   {!item.statusDot && isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
                 </NavLink>
@@ -427,11 +433,11 @@ function MobileDrawer() {
             })}
           </div>
         </div>
-        <div className="p-3 border-t border-zinc-800/30">
+        <div className="p-3 border-t border-border/30">
           <Button 
             variant="ghost" 
             onClick={() => { signOut(); setOpen(false); }}
-            className="w-full justify-start text-zinc-500 hover:text-red-400 hover:bg-red-500/10 h-11 rounded-xl"
+            className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-11 rounded-xl"
           >
             <LogOut className="h-4 w-4 mr-3" />
             <span className="text-sm font-medium">Sair da conta</span>
@@ -447,7 +453,7 @@ function BottomTabs() {
   const navigate = useNavigate();
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-950/90 backdrop-blur-2xl border-t border-zinc-800/30 z-50 safe-area-pb">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-2xl border-t border-border/30 z-50 safe-area-pb">
       <div className="grid grid-cols-4 max-w-md mx-auto">
         {bottomTabItems.map((item) => {
           const isActive = location.pathname === item.url || 
@@ -459,7 +465,7 @@ function BottomTabs() {
               className={`flex flex-col items-center gap-1 py-3 min-h-[56px] transition-all duration-300 relative ${
                 isActive 
                   ? 'text-primary' 
-                  : 'text-zinc-600 active:text-zinc-300'
+                  : 'text-muted-foreground/60 active:text-foreground'
               }`}
             >
               {isActive && (
@@ -525,20 +531,23 @@ export default function AppShell() {
   if (isMobile) {
     return (
       <>
-        <div className="min-h-screen bg-zinc-950">
+        <div className="min-h-screen bg-background">
           {/* Mobile Header */}
-          <header className="sticky top-0 z-40 border-b border-zinc-800/30 bg-zinc-950/90 backdrop-blur-2xl">
+          <header className="sticky top-0 z-40 border-b border-border/30 bg-background/90 backdrop-blur-2xl">
             <div className="flex items-center justify-between px-4 h-14">
               <div className="flex items-center gap-3">
                 <MobileDrawer />
                 <div className="flex items-center gap-2.5">
                   {currentTenant?.logo_url ? (
-                    <img src={currentTenant.logo_url} alt={currentTenant.name} className="w-7 h-7 rounded-lg object-cover ring-1 ring-zinc-800/50" />
+                    <img src={currentTenant.logo_url} alt={currentTenant.name} className="w-7 h-7 rounded-lg object-cover ring-1 ring-border/50" />
                   ) : (
-                    <img src={logoBranca} alt="modoGESTOR" className="h-5" />
+                    <>
+                      <img src={logoBranca} alt="modoGESTOR" className="h-5 dark:block hidden" />
+                      <img src={logoBranca} alt="modoGESTOR" className="h-5 dark:hidden block invert" />
+                    </>
                   )}
                   <div>
-                    <h1 className="text-sm font-bold text-zinc-100 tracking-tight">
+                    <h1 className="text-sm font-bold text-foreground tracking-tight">
                       {currentTenant?.name || 'modoGESTOR'}
                     </h1>
                   </div>
@@ -547,27 +556,27 @@ export default function AppShell() {
               </div>
               
               <div className="flex items-center gap-2">
-                <span className="text-[11px] text-zinc-600 font-medium tabular-nums">
+                <span className="text-[11px] text-muted-foreground/60 font-medium tabular-nums">
                   {format(new Date(), "dd/MM", { locale: ptBR })}
                 </span>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="hover:bg-zinc-800/30 rounded-xl p-1">
-                      <Avatar className="h-7 w-7 ring-1 ring-zinc-800/50">
+                    <Button variant="ghost" size="sm" className="hover:bg-muted/30 rounded-xl p-1">
+                      <Avatar className="h-7 w-7 ring-1 ring-border/50">
                         <AvatarImage src={user?.user_metadata?.avatar_url} />
-                        <AvatarFallback className="bg-gradient-to-br from-zinc-700 to-zinc-800 text-zinc-400 text-xs font-bold">
+                        <AvatarFallback className="bg-muted text-muted-foreground text-xs font-bold">
                           {user?.email?.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-zinc-900/95 backdrop-blur-xl border-zinc-800/50 shadow-xl">
-                    <DropdownMenuItem className="text-zinc-300 focus:bg-zinc-800/50 focus:text-zinc-100 rounded-lg">
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem>
                       <User className="h-4 w-4 mr-2" />
                       Perfil
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-zinc-800/50" />
-                    <DropdownMenuItem onClick={signOut} className="text-zinc-300 focus:bg-red-500/10 focus:text-red-400 rounded-lg">
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={signOut} className="focus:bg-destructive/10 focus:text-destructive">
                       <LogOut className="h-4 w-4 mr-2" />
                       Sair
                     </DropdownMenuItem>
@@ -581,7 +590,7 @@ export default function AppShell() {
           <SubscriptionBanner />
 
           {/* Mobile Content */}
-          <main className="pb-28 bg-zinc-950 overflow-x-hidden">
+          <main className="pb-28 bg-background overflow-x-hidden">
             <div className="pt-3">
               <Outlet />
             </div>
@@ -602,18 +611,18 @@ export default function AppShell() {
   return (
     <>
       <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-zinc-950">
+        <div className="min-h-screen flex w-full bg-background">
           <AppSidebar />
           
           <div className="flex-1 flex flex-col">
             {/* Desktop Header */}
-            <header className="sticky top-0 z-40 border-b border-zinc-800/30 bg-zinc-950/80 backdrop-blur-2xl">
+            <header className="sticky top-0 z-40 border-b border-border/30 bg-background/80 backdrop-blur-2xl">
               <div className="flex items-center justify-between px-6 h-14">
                 <div className="flex items-center gap-4">
-                  <SidebarTrigger className="text-zinc-500 hover:text-zinc-200 transition-colors" />
+                  <SidebarTrigger className="text-muted-foreground hover:text-foreground transition-colors" />
                   <TenantSelector />
-                  <div className="h-4 w-px bg-zinc-800/50" />
-                  <div className="text-sm text-zinc-600 font-medium">
+                  <div className="h-4 w-px bg-border/50" />
+                  <div className="text-sm text-muted-foreground font-medium">
                     {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
                   </div>
                 </div>
@@ -623,7 +632,7 @@ export default function AppShell() {
                     <Button 
                       size="sm" 
                       onClick={() => openBookingModal()}
-                      className="bg-gradient-to-r from-primary to-amber-500 hover:from-primary hover:to-amber-400 text-primary-foreground font-semibold shadow-lg shadow-primary/20 border-0 rounded-xl px-4"
+                      className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary hover:to-primary/70 text-primary-foreground font-semibold shadow-lg shadow-primary/20 border-0 rounded-xl px-4"
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Novo Agendamento
@@ -637,7 +646,7 @@ export default function AppShell() {
             <SubscriptionBanner />
 
             {/* Desktop Content */}
-            <main className="flex-1 p-4 md:p-6 bg-zinc-950 overflow-x-hidden">
+            <main className="flex-1 p-4 md:p-6 bg-background overflow-x-hidden">
               <Outlet />
             </main>
           </div>
