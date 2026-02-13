@@ -64,7 +64,7 @@ export default function Onboarding() {
               }`}
             >
               Anual
-              <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-[10px]">
+              <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/30 text-[10px]">
                 2 meses grátis
               </Badge>
             </button>
@@ -97,7 +97,7 @@ export default function Onboarding() {
               <ul className="space-y-2">
                 {PLANS.essencial.features.map((f) => (
                   <li key={f} className="flex items-center gap-2 text-sm text-zinc-300">
-                    <Check className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <Check className="h-4 w-4 text-primary shrink-0" />
                     {f}
                   </li>
                 ))}

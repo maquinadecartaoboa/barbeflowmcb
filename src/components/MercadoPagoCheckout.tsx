@@ -509,7 +509,7 @@ export const MercadoPagoCheckout = ({
           {/* Payment info */}
           <div className="flex items-center justify-between p-3 bg-secondary/50 border border-border rounded-xl">
             <span className="text-sm text-muted-foreground">{serviceName}</span>
-            <span className="font-semibold text-emerald-400">
+            <span className="font-semibold text-primary">
               R$ {amount.toFixed(2)}
             </span>
           </div>
@@ -544,7 +544,7 @@ export const MercadoPagoCheckout = ({
         {/* Payment info */}
         <div className="flex items-center justify-between p-3 bg-secondary/50 border border-border rounded-xl">
           <span className="text-sm text-muted-foreground">{serviceName}</span>
-          <span className="font-semibold text-emerald-400">
+           <span className="font-semibold text-primary">
             R$ {amount.toFixed(2)}
           </span>
         </div>
@@ -592,7 +592,7 @@ export const MercadoPagoCheckout = ({
             <QrCode className="h-5 w-5 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{serviceName}</span>
           </div>
-          <span className="font-semibold text-emerald-400">
+           <span className="font-semibold text-primary">
             R$ {amount.toFixed(2)}
           </span>
         </div>
@@ -661,7 +661,7 @@ export const MercadoPagoCheckout = ({
             <CreditCard className="h-5 w-5 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{serviceName}</span>
           </div>
-          <span className="font-semibold text-emerald-400">
+          <span className="font-semibold text-primary">
             R$ {amount.toFixed(2)}
           </span>
         </div>

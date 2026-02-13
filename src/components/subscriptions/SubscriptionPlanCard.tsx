@@ -58,7 +58,7 @@ export function SubscriptionPlanCard({ plan, onEdit, onDelete, onToggleActive, o
                 </Badge>
               )}
             </div>
-            <span className="text-sm font-semibold text-emerald-400">
+            <span className="text-sm font-semibold text-primary">
               R$ {(plan.price_cents / 100).toFixed(2)}/mês
             </span>
             {plan.description && (

@@ -257,7 +257,7 @@ const PaymentReturn = () => {
               <div className="h-px bg-zinc-800" />
               <div className="flex items-center justify-between">
                 <span className="text-zinc-500 text-sm">Valor pago</span>
-                <span className="font-semibold text-emerald-400">
+                <span className="font-semibold text-primary">
                   R$ {((payment?.amount_cents || 0) / 100).toFixed(2)}
                 </span>
               </div>
