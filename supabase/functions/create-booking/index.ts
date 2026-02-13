@@ -149,7 +149,7 @@ async function handleSubscriptionSession(customerSubscriptionId: string, service
   // 1. Validate subscription
   const { data: sub, error: subErr } = await supabase
     .from('customer_subscriptions')
-    .select('id, status, plan_id')
+    .select('id, status, plan_id, started_at, current_period_start, current_period_end')
     .eq('id', customerSubscriptionId)
     .in('status', ['active', 'authorized'])
     .single();
@@ -159,7 +159,18 @@ async function handleSubscriptionSession(customerSubscriptionId: string, service
     return { valid: false, error: 'Subscription not active' };
   }
 
-  // 2. Check plan service config
+  // 2. Validate 30-day rolling period
+  const now = new Date();
+  const startDate = sub.current_period_start ? new Date(sub.current_period_start) : (sub.started_at ? new Date(sub.started_at) : null);
+  if (!startDate) {
+    return { valid: false, error: 'Subscription has no start date' };
+  }
+  const endDate = sub.current_period_end ? new Date(sub.current_period_end) : new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+  if (now > endDate) {
+    return { valid: false, error: 'Subscription period expired' };
+  }
+
+  // 3. Check plan service config
   const { data: planService, error: psErr } = await supabase
     .from('subscription_plan_services')
     .select('sessions_per_cycle')
@@ -172,12 +183,9 @@ async function handleSubscriptionSession(customerSubscriptionId: string, service
     return { valid: false, error: 'Service not covered by subscription' };
   }
 
-  // 3. Find or create usage record for current cycle
-  const now = new Date();
-  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const periodStartStr = periodStart.toISOString().split('T')[0];
-  const periodEndStr = periodEnd.toISOString().split('T')[0];
+  // 4. Find or create usage record for current period (tracking only, no limits enforced for subscriptions)
+  const periodStartStr = startDate.toISOString().split('T')[0];
+  const periodEndStr = endDate.toISOString().split('T')[0];
   const todayStr = now.toISOString().split('T')[0];
 
   let { data: usage } = await supabase
@@ -198,7 +206,7 @@ async function handleSubscriptionSession(customerSubscriptionId: string, service
         period_start: periodStartStr,
         period_end: periodEndStr,
         sessions_used: 0,
-        sessions_limit: planService.sessions_per_cycle,
+        sessions_limit: null, // unlimited for subscriptions
       })
       .select()
       .single();
@@ -209,12 +217,7 @@ async function handleSubscriptionSession(customerSubscriptionId: string, service
     return { valid: false, error: 'Failed to create usage record' };
   }
 
-  // 4. Check limit (null = unlimited)
-  if (usage.sessions_limit !== null && usage.sessions_used >= usage.sessions_limit) {
-    return { valid: false, error: 'Session limit reached for this cycle' };
-  }
-
-  // 5. Increment usage
+  // 5. Increment usage (tracking only — subscriptions have unlimited sessions)
   const newBookingIds = [...(usage.booking_ids || []), bookingId];
   await supabase
     .from('subscription_usage')
@@ -224,7 +227,7 @@ async function handleSubscriptionSession(customerSubscriptionId: string, service
     })
     .eq('id', usage.id);
 
-  console.log(`Subscription session used: ${usage.sessions_used + 1}/${usage.sessions_limit ?? '∞'}`);
+  console.log(`Subscription session tracked: ${usage.sessions_used + 1} (unlimited)`);
   return { valid: true };
 }
 
@@ -377,9 +380,81 @@ serve(async (req) => {
       customerId = newCustomer.id;
     }
 
-    // 7. Atomic booking creation with advisory lock (prevents race conditions / double-bookings)
+    // 7. Auto-detect benefits if not explicitly provided
+    let resolvedPackageId = customer_package_id || null;
+    let resolvedSubscriptionId = customer_subscription_id || null;
+    let benefitSource: 'subscription' | 'package' | null = null;
+
+    if (!resolvedPackageId && !resolvedSubscriptionId) {
+      // Priority 1: Check active subscription covering this service
+      const { data: activeSubs } = await supabase
+        .from('customer_subscriptions')
+        .select('id, status, plan_id, started_at, current_period_start, current_period_end')
+        .eq('customer_id', customerId)
+        .eq('tenant_id', tenant_id)
+        .in('status', ['active', 'authorized']);
+
+      if (activeSubs && activeSubs.length > 0) {
+        const now = new Date();
+        for (const sub of activeSubs) {
+          // Validate 30-day rolling validity
+          const startDate = sub.current_period_start ? new Date(sub.current_period_start) : (sub.started_at ? new Date(sub.started_at) : null);
+          if (!startDate) continue;
+          const endDate = sub.current_period_end ? new Date(sub.current_period_end) : new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+          if (now > endDate) continue; // expired
+
+          // Check if subscription plan covers this service
+          const { data: planSvc } = await supabase
+            .from('subscription_plan_services')
+            .select('sessions_per_cycle')
+            .eq('plan_id', sub.plan_id)
+            .eq('service_id', service_id)
+            .maybeSingle();
+
+          if (planSvc) {
+            resolvedSubscriptionId = sub.id;
+            benefitSource = 'subscription';
+            console.log(`Auto-detected active subscription ${sub.id} for service ${service_id}`);
+            break;
+          }
+        }
+      }
+
+      // Priority 2: Check active package with remaining sessions for this service
+      if (!resolvedSubscriptionId) {
+        const { data: activePackages } = await supabase
+          .from('customer_packages')
+          .select('id, status, payment_status')
+          .eq('customer_id', customerId)
+          .eq('tenant_id', tenant_id)
+          .eq('status', 'active')
+          .eq('payment_status', 'confirmed');
+
+        if (activePackages && activePackages.length > 0) {
+          for (const pkg of activePackages) {
+            const { data: pkgSvc } = await supabase
+              .from('customer_package_services')
+              .select('sessions_used, sessions_total')
+              .eq('customer_package_id', pkg.id)
+              .eq('service_id', service_id)
+              .maybeSingle();
+
+            if (pkgSvc && pkgSvc.sessions_used < pkgSvc.sessions_total) {
+              resolvedPackageId = pkg.id;
+              benefitSource = 'package';
+              console.log(`Auto-detected active package ${pkg.id} for service ${service_id} (${pkgSvc.sessions_total - pkgSvc.sessions_used} remaining)`);
+              break;
+            }
+          }
+        }
+      }
+    } else {
+      benefitSource = resolvedSubscriptionId ? 'subscription' : (resolvedPackageId ? 'package' : null);
+    }
+
+    // 8. Atomic booking creation with advisory lock (prevents race conditions / double-bookings)
     const bufferTime = tenantSettings.buffer_time ?? 10;
-    const isBenefitBooking = !!(customer_package_id || customer_subscription_id);
+    const isBenefitBooking = !!(resolvedPackageId || resolvedSubscriptionId);
     const bookingStatus = isBenefitBooking ? 'confirmed' : (payment_method === 'online' ? 'pending_payment' : 'confirmed');
 
     const { data: atomicResult, error: atomicError } = await supabase.rpc('create_booking_if_available', {
@@ -392,8 +467,8 @@ serve(async (req) => {
       p_status: bookingStatus,
       p_notes: notes || null,
       p_created_via: payload.created_via || 'public',
-      p_customer_package_id: customer_package_id || null,
-      p_customer_subscription_id: customer_subscription_id || null,
+      p_customer_package_id: resolvedPackageId,
+      p_customer_subscription_id: resolvedSubscriptionId,
       p_buffer_minutes: bufferTime,
     });
 
@@ -419,13 +494,13 @@ serve(async (req) => {
     }
 
     // 10. Handle package/subscription session decrement AFTER booking creation
-    if (customer_package_id) {
-      const result = await handlePackageSession(customer_package_id, service_id, booking.id);
+    if (resolvedPackageId) {
+      const result = await handlePackageSession(resolvedPackageId, service_id, booking.id);
       if (!result.valid) {
         console.error('Package session error (booking already created):', result.error);
       }
-    } else if (customer_subscription_id) {
-      const result = await handleSubscriptionSession(customer_subscription_id, service_id, booking.id);
+    } else if (resolvedSubscriptionId) {
+      const result = await handleSubscriptionSession(resolvedSubscriptionId, service_id, booking.id);
       if (!result.valid) {
         console.error('Subscription session error (booking already created):', result.error);
       }
@@ -449,7 +524,14 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, booking, message: 'Agendamento criado com sucesso!' }),
+      JSON.stringify({
+        success: true,
+        booking,
+        benefit_source: benefitSource,
+        message: benefitSource
+          ? `Agendamento criado com sucesso! Utilizado via ${benefitSource === 'subscription' ? 'assinatura' : 'pacote'}.`
+          : 'Agendamento criado com sucesso!',
+      }),
       { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
