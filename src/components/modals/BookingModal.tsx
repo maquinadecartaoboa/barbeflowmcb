@@ -94,6 +94,7 @@ export function BookingModal() {
   // Benefit detection state
   const [detectedBenefits, setDetectedBenefits] = useState<DetectedBenefit[]>([]);
   const [loadingBenefits, setLoadingBenefits] = useState(false);
+  const [serviceBenefitsMap, setServiceBenefitsMap] = useState<Map<string, DetectedBenefit>>(new Map());
 
   const form = useForm<BookingFormData>({
     resolver: zodResolver(bookingFormSchema),
@@ -129,6 +130,7 @@ export function BookingModal() {
       setSelectedCustomerId(null);
       setAvailableSlots([]);
       setDetectedBenefits([]);
+      setServiceBenefitsMap(new Map());
     }
   }, [isOpen, currentTenant]);
 
@@ -233,6 +235,85 @@ export function BookingModal() {
     };
     detectBenefits();
   }, [selectedCustomerId, watchedServiceId, currentTenant]);
+
+  // Load all service benefits when customer is selected (for service dropdown badges)
+  useEffect(() => {
+    if (!selectedCustomerId || !currentTenant || services.length === 0) {
+      setServiceBenefitsMap(new Map());
+      return;
+    }
+    const loadAllBenefits = async () => {
+      const map = new Map<string, DetectedBenefit>();
+      try {
+        const now = new Date();
+        // 1. Subscriptions
+        const { data: subs } = await supabase
+          .from('customer_subscriptions')
+          .select('id, status, plan_id, started_at, current_period_start, current_period_end, plan:subscription_plans(name)')
+          .eq('customer_id', selectedCustomerId)
+          .eq('tenant_id', currentTenant.id)
+          .in('status', ['active', 'authorized']);
+
+        if (subs) {
+          for (const sub of subs) {
+            const startDate = sub.current_period_start ? new Date(sub.current_period_start) : (sub.started_at ? new Date(sub.started_at) : null);
+            if (!startDate) continue;
+            const endDate = sub.current_period_end ? new Date(sub.current_period_end) : new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+            if (now > endDate) continue;
+
+            const { data: planSvcs } = await supabase
+              .from('subscription_plan_services')
+              .select('service_id')
+              .eq('plan_id', sub.plan_id);
+
+            for (const ps of (planSvcs || [])) {
+              if (!map.has(ps.service_id)) {
+                map.set(ps.service_id, {
+                  type: 'subscription',
+                  name: (sub.plan as any)?.name || 'Assinatura',
+                  id: sub.id,
+                  validUntil: endDate.toLocaleDateString('pt-BR'),
+                });
+              }
+            }
+          }
+        }
+
+        // 2. Packages
+        const { data: pkgs } = await supabase
+          .from('customer_packages')
+          .select('id, status, payment_status, package:service_packages(name)')
+          .eq('customer_id', selectedCustomerId)
+          .eq('tenant_id', currentTenant.id)
+          .eq('status', 'active')
+          .eq('payment_status', 'confirmed');
+
+        if (pkgs) {
+          for (const pkg of pkgs) {
+            const { data: pkgSvcs } = await supabase
+              .from('customer_package_services')
+              .select('service_id, sessions_used, sessions_total')
+              .eq('customer_package_id', pkg.id);
+
+            for (const ps of (pkgSvcs || [])) {
+              if (ps.sessions_used < ps.sessions_total && !map.has(ps.service_id)) {
+                map.set(ps.service_id, {
+                  type: 'package',
+                  name: (pkg.package as any)?.name || 'Pacote',
+                  id: pkg.id,
+                  remaining: ps.sessions_total - ps.sessions_used,
+                });
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error loading service benefits map:', err);
+      }
+      setServiceBenefitsMap(map);
+    };
+    loadAllBenefits();
+  }, [selectedCustomerId, currentTenant, services]);
 
   // Fetch available slots when date/service/staff changes
   useEffect(() => {
@@ -530,17 +611,29 @@ export function BookingModal() {
                         {(allowedServiceIds
                           ? services.filter(s => allowedServiceIds.includes(s.id))
                           : services
-                        ).map((service) => (
-                          <SelectItem key={service.id} value={service.id}>
-                            <div className="flex items-center space-x-2">
-                              <div 
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: service.color }}
-                              />
-                              <span>{service.name} - {service.duration_minutes}min - R$ {(service.price_cents / 100).toFixed(2)}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
+                        ).map((service) => {
+                          const benefit = serviceBenefitsMap.get(service.id);
+                          return (
+                            <SelectItem key={service.id} value={service.id}>
+                              <div className="flex items-center gap-2 w-full">
+                                <div 
+                                  className="w-3 h-3 rounded-full shrink-0"
+                                  style={{ backgroundColor: service.color }}
+                                />
+                                <span className="truncate">{service.name} - {service.duration_minutes}min</span>
+                                {benefit ? (
+                                  <span className="ml-auto text-xs font-medium shrink-0 text-amber-400">
+                                    {benefit.type === 'subscription' ? '🔓 Assinatura' : `📦 ${benefit.remaining}x`}
+                                  </span>
+                                ) : (
+                                  <span className="ml-auto text-xs text-muted-foreground shrink-0">
+                                    R$ {(service.price_cents / 100).toFixed(2)}
+                                  </span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                     <FormMessage />
