@@ -82,7 +82,10 @@ export function useSubscription() {
     (slug) => currentTenant?.slug?.toLowerCase().startsWith(slug)
   );
 
+  const tenantLoaded = currentTenant !== null;
+
   const checkSubscription = useCallback(async () => {
+    if (!tenantLoaded) return; // Wait for tenant to load
     if (isExempt) {
       setSubscription({ subscribed: true, status: "active", plan_name: "profissional" });
       setLoading(false);
@@ -98,7 +101,7 @@ export function useSubscription() {
     } finally {
       setLoading(false);
     }
-  }, [isExempt]);
+  }, [isExempt, tenantLoaded]);
 
   useEffect(() => {
     checkSubscription();
