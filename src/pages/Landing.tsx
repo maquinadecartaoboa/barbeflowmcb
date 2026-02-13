@@ -486,7 +486,7 @@ const Landing = () => {
                 }`}
               >
                 Anual
-                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-[10px]">
+                <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/30 text-[10px]">
                   2 meses grátis
                 </Badge>
               </button>
@@ -521,7 +521,7 @@ const Landing = () => {
               <ul className="space-y-2.5 my-6 flex-1">
                 {PLANS.essencial.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-zinc-300">
-                    <Check className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                     {f}
                   </li>
                 ))}

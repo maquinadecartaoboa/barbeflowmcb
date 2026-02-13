@@ -217,7 +217,7 @@ export function PublicSubscriptionPlans({ tenant, plans, onBack }: PublicSubscri
                 )}
               </div>
               <div className="text-right shrink-0">
-                <span className="font-semibold text-emerald-400">
+                <span className="font-semibold text-primary">
                   R$ {(plan.price_cents / 100).toFixed(2)}
                 </span>
                 <span className="text-zinc-500 text-sm">/mês</span>

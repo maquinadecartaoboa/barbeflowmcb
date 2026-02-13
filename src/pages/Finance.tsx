@@ -83,7 +83,7 @@ function VariationBadge({ current, previous }: { current: number; previous: numb
       animate={{ opacity: 1, scale: 1 }}
       className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full ${
         positive
-          ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
+          ? "text-primary bg-primary/10 border border-primary/20"
           : "text-red-400 bg-red-500/10 border border-red-500/20"
       }`}
     >
@@ -337,8 +337,8 @@ export default function Finance() {
     <motion.div initial="hidden" animate="visible" variants={stagger} className="space-y-5 md:space-y-7 px-4 md:px-0 pb-8">
       {/* Header */}
       <motion.div variants={fadeUp} className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 flex items-center justify-center">
-          <Activity className="h-5 w-5 text-emerald-400" />
+        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/20 to-amber-500/10 flex items-center justify-center">
+          <Activity className="h-5 w-5 text-primary" />
         </div>
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-zinc-100 tracking-tight">Financeiro</h1>
@@ -353,7 +353,7 @@ export default function Finance() {
 
       {/* KPI Cards */}
       <motion.div variants={stagger} className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-5">
-        <KpiCard label="Fat. Previsto" value={`R$ ${data ? (data.revenue_expected / 100).toLocaleString("pt-BR", { minimumFractionDigits: 0 }) : "0"}`} icon={Target} gradient="from-emerald-500/15 to-emerald-600/5" iconColor="text-emerald-400" variation={prevData ? { current: data?.revenue_expected || 0, previous: prevData.revenue_expected } : undefined} />
+        <KpiCard label="Fat. Previsto" value={`R$ ${data ? (data.revenue_expected / 100).toLocaleString("pt-BR", { minimumFractionDigits: 0 }) : "0"}`} icon={Target} gradient="from-primary/15 to-primary/5" iconColor="text-primary" variation={prevData ? { current: data?.revenue_expected || 0, previous: prevData.revenue_expected } : undefined} />
         <KpiCard label="Recebido" value={`R$ ${data ? (data.revenue_received / 100).toLocaleString("pt-BR", { minimumFractionDigits: 0 }) : "0"}`} icon={DollarSign} gradient="from-blue-500/15 to-blue-600/5" iconColor="text-blue-400" variation={prevData ? { current: data?.revenue_received || 0, previous: prevData.revenue_received } : undefined} />
         <KpiCard label="Agendamentos" value={`${data?.bookings_count || 0}`} icon={Calendar} gradient="from-violet-500/15 to-violet-600/5" iconColor="text-violet-400" variation={prevData ? { current: data?.bookings_count || 0, previous: prevData.bookings_count } : undefined} />
         <KpiCard label="Ticket Médio" value={`R$ ${data ? (data.avg_ticket / 100).toLocaleString("pt-BR", { minimumFractionDigits: 0 }) : "0"}`} icon={Wallet} gradient="from-amber-500/15 to-amber-600/5" iconColor="text-amber-400" variation={prevData ? { current: data?.avg_ticket || 0, previous: prevData.avg_ticket } : undefined} />
@@ -365,14 +365,14 @@ export default function Finance() {
         <Section>
           <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
             <KpiCard label="Fat. Produtos" value={`R$ ${(data!.product_sales_revenue / 100).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`} icon={ShoppingCart} gradient="from-cyan-500/15 to-cyan-600/5" iconColor="text-cyan-400" />
-            <KpiCard label="Lucro Produtos" value={`R$ ${(data!.product_sales_profit / 100).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`} subtitle={data!.product_sales_revenue > 0 ? `${((data!.product_sales_profit / data!.product_sales_revenue) * 100).toFixed(0)}% margem` : "0%"} icon={TrendingUp} gradient="from-emerald-500/15 to-emerald-600/5" iconColor="text-emerald-400" />
+            <KpiCard label="Lucro Produtos" value={`R$ ${(data!.product_sales_profit / 100).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`} subtitle={data!.product_sales_revenue > 0 ? `${((data!.product_sales_profit / data!.product_sales_revenue) * 100).toFixed(0)}% margem` : "0%"} icon={TrendingUp} gradient="from-primary/15 to-primary/5" iconColor="text-primary" />
           </div>
         </Section>
       )}
 
       {/* Daily Revenue Chart */}
       <Section>
-        <ChartCard icon={Zap} iconColor="text-emerald-400" iconBg="bg-emerald-500/10" title="Faturamento Diário" description="Previsto vs Recebido">
+        <ChartCard icon={Zap} iconColor="text-primary" iconBg="bg-primary/10" title="Faturamento Diário" description="Previsto vs Recebido">
           <ResponsiveContainer width="100%" height={280} className="md:!h-[320px]">
             <ComposedChart data={data?.daily_revenue?.filter((d) => d.expected > 0 || d.received > 0) || []}>
               <defs>
@@ -424,7 +424,7 @@ export default function Finance() {
                       <p className="text-[10px] text-zinc-600">{service.count} agendamentos</p>
                     </div>
                   </div>
-                  <span className="font-bold text-sm text-emerald-400 tabular-nums">R$ {(service.revenue / 100).toFixed(0)}</span>
+                  <span className="font-bold text-sm text-primary tabular-nums">R$ {(service.revenue / 100).toFixed(0)}</span>
                 </motion.div>
               ))}
               {(!data?.top_services || data.top_services.length === 0) && <p className="text-sm text-zinc-600 text-center py-8">Nenhum dado</p>}
@@ -469,15 +469,15 @@ export default function Finance() {
                 className={`p-3.5 rounded-xl bg-zinc-800/20 hover:bg-zinc-800/30 transition-colors space-y-2.5 ${sp.isTop ? "border border-emerald-500/20 bg-emerald-500/[0.03]" : ""}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${sp.isTop ? "bg-emerald-500/10" : "bg-zinc-800/40"}`}>
-                      <Users className={`h-4 w-4 ${sp.isTop ? "text-emerald-400" : "text-zinc-500"}`} />
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${sp.isTop ? "bg-primary/10" : "bg-zinc-800/40"}`}>
+                      <Users className={`h-4 w-4 ${sp.isTop ? "text-primary" : "text-zinc-500"}`} />
                     </div>
                     <div>
                       <p className="font-semibold text-sm text-zinc-200">{sp.name}</p>
                       <p className="text-[10px] text-zinc-600">{sp.bookings} agendamentos</p>
                     </div>
                   </div>
-                  <span className="font-bold text-sm text-emerald-400 tabular-nums">R$ {(sp.revenue / 100).toFixed(0)}</span>
+                  <span className="font-bold text-sm text-primary tabular-nums">R$ {(sp.revenue / 100).toFixed(0)}</span>
                 </div>
                 <Progress value={sp.progressPct} className="h-1.5" />
                 <div className="flex justify-between text-[10px] text-zinc-600">
@@ -539,7 +539,7 @@ export default function Finance() {
                   </div>
                   <div className="text-right">
                     <span className="font-bold text-sm text-zinc-200 block tabular-nums">R$ {(product.revenue / 100).toFixed(0)}</span>
-                    <span className="text-[10px] text-emerald-400 font-medium">+R$ {(product.profit / 100).toFixed(0)}</span>
+                    <span className="text-[10px] text-primary font-medium">+R$ {(product.profit / 100).toFixed(0)}</span>
                   </div>
                 </motion.div>
               ))}
@@ -560,7 +560,7 @@ export default function Finance() {
                       <TableCell className="font-medium text-zinc-200">{product.name}</TableCell>
                       <TableCell className="text-right tabular-nums text-zinc-300">{product.quantity}</TableCell>
                       <TableCell className="text-right tabular-nums text-zinc-300">R$ {(product.revenue / 100).toFixed(2)}</TableCell>
-                      <TableCell className="text-right text-emerald-400 font-medium tabular-nums">R$ {(product.profit / 100).toFixed(2)}</TableCell>
+                      <TableCell className="text-right text-primary font-medium tabular-nums">R$ {(product.profit / 100).toFixed(2)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

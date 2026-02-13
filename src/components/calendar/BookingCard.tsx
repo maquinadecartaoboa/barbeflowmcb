@@ -42,7 +42,7 @@ export function BookingCard({ booking, onClick, isRecurring }: BookingCardProps)
           </span>
         )}
         {booking.customer_subscription_id && (
-          <span className="flex-shrink-0 text-[8px] font-bold bg-emerald-500/20 text-emerald-400 px-1 rounded leading-tight">
+          <span className="flex-shrink-0 text-[8px] font-bold bg-primary/20 text-primary px-1 rounded leading-tight">
             Assinatura
           </span>
         )}

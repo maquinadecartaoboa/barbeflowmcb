@@ -690,7 +690,7 @@ export default function Bookings() {
                   <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px]">Pacote</Badge>
                 )}
                 {selectedBooking.customer_subscription_id && (
-                  <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]">Assinatura</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px]">Assinatura</Badge>
                 )}
               </div>
 

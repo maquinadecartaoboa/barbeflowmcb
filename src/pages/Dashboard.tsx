@@ -205,9 +205,9 @@ const Dashboard = () => {
       value: loading ? "—" : String(services.length),
       sub: "catálogo",
       icon: Scissors,
-      gradient: "from-emerald-500/20 to-emerald-600/5",
-      iconColor: "text-emerald-400",
-      glowColor: "group-hover:shadow-emerald-500/10",
+      gradient: "from-primary/20 to-primary/5",
+      iconColor: "text-primary",
+      glowColor: "group-hover:shadow-primary/10",
       href: dashPath('/app/services'),
     },
     {
@@ -369,7 +369,7 @@ const Dashboard = () => {
                       <item.icon className="h-3.5 w-3.5" />
                       <span>{item.label}</span>
                     </div>
-                    <span className={`text-sm font-semibold ${(item as any).highlight ? 'text-emerald-400 font-bold' : 'text-zinc-200'}`}>
+                    <span className={`text-sm font-semibold ${(item as any).highlight ? 'text-primary font-bold' : 'text-zinc-200'}`}>
                       {item.value}
                     </span>
                   </div>

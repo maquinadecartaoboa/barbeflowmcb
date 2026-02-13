@@ -17,10 +17,10 @@ const HOURS = Array.from({ length: 14 }, (_, i) => i + 8);
 function getIntensityStyle(value: number, max: number): string {
   if (value === 0 || max === 0) return "bg-zinc-800/20";
   const ratio = value / max;
-  if (ratio <= 0.25) return "bg-emerald-900/25 ring-1 ring-emerald-800/15";
-  if (ratio <= 0.5) return "bg-emerald-800/40 ring-1 ring-emerald-700/20";
-  if (ratio <= 0.75) return "bg-emerald-600/50 ring-1 ring-emerald-500/25";
-  return "bg-emerald-500/60 ring-1 ring-emerald-400/30 shadow-sm shadow-emerald-500/10";
+  if (ratio <= 0.25) return "bg-amber-900/25 ring-1 ring-amber-800/15";
+  if (ratio <= 0.5) return "bg-amber-800/40 ring-1 ring-amber-700/20";
+  if (ratio <= 0.75) return "bg-amber-600/50 ring-1 ring-amber-500/25";
+  return "bg-amber-500/60 ring-1 ring-amber-400/30 shadow-sm shadow-amber-500/10";
 }
 
 export function RevenueHeatmap({ bookings }: HeatmapProps) {
@@ -106,7 +106,7 @@ export function RevenueHeatmap({ bookings }: HeatmapProps) {
           <div className="flex items-center gap-3 mt-5 justify-center">
             <span className="text-[10px] text-zinc-600 font-medium">R$ 0</span>
             <div className="flex gap-1">
-              {["bg-zinc-800/20", "bg-emerald-900/25", "bg-emerald-800/40", "bg-emerald-600/50", "bg-emerald-500/60"].map((cls, i) => (
+              {["bg-zinc-800/20", "bg-amber-900/25", "bg-amber-800/40", "bg-amber-600/50", "bg-amber-500/60"].map((cls, i) => (
                 <div key={i} className={`w-8 h-3.5 rounded-md ${cls}`} />
               ))}
             </div>

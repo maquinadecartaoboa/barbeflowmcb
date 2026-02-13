@@ -600,7 +600,7 @@ export default function Customers() {
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/50 text-primary flex-shrink-0">Fixo</Badge>
                           )}
                           {customer.hasPackage && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-emerald-500/50 text-emerald-400 flex-shrink-0">Pacote</Badge>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/50 text-primary flex-shrink-0">Pacote</Badge>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -628,7 +628,7 @@ export default function Customers() {
                       <Badge variant="secondary" className="text-xs">
                         {customer.totalBookings} agend.
                       </Badge>
-                      <span className="font-medium text-success">
+                      <span className="font-medium text-primary">
                         R$ {(customer.totalSpent / 100).toFixed(0)}
                       </span>
                     </div>
@@ -700,7 +700,7 @@ export default function Customers() {
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/50 text-primary">Fixo</Badge>
                               )}
                               {customer.hasPackage && (
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-emerald-500/50 text-emerald-400">Pacote</Badge>
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/50 text-primary">Pacote</Badge>
                               )}
                             </div>
                             <div className="text-sm text-muted-foreground">
@@ -729,7 +729,7 @@ export default function Customers() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium text-success">
+                        <span className="font-medium text-primary">
                           R$ {(customer.totalSpent / 100).toFixed(2)}
                         </span>
                       </TableCell>

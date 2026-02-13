@@ -46,8 +46,8 @@ export function RevenueLineChart({ bookings, dateRange }: RevenueLineChartProps)
     >
       <div className="flex items-center justify-between px-4 md:px-5 py-3 md:py-4 border-b border-zinc-800/30">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-            <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
+          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+            <TrendingUp className="h-3.5 w-3.5 text-primary" />
           </div>
           <div>
             <h3 className="text-sm font-bold text-zinc-100 tracking-tight">Receita</h3>

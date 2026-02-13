@@ -479,7 +479,7 @@ const Products = () => {
                           <span>Venda:</span>
                           <span className="font-medium">R$ {(product.sale_price_cents / 100).toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between text-emerald-400 pt-1 border-t border-zinc-800">
+                        <div className="flex justify-between text-primary pt-1 border-t border-zinc-800">
                           <span>Lucro:</span>
                           <span className="font-semibold">R$ {(profit / 100).toFixed(2)}</span>
                         </div>
@@ -540,12 +540,12 @@ const Products = () => {
             </div>
             <div className="p-4 bg-zinc-900/50 border border-zinc-800/50 rounded-xl">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="h-5 w-5 text-emerald-400" />
+                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-xs text-zinc-500">Lucro de Produtos</p>
-                  <p className="text-xl font-bold text-emerald-400">R$ {(totalSalesProfit / 100).toFixed(2)}</p>
+                  <p className="text-xl font-bold text-primary">R$ {(totalSalesProfit / 100).toFixed(2)}</p>
                 </div>
               </div>
             </div>
@@ -605,7 +605,7 @@ const Products = () => {
                           <td className="px-4 py-3 text-sm text-zinc-100 text-right font-medium">
                             R$ {(total / 100).toFixed(2)}
                           </td>
-                          <td className="px-4 py-3 text-sm text-emerald-400 text-right font-medium">
+                          <td className="px-4 py-3 text-sm text-primary text-right font-medium">
                             R$ {(profit / 100).toFixed(2)}
                           </td>
                           <td className="px-4 py-3 text-center">
@@ -691,8 +691,8 @@ const Products = () => {
             </div>
 
             {productForm.purchase_price && productForm.sale_price && (
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                <p className="text-sm text-emerald-400">
+              <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg">
+                <p className="text-sm text-primary">
                   <strong>Lucro por unidade:</strong> R$ {(parseFloat(productForm.sale_price || '0') - parseFloat(productForm.purchase_price || '0')).toFixed(2)}
                 </p>
               </div>
@@ -792,7 +792,7 @@ const Products = () => {
                       <p className="text-sm text-zinc-300">
                         <strong>Total:</strong> R$ {total.toFixed(2)}
                       </p>
-                      <p className="text-sm text-emerald-400">
+                      <p className="text-sm text-primary">
                         <strong>Lucro:</strong> R$ {profit.toFixed(2)}
                       </p>
                     </>

@@ -423,7 +423,7 @@ export default function Staff() {
                   {!staffMember.is_owner && (staffMember.default_commission_percent > 0 || staffMember.product_commission_percent > 0) && (
                     <div className="flex flex-wrap gap-2">
                       {staffMember.default_commission_percent > 0 && (
-                        <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
+                        <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
                           Serviços: {staffMember.default_commission_percent}%
                         </Badge>
                       )}

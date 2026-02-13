@@ -42,8 +42,8 @@ export function PeriodComparisonChart({ currentDaily, previousDaily }: PeriodCom
   return (
     <div className="rounded-2xl glass-panel overflow-hidden">
       <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-800/30">
-        <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-          <GitCompareArrows className="h-4 w-4 text-emerald-400" />
+        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+          <GitCompareArrows className="h-4 w-4 text-primary" />
         </div>
         <div>
           <h3 className="text-sm font-bold text-zinc-100 tracking-tight">Comparativo com Período Anterior</h3>

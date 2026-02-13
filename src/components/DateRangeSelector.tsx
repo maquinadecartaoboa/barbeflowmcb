@@ -33,8 +33,8 @@ export function DateRangeSelector({ className, showTitle = true }: DateRangeSele
       {showTitle && (
         <div className="p-3 md:p-5 border-b border-zinc-800/50">
           <h2 className="text-base md:text-lg font-semibold text-zinc-100 flex items-center">
-            <div className="w-7 h-7 md:w-8 md:h-8 bg-emerald-500/10 rounded-lg flex items-center justify-center mr-2 md:mr-3">
-              <Filter className="h-3.5 w-3.5 md:h-4 md:w-4 text-emerald-400" />
+            <div className="w-7 h-7 md:w-8 md:h-8 bg-primary/10 rounded-lg flex items-center justify-center mr-2 md:mr-3">
+              <Filter className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary" />
             </div>
             Período de Análise
           </h2>
@@ -45,7 +45,7 @@ export function DateRangeSelector({ className, showTitle = true }: DateRangeSele
           <div className="space-y-1.5 md:space-y-2">
             <Label className="text-zinc-400 text-xs md:text-sm">Período</Label>
             <Select value={preset} onValueChange={setPreset}>
-              <SelectTrigger className="h-10 md:h-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 focus:border-emerald-500/50 focus:ring-emerald-500/20 text-sm">
+              <SelectTrigger className="h-10 md:h-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 focus:border-primary/50 focus:ring-primary/20 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-zinc-900 border-zinc-800">
@@ -70,7 +70,7 @@ export function DateRangeSelector({ className, showTitle = true }: DateRangeSele
                   type="date" 
                   value={customStartDate}
                   onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="h-10 md:h-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 focus:border-emerald-500/50 focus:ring-emerald-500/20 text-sm"
+                  className="h-10 md:h-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 focus:border-primary/50 focus:ring-primary/20 text-sm"
                 />
               </div>
               <div className="space-y-1.5 md:space-y-2">
@@ -79,7 +79,7 @@ export function DateRangeSelector({ className, showTitle = true }: DateRangeSele
                   type="date" 
                   value={customEndDate}
                   onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="h-10 md:h-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 focus:border-emerald-500/50 focus:ring-emerald-500/20 text-sm"
+                  className="h-10 md:h-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 focus:border-primary/50 focus:ring-primary/20 text-sm"
                 />
               </div>
             </>
@@ -92,9 +92,9 @@ export function DateRangeSelector({ className, showTitle = true }: DateRangeSele
             <Calendar className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 text-zinc-500 flex-shrink-0" />
             <span className="flex flex-wrap gap-1">
               <span>De</span>
-              <strong className="text-emerald-400">{format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })}</strong>
+              <strong className="text-primary">{format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })}</strong>
               <span>até</span>
-              <strong className="text-emerald-400">{format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}</strong>
+              <strong className="text-primary">{format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}</strong>
             </span>
           </div>
         </div>
