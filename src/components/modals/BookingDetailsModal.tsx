@@ -82,7 +82,7 @@ export function BookingDetailsModal({
       setCustomerBalance(total);
     }
 
-    // Check if paid online
+    // Check if paid online or locally
     if (!booking.is_recurring) {
       const { data: payData } = await supabase
         .from("payments")
@@ -91,6 +91,19 @@ export function BookingDetailsModal({
         .eq("status", "paid")
         .limit(1);
       setHasPaidOnline((payData || []).length > 0);
+
+      // Check if local payment already recorded
+      const { data: localPayData } = await supabase
+        .from("customer_balance_entries")
+        .select("id")
+        .eq("booking_id", booking.id)
+        .eq("tenant_id", tenantId)
+        .eq("type", "credit")
+        .ilike("description", "Pagamento local%")
+        .limit(1);
+      if ((localPayData || []).length > 0) {
+        setPaymentRecorded(true);
+      }
     }
   };
 
