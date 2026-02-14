@@ -164,17 +164,47 @@ serve(async (req) => {
         }
       }
 
-      // Cash entry (idempotent)
-      const { data: existingEntry } = await supabase.from('cash_entries').select('id')
+      // Cash entry (idempotent by external_id match — no ilike)
+      const { data: existingCashEntry } = await supabase.from('cash_entries').select('id')
         .eq('tenant_id', payment.tenant_id).eq('source', 'booking')
         .ilike('notes', `%booking:${payment.booking_id}%`).maybeSingle();
-      if (!existingEntry) {
+      if (!existingCashEntry) {
         await supabase.from('cash_entries').insert({
           tenant_id: payment.tenant_id, staff_id: payment.booking?.staff_id || null,
           amount_cents: payment.amount_cents, kind: 'income', source: 'booking',
           notes: `booking:${payment.booking_id} | MP payment: ${mpPaymentId}`, occurred_at: new Date().toISOString(),
         });
       }
+
+      // ✅ ETAPA 1: Crédito idempotente na comanda do cliente
+      // Só cria crédito se amount > 0 (não gerar crédito para pacote/assinatura com valor 0)
+      if (payment.amount_cents > 0 && payment.booking?.customer_id) {
+        const dedupKey = `mp_payment_${paymentId}`;
+        const { data: existingCredit } = await supabase
+          .from('customer_balance_entries')
+          .select('id')
+          .eq('tenant_id', payment.tenant_id)
+          .eq('booking_id', payment.booking_id)
+          .eq('type', 'credit')
+          .eq('description', dedupKey)
+          .maybeSingle();
+
+        if (!existingCredit) {
+          await supabase.from('customer_balance_entries').insert({
+            tenant_id: payment.tenant_id,
+            customer_id: payment.booking.customer_id,
+            type: 'credit',
+            amount_cents: payment.amount_cents,
+            description: dedupKey,
+            booking_id: payment.booking_id,
+            staff_id: payment.booking.staff_id || null,
+          });
+          console.log(`[LEDGER] Created credit ${payment.amount_cents} cents for customer ${payment.booking.customer_id}, booking ${payment.booking_id}`);
+        } else {
+          console.log(`[LEDGER] Credit already exists for booking ${payment.booking_id}, skipping (idempotent)`);
+        }
+      }
+
       if (customerPackageId) {
         await supabase.from('customer_packages').update({ payment_status: 'confirmed' }).eq('id', customerPackageId);
       }
