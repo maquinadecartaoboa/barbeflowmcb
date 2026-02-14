@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { BookingDetailsModal } from "@/components/modals/BookingDetailsModal";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { NoTenantState } from "@/components/NoTenantState";
@@ -58,7 +59,7 @@ import { ScheduleGrid } from "@/components/calendar/ScheduleGrid";
 import { BlockDialog } from "@/components/calendar/BlockDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { CustomerBalanceAlert } from "@/components/CustomerBalanceAlert";
+
 import {
   Sheet,
   SheetContent,
@@ -88,7 +89,7 @@ export default function Bookings() {
   const [editLoading, setEditLoading] = useState(false);
   const [editServices, setEditServices] = useState<any[]>([]);
   const [editStaff, setEditStaff] = useState<any[]>([]);
-  const [customerNotes, setCustomerNotes] = useState<string | null>(null);
+  
 
   // List view state
   const [searchTerm, setSearchTerm] = useState("");
@@ -272,20 +273,10 @@ export default function Bookings() {
     );
   };
 
-  const handleBookingClick = async (booking: BookingData) => {
+  const handleBookingClick = (booking: BookingData) => {
     setSelectedBooking(booking);
     setEditMode(false);
-    setCustomerNotes(null);
     setShowDetails(true);
-    // Fetch customer notes/anamnese
-    if (booking.customer_id) {
-      const { data } = await supabase
-        .from("customers")
-        .select("notes")
-        .eq("id", booking.customer_id)
-        .single();
-      setCustomerNotes(data?.notes || null);
-    }
   };
 
   const startEditMode = async () => {
@@ -621,116 +612,26 @@ export default function Bookings() {
         onCreated={refetch}
       />
 
-      {/* Booking Details Dialog */}
-      <Dialog open={showDetails} onOpenChange={(open) => { setShowDetails(open); if (!open) setEditMode(false); }}>
+      {/* Booking Details - Unified Modal (view mode) */}
+      {currentTenant && !editMode && (
+        <BookingDetailsModal
+          booking={selectedBooking}
+          tenantId={currentTenant.id}
+          open={showDetails && !editMode}
+          onOpenChange={(open) => { setShowDetails(open); if (!open) { setEditMode(false); setSelectedBooking(null); } }}
+          showActions
+          onEdit={startEditMode}
+          onStatusChange={updateBookingStatus}
+        />
+      )}
+
+      {/* Edit Mode Dialog */}
+      <Dialog open={showDetails && editMode} onOpenChange={(open) => { if (!open) { setEditMode(false); setShowDetails(false); } }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editMode ? "Editar Agendamento" : "Detalhes do Agendamento"}</DialogTitle>
-            <DialogDescription>{editMode ? "Altere os dados do agendamento" : "Informações completas do agendamento"}</DialogDescription>
+            <DialogTitle>Editar Agendamento</DialogTitle>
+            <DialogDescription>Altere os dados do agendamento</DialogDescription>
           </DialogHeader>
-          {selectedBooking && !editMode && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium">Cliente</Label>
-                  <p className="text-sm">{selectedBooking.customer?.name}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Telefone</Label>
-                  <p className="text-sm">{selectedBooking.customer?.phone}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium">Serviço</Label>
-                  <p className="text-sm">{selectedBooking.service?.name}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Profissional</Label>
-                  <p className="text-sm">{selectedBooking.staff?.name || "Qualquer"}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium">Horário</Label>
-                  <p className="text-sm">
-                    {format(parseISO(selectedBooking.starts_at), "HH:mm")} - {format(parseISO(selectedBooking.ends_at), "HH:mm")}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Status</Label>
-                  <div className="mt-1"><Badge variant={getStatusVariant(selectedBooking.status)}>{getStatusLabel(selectedBooking.status)}</Badge></div>
-                </div>
-              </div>
-              {currentTenant && (
-                <CustomerBalanceAlert customerId={selectedBooking.customer_id} tenantId={currentTenant.id} />
-              )}
-              {customerNotes && (
-                <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
-                  <Label className="text-sm font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                    📋 Observações / Anamnese do Cliente
-                  </Label>
-                  <p className="text-sm mt-1 whitespace-pre-wrap">{customerNotes}</p>
-                </div>
-              )}
-              {selectedBooking.notes && (
-                <div>
-                  <Label className="text-sm font-medium">Observações do Agendamento</Label>
-                  <p className="text-sm">{selectedBooking.notes}</p>
-                </div>
-              )}
-              <div className="flex items-center gap-4">
-                <div>
-                  <Label className="text-sm font-medium">Valor</Label>
-                  <p className="text-sm font-semibold">
-                    {selectedBooking.customer_package_id || selectedBooking.customer_subscription_id
-                      ? 'Incluso no plano/pacote'
-                      : `R$ ${((selectedBooking.service?.price_cents || 0) / 100).toFixed(2)}`}
-                  </p>
-                </div>
-                {selectedBooking.customer_package_id && (
-                  <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px]">Pacote</Badge>
-                )}
-                {selectedBooking.customer_subscription_id && (
-                  <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px]">Assinatura</Badge>
-                )}
-              </div>
-
-              {/* Quick status actions */}
-              <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border">
-                {selectedBooking.status !== "cancelled" && selectedBooking.status !== "completed" && (
-                  <Button size="sm" variant="outline" onClick={startEditMode}>
-                    <Edit className="h-4 w-4 mr-1" /> Editar
-                  </Button>
-                )}
-                {selectedBooking.status === "confirmed" && (
-                  <Button size="sm" variant="outline" onClick={() => { updateBookingStatus(selectedBooking.id, "completed", selectedBooking); setShowDetails(false); }}>
-                    <CheckCircle className="h-4 w-4 mr-1 text-emerald-500" /> Concluir
-                  </Button>
-                )}
-                {selectedBooking.status !== "cancelled" && (
-                  <Button size="sm" variant="destructive" onClick={() => { updateBookingStatus(selectedBooking.id, "cancelled", selectedBooking); setShowDetails(false); }}>
-                    <XCircle className="h-4 w-4 mr-1" /> Cancelar
-                  </Button>
-                )}
-                {selectedBooking.customer?.phone && (
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    type="button"
-                    onClick={() => {
-                      const digits = selectedBooking.customer.phone.replace(/\D/g, '');
-                      const phone = digits.startsWith('55') ? digits : '55' + digits;
-                      window.open(`https://web.whatsapp.com/send?phone=${phone}`, '_blank');
-                    }}
-                  >
-                    <MessageCircle className="h-4 w-4 mr-1 text-emerald-500" /> WhatsApp
-                  </Button>
-                )}
-              
-              </div>
-            </div>
-          )}
           {selectedBooking && editMode && (
             <div className="space-y-4">
               <div>
@@ -776,7 +677,6 @@ export default function Bookings() {
               </div>
             </div>
           )}
-          
         </DialogContent>
       </Dialog>
     </div>
