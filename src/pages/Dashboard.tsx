@@ -9,12 +9,6 @@ import { dashPath } from "@/lib/hostname";
 import { NoTenantState } from "@/components/NoTenantState";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion } from "framer-motion";
@@ -26,7 +20,7 @@ import { WeeklyScheduleGrid } from "@/components/dashboard/WeeklyScheduleGrid";
 import { WeeklyBarChart } from "@/components/dashboard/WeeklyBarChart";
 import { RevenueLineChart } from "@/components/dashboard/RevenueLineChart";
 import { ClientRevenuePanel } from "@/components/dashboard/ClientRevenuePanel";
-import { CustomerBalanceAlert } from "@/components/CustomerBalanceAlert";
+import { BookingDetailsModal } from "@/components/modals/BookingDetailsModal";
 
 const spring = { type: "spring" as const, stiffness: 200, damping: 26, mass: 0.6 };
 const gentleSpring = { type: "spring" as const, stiffness: 120, damping: 20, mass: 0.8 };
@@ -48,7 +42,6 @@ const Dashboard = () => {
   const [staff, setStaff] = useState<any[]>([]);
   const [recurringClients, setRecurringClients] = useState<any[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
-  const [customerNotes, setCustomerNotes] = useState<string | null>(null);
   const [revenue, setRevenue] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
@@ -292,13 +285,8 @@ const Dashboard = () => {
             <WeeklyScheduleGrid
               bookings={allBookings}
               dateRange={dateRange}
-              onSelectBooking={async (booking: any) => {
+              onSelectBooking={(booking: any) => {
                 setSelectedBooking(booking);
-                setCustomerNotes(null);
-                if (booking?.customer_id) {
-                  const { data } = await supabase.from("customers").select("notes").eq("id", booking.customer_id).single();
-                  setCustomerNotes(data?.notes || null);
-                }
               }}
             />
           )}
@@ -325,92 +313,14 @@ const Dashboard = () => {
       )}
 
       {/* Booking Detail Modal */}
-      <Dialog open={!!selectedBooking} onOpenChange={(open) => { if (!open) { setSelectedBooking(null); setCustomerNotes(null); } }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-foreground text-base font-bold tracking-tight">Detalhes do Agendamento</DialogTitle>
-          </DialogHeader>
-          {selectedBooking && (
-            <motion.div 
-              initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{ duration: 0.5, ease }}
-              className="space-y-4"
-            >
-              <div className="p-4 rounded-xl bg-muted/50 border border-border space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-muted flex items-center justify-center">
-                    <User className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-foreground">{selectedBooking.customer?.name}</p>
-                    {selectedBooking.is_recurring && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20 mt-0.5 inline-block">
-                        Cliente Fixo
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {selectedBooking.customer?.phone && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="h-3.5 w-3.5" />
-                    <span>{selectedBooking.customer.phone}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                {[
-                  { icon: Scissors, label: "Serviço", value: selectedBooking.service?.name },
-                  { icon: Clock, label: "Horário", value: `${format(new Date(selectedBooking.starts_at), "dd/MM 'às' HH:mm", { locale: ptBR })} — ${format(new Date(selectedBooking.ends_at), "HH:mm")}` },
-                  ...(selectedBooking.staff?.name ? [{ icon: Users, label: "Profissional", value: selectedBooking.staff.name }] : []),
-                  { icon: TrendingUp, label: "Valor", value: `R$ ${((selectedBooking.service?.price_cents || 0) / 100).toFixed(2)}`, highlight: true },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center justify-between py-1">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <item.icon className="h-3.5 w-3.5" />
-                      <span>{item.label}</span>
-                    </div>
-                    <span className={`text-sm font-semibold ${(item as any).highlight ? 'text-primary font-bold' : 'text-foreground'}`}>
-                      {item.value}
-                    </span>
-                  </div>
-                ))}
-                {!selectedBooking.is_recurring && (
-                  <div className="flex items-center justify-between py-1">
-                    <span className="text-sm text-muted-foreground">Status</span>
-                    {(() => {
-                      const st = statusConfig[selectedBooking.status] || statusConfig.pending;
-                      return (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${st.className}`}>
-                          {st.label}
-                        </span>
-                      );
-                    })()}
-                  </div>
-                )}
-              {currentTenant && selectedBooking?.customer_id && (
-                <CustomerBalanceAlert customerId={selectedBooking.customer_id} tenantId={currentTenant.id} />
-              )}
-              {customerNotes && (
-                  <div className="pt-3 border-t border-border">
-                    <div className="p-2.5 bg-amber-500/5 border border-amber-500/20 rounded-lg">
-                      <p className="text-[11px] text-amber-600 dark:text-amber-400 mb-1 font-semibold">📋 Observações / Anamnese</p>
-                      <p className="text-sm text-foreground/80 whitespace-pre-wrap">{customerNotes}</p>
-                    </div>
-                  </div>
-                )}
-                {selectedBooking.notes && (
-                  <div className="pt-3 border-t border-border">
-                    <p className="text-[11px] text-muted-foreground mb-1 font-medium">Observações do Agendamento</p>
-                    <p className="text-sm text-foreground/80">{selectedBooking.notes}</p>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {currentTenant && (
+        <BookingDetailsModal
+          booking={selectedBooking}
+          tenantId={currentTenant.id}
+          open={!!selectedBooking}
+          onOpenChange={(open) => { if (!open) { setSelectedBooking(null); } }}
+        />
+      )}
     </div>
   );
 };
