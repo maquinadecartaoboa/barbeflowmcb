@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ExtraItemsSection, type ExtraItem } from "./ExtraItemsSection";
 
 const METHODS = [
   { value: "cash", label: "Dinheiro", icon: Banknote },
@@ -23,7 +23,7 @@ const METHODS = [
 interface PaymentLine {
   id: string;
   method: string;
-  amount: string; // decimal string
+  amount: string;
 }
 
 interface Props {
@@ -32,7 +32,7 @@ interface Props {
   tenantId: string;
   staffId: string | null;
   servicePriceCents: number;
-  customerBalance: number; // positive = credit, negative = owes
+  customerBalance: number;
   hasPaidOnline: boolean;
   onPaymentRecorded: () => void;
 }
@@ -46,10 +46,15 @@ export function LocalPaymentSection({
   ]);
   const [keepChangeAsCredit, setKeepChangeAsCredit] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [extraItems, setExtraItems] = useState<ExtraItem[]>([]);
 
-  // Total a cobrar = preço do serviço + dívida anterior (saldo negativo)
-  // Se cliente tem crédito (saldo positivo), abate do total
-  const totalToCharge = Math.max(0, servicePriceCents - customerBalance);
+  const extraTotal = useMemo(() =>
+    extraItems.reduce((sum, i) => sum + i.price_cents, 0),
+    [extraItems]
+  );
+
+  // Total = service + extras - credit (or + debt)
+  const totalToCharge = Math.max(0, servicePriceCents + extraTotal - customerBalance);
 
   const totalReceived = useMemo(() =>
     lines.reduce((sum, l) => sum + Math.round(parseFloat(l.amount || "0") * 100), 0),
@@ -73,10 +78,6 @@ export function LocalPaymentSection({
   };
 
   const handleSubmit = async () => {
-    if (totalToCharge > 0 && totalReceived <= 0) {
-      toast.error("Informe o valor recebido");
-      return;
-    }
     setSaving(true);
     try {
       const receiptId = crypto.randomUUID();
@@ -87,7 +88,16 @@ export function LocalPaymentSection({
           amount_cents: Math.round(parseFloat(l.amount) * 100),
         }));
 
-      // Get open cash session if any
+      const extraItemsPayload = extraItems.map(i => ({
+        id: i.id,
+        type: i.type,
+        name: i.name,
+        price_cents: i.price_cents,
+        purchase_price_cents: i.purchase_price_cents || 0,
+        staff_id: i.staff_id,
+        quantity: i.quantity,
+      }));
+
       const { data: openSession } = await supabase
         .from("cash_sessions")
         .select("id")
@@ -105,6 +115,7 @@ export function LocalPaymentSection({
         p_keep_change_as_credit: keepChangeAsCredit,
         p_cash_session_id: openSession?.id || null,
         p_staff_id: staffId || null,
+        p_extra_items: extraItemsPayload,
       });
 
       if (error) throw error;
@@ -118,7 +129,10 @@ export function LocalPaymentSection({
         return;
       }
 
-      let msg = `Pagamento de R$ ${(res.total_received / 100).toFixed(2)} registrado`;
+      let msg = `Pagamento registrado`;
+      if (res.total_received > 0) {
+        msg = `Pagamento de R$ ${(res.total_received / 100).toFixed(2)} registrado`;
+      }
       if (res.change > 0) {
         msg += res.kept_as_credit
           ? `. Crédito de R$ ${(res.change / 100).toFixed(2)} mantido na comanda`
@@ -165,56 +179,57 @@ export function LocalPaymentSection({
           </p>
         </div>
       </div>
+
+      {/* Extra items */}
+      <ExtraItemsSection tenantId={tenantId} onItemsChange={setExtraItems} />
+
+      {/* Total */}
       <div className="p-2 rounded-lg bg-primary/5 border border-primary/20">
         <p className="text-xs text-muted-foreground">Total a cobrar</p>
         <p className="font-bold text-lg">{fmt(totalToCharge)}</p>
+        {extraTotal > 0 && (
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            Serviço {fmt(servicePriceCents)} + Extras {fmt(extraTotal)}
+            {customerBalance !== 0 && ` ${customerBalance > 0 ? "−" : "+"} Saldo ${fmt(Math.abs(customerBalance))}`}
+          </p>
+        )}
       </div>
 
-      {/* Payment lines - only show if there's something to pay */}
-      {totalToCharge > 0 && (
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Formas de pagamento</Label>
-          {lines.map((line, i) => (
-            <div key={line.id} className="flex items-center gap-2">
-              <Select value={line.method} onValueChange={(v) => updateLine(line.id, "method", v)}>
-                <SelectTrigger className="w-36 h-9 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {METHODS.map(m => (
-                    <SelectItem key={m.value} value={m.value}>
-                      <span className="flex items-center gap-1.5">
-                        <m.icon className="h-3 w-3" /> {m.label}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <CurrencyInput
-                value={line.amount}
-                onChange={(v) => updateLine(line.id, "amount", v)}
-                className="flex-1 h-9"
-              />
-              {lines.length > 1 && (
-                <Button variant="ghost" size="icon" className="h-9 w-9 flex-shrink-0" onClick={() => removeLine(line.id)}>
-                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                </Button>
-              )}
-            </div>
-          ))}
-          <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={addLine}>
-            <Plus className="h-3 w-3 mr-1" /> Adicionar forma
-          </Button>
-        </div>
-      )}
-
-      {totalToCharge === 0 && (
-        <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-          <p className="text-xs text-emerald-500">
-            ✅ O crédito do cliente cobre o valor total. Nenhum pagamento adicional necessário.
-          </p>
-        </div>
-      )}
+      {/* Payment lines */}
+      <div className="space-y-2">
+        <Label className="text-xs text-muted-foreground">Formas de pagamento</Label>
+        {lines.map((line) => (
+          <div key={line.id} className="flex items-center gap-2">
+            <Select value={line.method} onValueChange={(v) => updateLine(line.id, "method", v)}>
+              <SelectTrigger className="w-36 h-9 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {METHODS.map(m => (
+                  <SelectItem key={m.value} value={m.value}>
+                    <span className="flex items-center gap-1.5">
+                      <m.icon className="h-3 w-3" /> {m.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <CurrencyInput
+              value={line.amount}
+              onChange={(v) => updateLine(line.id, "amount", v)}
+              className="flex-1 h-9"
+            />
+            {lines.length > 1 && (
+              <Button variant="ghost" size="icon" className="h-9 w-9 flex-shrink-0" onClick={() => removeLine(line.id)}>
+                <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+              </Button>
+            )}
+          </div>
+        ))}
+        <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={addLine}>
+          <Plus className="h-3 w-3 mr-1" /> Adicionar forma
+        </Button>
+      </div>
 
       {/* Change / remaining */}
       {totalReceived > 0 && (
@@ -251,10 +266,10 @@ export function LocalPaymentSection({
       <Button
         className="w-full"
         onClick={handleSubmit}
-        disabled={saving || (totalToCharge > 0 && totalReceived <= 0)}
+        disabled={saving}
       >
         {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-        {totalToCharge === 0 ? "Registrar (coberto pelo crédito)" : `Registrar Pagamento ${totalReceived > 0 ? `(${fmt(totalReceived)})` : ""}`}
+        Registrar Pagamento {totalReceived > 0 ? `(${fmt(totalReceived)})` : ""}
       </Button>
     </div>
   );

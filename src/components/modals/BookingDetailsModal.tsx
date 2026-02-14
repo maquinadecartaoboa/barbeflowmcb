@@ -92,14 +92,13 @@ export function BookingDetailsModal({
         .limit(1);
       setHasPaidOnline((payData || []).length > 0);
 
-      // Check if local payment already recorded
+      // Check if local payment already recorded (debit from RPC or credit)
       const { data: localPayData } = await supabase
         .from("customer_balance_entries")
         .select("id")
         .eq("booking_id", booking.id)
         .eq("tenant_id", tenantId)
-        .eq("type", "credit")
-        .ilike("description", "Pagamento local%")
+        .or("description.ilike.Pagamento local%,description.eq.Serviço realizado")
         .limit(1);
       if ((localPayData || []).length > 0) {
         setPaymentRecorded(true);
