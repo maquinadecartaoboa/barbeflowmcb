@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -47,6 +47,9 @@ export function BookingDetailsModal({
   const [bookingItems, setBookingItems] = useState<BookingItem[]>([]);
   const [comandaStatus, setComandaStatus] = useState<string>("open");
   const [balanceKey, setBalanceKey] = useState(0);
+  const [prevStatus, setPrevStatus] = useState<string | null>(null);
+  const paymentSectionRef = useRef<HTMLDivElement>(null);
+  const closeSectionRef = useRef<HTMLDivElement>(null);
 
   const loadData = useCallback(async () => {
     if (!booking || !open) return;
@@ -108,6 +111,27 @@ export function BookingDetailsModal({
     }
     loadData();
   }, [booking?.id, open, loadData]);
+
+  // Auto-scroll to payment/close section when booking transitions to completed
+  useEffect(() => {
+    if (!booking || !open) {
+      setPrevStatus(null);
+      return;
+    }
+    const justCompleted = prevStatus && prevStatus !== "completed" && booking.status === "completed";
+    setPrevStatus(booking.status);
+
+    if (justCompleted) {
+      // Wait for DOM to update with completed sections
+      const timer = setTimeout(() => {
+        const hasUnpaid = bookingItems.some(i => i.paid_status === "unpaid");
+        const isBenefit = !!booking.customer_package_id || !!booking.customer_subscription_id;
+        const target = hasUnpaid && !isBenefit ? paymentSectionRef.current : closeSectionRef.current;
+        target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [booking?.status, open]);
 
   if (!booking) return null;
 
@@ -222,7 +246,7 @@ export function BookingDetailsModal({
 
           {/* ═══════════════ SEÇÃO 3: PAGAMENTO ═══════════════ */}
           {!isRecurring && isCompleted && !isCancelled && booking.customer_id && !isBenefitBooking && (
-            <>
+            <div ref={paymentSectionRef}>
               <Separator />
               <ComandaPaymentSection
                 bookingId={booking.id}
@@ -234,7 +258,7 @@ export function BookingDetailsModal({
                 onPaymentRecorded={handleRefresh}
                 comandaClosed={comandaClosed}
               />
-            </>
+            </div>
           )}
 
           {/* Benefit bookings: all items covered */}
@@ -251,7 +275,7 @@ export function BookingDetailsModal({
 
           {/* ═══════════════ SEÇÃO 4: FECHAR COMANDA ═══════════════ */}
           {!isRecurring && isCompleted && !isCancelled && (
-            <>
+            <div ref={closeSectionRef}>
               <Separator />
               <ComandaCloseSection
                 bookingId={booking.id}
@@ -261,7 +285,7 @@ export function BookingDetailsModal({
                 commissionBasis={(booking as any)?.tenant_commission_basis}
                 onClose={handleRefresh}
               />
-            </>
+            </div>
           )}
 
           {/* ═══════════════ AÇÕES ═══════════════ */}
@@ -273,7 +297,7 @@ export function BookingDetailsModal({
                 </Button>
               )}
               {booking.status === "confirmed" && onStatusChange && (
-                <Button size="sm" variant="outline" onClick={() => { onStatusChange(booking.id, "completed", booking); onOpenChange(false); }}>
+                <Button size="sm" variant="outline" onClick={() => { onStatusChange(booking.id, "completed", booking); }}>
                   <CheckCircle className="h-4 w-4 mr-1 text-emerald-500" /> Concluir
                 </Button>
               )}

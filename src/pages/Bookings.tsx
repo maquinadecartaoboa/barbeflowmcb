@@ -236,10 +236,31 @@ export default function Bookings() {
       }
 
       toast({ title: "Status atualizado", description: `Agendamento marcado como ${getStatusLabel(newStatus)}` });
-      setShowDetails(false);
-      setSelectedBooking(null);
-      refetch();
-      // Data refreshes via refetch() above
+
+      // When completing, keep modal open and show comanda
+      if (newStatus === "completed") {
+        // Refetch the updated booking with all joins
+        const { data: updated } = await supabase
+          .from("bookings")
+          .select(`
+            *,
+            service:services(name, color, duration_minutes, price_cents),
+            staff:staff(name, color, is_owner, default_commission_percent, product_commission_percent),
+            customer:customers(name, phone, notes)
+          `)
+          .eq("id", realId)
+          .single();
+
+        if (updated) {
+          setSelectedBooking(updated);
+          // showDetails stays true — modal remains open in "completed" state
+        }
+        refetch();
+      } else {
+        setShowDetails(false);
+        setSelectedBooking(null);
+        refetch();
+      }
     } catch (err) {
       toast({ title: "Erro", description: "Erro ao atualizar status", variant: "destructive" });
     }
