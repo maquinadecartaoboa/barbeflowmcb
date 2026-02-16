@@ -17,10 +17,11 @@ interface Props {
   tenantId: string;
   items: BookingItem[];
   comandaClosed: boolean;
+  commissionBasis?: string;
   onClose: () => void;
 }
 
-export function ComandaCloseSection({ bookingId, tenantId, items, comandaClosed, onClose }: Props) {
+export function ComandaCloseSection({ bookingId, tenantId, items, comandaClosed, commissionBasis, onClose }: Props) {
   const [closing, setClosing] = useState(false);
   const [acceptDebt, setAcceptDebt] = useState(false);
 
@@ -30,16 +31,28 @@ export function ComandaCloseSection({ bookingId, tenantId, items, comandaClosed,
   const handleClose = async () => {
     setClosing(true);
     try {
-      // 1. Set comanda_status = 'closed'
-      const { error } = await supabase
-        .from("bookings")
-        .update({ comanda_status: "closed" })
-        .eq("id", bookingId)
-        .eq("tenant_id", tenantId);
+      const { data, error } = await supabase.rpc("close_comanda_with_commissions", {
+        p_booking_id: bookingId,
+        p_tenant_id: tenantId,
+        p_commission_basis: commissionBasis || "theoretical",
+      });
 
       if (error) throw error;
 
-      toast.success("Comanda fechada com sucesso");
+      const result = data as any;
+      if (result && !result.success) {
+        throw new Error(result.error || "Erro ao fechar comanda");
+      }
+
+      const snaps = result?.snapshots_created || 0;
+      const totalComm = result?.total_commission_cents || 0;
+      const commFormatted = (totalComm / 100).toFixed(2);
+
+      toast.success(
+        snaps > 0
+          ? `Comanda fechada — ${snaps} comissão(ões) gerada(s): R$ ${commFormatted}`
+          : "Comanda fechada com sucesso"
+      );
       onClose();
     } catch (err: any) {
       toast.error("Erro ao fechar comanda: " + (err.message || ""));
@@ -98,7 +111,7 @@ export function ComandaCloseSection({ bookingId, tenantId, items, comandaClosed,
           <AlertDialogHeader>
             <AlertDialogTitle>Fechar comanda?</AlertDialogTitle>
             <AlertDialogDescription>
-              Após fechar, a edição será travada e as comissões serão geradas.
+              Após fechar, a edição será travada e as comissões serão geradas automaticamente.
               {hasUnpaid && " O débito pendente será registrado no saldo do cliente."}
             </AlertDialogDescription>
           </AlertDialogHeader>

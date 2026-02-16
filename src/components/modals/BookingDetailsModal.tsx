@@ -258,6 +258,7 @@ export function BookingDetailsModal({
                 tenantId={tenantId}
                 items={bookingItems}
                 comandaClosed={comandaClosed}
+                commissionBasis={(booking as any)?.tenant_commission_basis}
                 onClose={handleRefresh}
               />
             </>
