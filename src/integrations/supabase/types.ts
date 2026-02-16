@@ -476,6 +476,84 @@ export type Database = {
           },
         ]
       }
+      commission_snapshots: {
+        Row: {
+          base_amount_cents: number
+          booking_id: string
+          booking_item_id: string
+          commission_cents: number
+          commission_percent: number
+          created_at: string
+          id: string
+          item_title: string
+          item_type: string
+          staff_id: string
+          tenant_id: string
+        }
+        Insert: {
+          base_amount_cents: number
+          booking_id: string
+          booking_item_id: string
+          commission_cents: number
+          commission_percent: number
+          created_at?: string
+          id?: string
+          item_title: string
+          item_type: string
+          staff_id: string
+          tenant_id: string
+        }
+        Update: {
+          base_amount_cents?: number
+          booking_id?: string
+          booking_item_id?: string
+          commission_cents?: number
+          commission_percent?: number
+          created_at?: string
+          id?: string
+          item_title?: string
+          item_type?: string
+          staff_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_snapshots_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_snapshots_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_booking_received_amount"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "commission_snapshots_booking_item_id_fkey"
+            columns: ["booking_item_id"]
+            isOneToOne: false
+            referencedRelation: "booking_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_snapshots_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_snapshots_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_balance_entries: {
         Row: {
           amount_cents: number
@@ -2301,6 +2379,14 @@ export type Database = {
       check_booking_rate_limit: {
         Args: { customer_phone: string; tenant_uuid: string }
         Returns: boolean
+      }
+      close_comanda_with_commissions: {
+        Args: {
+          p_booking_id: string
+          p_commission_basis?: string
+          p_tenant_id: string
+        }
+        Returns: Json
       }
       create_booking_if_available: {
         Args: {

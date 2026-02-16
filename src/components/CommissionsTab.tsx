@@ -10,201 +10,99 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import { Loader2, Users, DollarSign, ChevronRight, Info } from "lucide-react";
+import { Loader2, Users, DollarSign, ChevronRight, Lock } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import {
-  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
-} from "@/components/ui/tooltip";
 
-type CommissionBasis = "theoretical" | "received";
-
-interface BookingDetail {
+interface Snapshot {
   id: string;
-  starts_at: string;
-  service_name: string;
-  price_cents: number;
-  received_cents: number;
+  booking_id: string;
+  booking_item_id: string;
+  staff_id: string;
+  item_type: string;
+  item_title: string;
+  base_amount_cents: number;
+  commission_percent: number;
   commission_cents: number;
-}
-
-interface ProductSaleDetail {
-  id: string;
-  sale_date: string;
-  product_name: string;
-  revenue_cents: number;
-  commission_cents: number;
+  created_at: string;
 }
 
 interface StaffCommission {
   staffId: string;
   staffName: string;
-  isOwner: boolean;
   serviceRevenue: number;
   serviceCommission: number;
-  servicePercent: number;
   productRevenue: number;
   productCommission: number;
-  productPercent: number;
   totalCommission: number;
-  bookingDetails: BookingDetail[];
-  productDetails: ProductSaleDetail[];
+  snapshots: Snapshot[];
 }
 
 export function CommissionsTab() {
-  const { currentTenant, setCurrentTenant } = useTenant();
+  const { currentTenant } = useTenant();
   const { dateRange } = useDateRange();
   const [commissions, setCommissions] = useState<StaffCommission[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStaff, setSelectedStaff] = useState<StaffCommission | null>(null);
 
-  const commissionBasis: CommissionBasis =
-    (currentTenant?.settings as any)?.commission_basis || "theoretical";
-
   useEffect(() => {
-    if (currentTenant) calculateCommissions();
+    if (currentTenant) loadSnapshots();
   }, [currentTenant, dateRange]);
 
-  const handleBasisChange = async (value: CommissionBasis) => {
-    if (!currentTenant) return;
-    const newSettings = { ...(currentTenant.settings as any), commission_basis: value };
-    const { error } = await supabase
-      .from("tenants")
-      .update({ settings: newSettings })
-      .eq("id", currentTenant.id);
-    if (!error) {
-      setCurrentTenant({ ...currentTenant, settings: newSettings });
-    }
-  };
-
-  const calculateCommissions = async () => {
+  const loadSnapshots = async () => {
     if (!currentTenant) return;
     try {
       setLoading(true);
-      const basis: CommissionBasis =
-        (currentTenant.settings as any)?.commission_basis || "theoretical";
-
       const fromISO = dateRange.from.toISOString();
       const toISO = dateRange.to.toISOString();
 
-      // 1) Staff with their commission config
-      const { data: staffData } = await supabase
-        .from("staff")
-        .select("id, name, default_commission_percent, product_commission_percent, is_owner, staff_services(service_id, commission_percent)")
+      // 1. Fetch snapshots in period
+      const { data: snaps, error } = await supabase
+        .from("commission_snapshots")
+        .select("*, staff:staff(name)")
         .eq("tenant_id", currentTenant.id)
-        .eq("active", true);
+        .gte("created_at", fromISO)
+        .lte("created_at", toISO)
+        .order("created_at", { ascending: false });
 
-      // 2) Completed bookings in period
-      const { data: bookings } = await supabase
-        .from("bookings")
-        .select("id, staff_id, service_id, starts_at, customer_package_id, customer_subscription_id, service:services(name, price_cents)")
-        .eq("tenant_id", currentTenant.id)
-        .eq("status", "completed")
-        .gte("starts_at", fromISO)
-        .lte("starts_at", toISO);
+      if (error) throw error;
 
-      // 3) Product sales (always theoretical)
-      const { data: productSales } = await supabase
-        .from("product_sales")
-        .select("id, staff_id, sale_price_snapshot_cents, quantity, sale_date, product:products(name)")
-        .eq("tenant_id", currentTenant.id)
-        .gte("sale_date", fromISO)
-        .lte("sale_date", toISO);
+      // 2. Aggregate per staff
+      const map: Record<string, StaffCommission> = {};
 
-      // 4) If "received", use the consolidated SQL view filtered by same period
-      let receivedByBooking: Record<string, number> = {};
+      (snaps || []).forEach((s: any) => {
+        const staffId = s.staff_id;
+        if (!map[staffId]) {
+          map[staffId] = {
+            staffId,
+            staffName: s.staff?.name || "Profissional",
+            serviceRevenue: 0,
+            serviceCommission: 0,
+            productRevenue: 0,
+            productCommission: 0,
+            totalCommission: 0,
+            snapshots: [],
+          };
+        }
 
-      if (basis === "received") {
-        const { data: receivedData } = await supabase
-          .from("v_booking_received_amount")
-          .select("booking_id, received_cents")
-          .eq("tenant_id", currentTenant.id)
-          .gte("starts_at", fromISO)
-          .lte("starts_at", toISO);
+        const entry = map[staffId];
+        entry.snapshots.push(s);
+        entry.totalCommission += s.commission_cents;
 
-        (receivedData || []).forEach((r: any) => {
-          receivedByBooking[r.booking_id] = r.received_cents ?? 0;
-        });
-      }
-
-      // 5) Calculate commissions per staff
-      const commissionMap: Record<string, StaffCommission> = {};
-
-      (staffData || []).forEach((s: any) => {
-        if (s.is_owner) return;
-
-        const servicePercent = s.default_commission_percent ?? 0;
-        const productPercent = s.product_commission_percent ?? 0;
-
-        commissionMap[s.id] = {
-          staffId: s.id,
-          staffName: s.name,
-          isOwner: s.is_owner || false,
-          serviceRevenue: 0,
-          serviceCommission: 0,
-          servicePercent,
-          productRevenue: 0,
-          productCommission: 0,
-          productPercent,
-          totalCommission: 0,
-          bookingDetails: [],
-          productDetails: [],
-        };
-
-        // Service commissions
-        const staffBookings = (bookings || []).filter((b: any) => b.staff_id === s.id);
-        staffBookings.forEach((b: any) => {
-          const theoreticalPrice = b.service?.price_cents || 0;
-
-          let commissionBase: number;
-          if (basis === "received") {
-            commissionBase = receivedByBooking[b.id] ?? 0;
-          } else {
-            commissionBase = theoreticalPrice;
-          }
-
-          commissionMap[s.id].serviceRevenue += commissionBase;
-
-          const staffService = s.staff_services?.find((ss: any) => ss.service_id === b.service_id);
-          const commPercent = staffService?.commission_percent ?? servicePercent;
-          const commCents = Math.round(commissionBase * commPercent / 100);
-          commissionMap[s.id].serviceCommission += commCents;
-
-          commissionMap[s.id].bookingDetails.push({
-            id: b.id,
-            starts_at: b.starts_at,
-            service_name: b.service?.name || "Serviço",
-            price_cents: theoreticalPrice,
-            received_cents: basis === "received" ? (receivedByBooking[b.id] ?? 0) : theoreticalPrice,
-            commission_cents: commCents,
-          });
-        });
-
-        // Product commissions (always theoretical — no received tracking per product yet)
-        const staffSales = (productSales || []).filter((ps: any) => ps.staff_id === s.id);
-        staffSales.forEach((ps: any) => {
-          const revenue = ps.sale_price_snapshot_cents * ps.quantity;
-          commissionMap[s.id].productRevenue += revenue;
-          const commCents = Math.round(revenue * productPercent / 100);
-          commissionMap[s.id].productCommission += commCents;
-
-          commissionMap[s.id].productDetails.push({
-            id: ps.id,
-            sale_date: ps.sale_date,
-            product_name: ps.product?.name || "Produto",
-            revenue_cents: revenue,
-            commission_cents: commCents,
-          });
-        });
-
-        commissionMap[s.id].totalCommission =
-          commissionMap[s.id].serviceCommission + commissionMap[s.id].productCommission;
+        if (s.item_type === "service") {
+          entry.serviceRevenue += s.base_amount_cents;
+          entry.serviceCommission += s.commission_cents;
+        } else {
+          entry.productRevenue += s.base_amount_cents;
+          entry.productCommission += s.commission_cents;
+        }
       });
 
-      setCommissions(Object.values(commissionMap).filter(c => c.serviceRevenue > 0 || c.productRevenue > 0));
+      setCommissions(
+        Object.values(map)
+          .filter(c => c.totalCommission > 0 || c.snapshots.length > 0)
+          .sort((a, b) => b.totalCommission - a.totalCommission)
+      );
     } catch (err) {
       console.error(err);
     } finally {
@@ -213,42 +111,27 @@ export function CommissionsTab() {
   };
 
   const totalCommission = commissions.reduce((s, c) => s + c.totalCommission, 0);
+  const fmt = (cents: number) => `R$ ${(cents / 100).toFixed(2)}`;
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  if (loading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {/* Mode Selector */}
+      {/* Info banner */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="flex items-center gap-2 flex-1">
-              <span className="text-sm font-medium">Base de cálculo:</span>
-              <Select value={commissionBasis} onValueChange={(v) => handleBasisChange(v as CommissionBasis)}>
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="theoretical">Teórico (preço tabela)</SelectItem>
-                  <SelectItem value="received">Recebido (valor pago)</SelectItem>
-                </SelectContent>
-              </Select>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Info className="h-4 w-4 text-muted-foreground" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p><strong>Teórico:</strong> comissão sobre o preço do serviço na tabela.</p>
-                    <p><strong>Recebido:</strong> comissão sobre o valor efetivamente pago (online ou local).</p>
-                    <p className="text-xs text-muted-foreground mt-1">Produtos sempre usam valor teórico.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <Badge variant={commissionBasis === "received" ? "success" : "secondary"} className="self-start">
-              {commissionBasis === "received" ? "💰 Recebido" : "📋 Teórico"}
-            </Badge>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Lock className="h-4 w-4" />
+            <span>
+              Comissões são geradas automaticamente ao fechar cada comanda.
+              Os valores são imutáveis (snapshot no momento do fechamento).
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -276,7 +159,7 @@ export function CommissionsTab() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Total Comissões</p>
-                <p className="text-lg font-bold text-emerald-400">R$ {(totalCommission / 100).toFixed(2)}</p>
+                <p className="text-lg font-bold text-emerald-400">{fmt(totalCommission)}</p>
               </div>
             </div>
           </CardContent>
@@ -285,7 +168,7 @@ export function CommissionsTab() {
 
       {commissions.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground text-sm">
-          Nenhuma comissão calculada no período. Configure os percentuais de comissão nos profissionais.
+          Nenhuma comissão gerada no período. Feche comandas para gerar comissões.
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-border">
@@ -293,9 +176,9 @@ export function CommissionsTab() {
             <TableHeader>
               <TableRow>
                 <TableHead>Profissional</TableHead>
-                <TableHead>Serviços (R$)</TableHead>
+                <TableHead>Serviços</TableHead>
                 <TableHead>Com. Serv.</TableHead>
-                <TableHead>Produtos (R$)</TableHead>
+                <TableHead>Produtos</TableHead>
                 <TableHead>Com. Prod.</TableHead>
                 <TableHead>Total</TableHead>
               </TableRow>
@@ -313,19 +196,13 @@ export function CommissionsTab() {
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
                   </TableCell>
-                  <TableCell>R$ {(c.serviceRevenue / 100).toFixed(2)}</TableCell>
-                  <TableCell className="text-emerald-400">
-                    R$ {(c.serviceCommission / 100).toFixed(2)}
-                    <span className="text-xs text-muted-foreground ml-1">({c.servicePercent}%)</span>
-                  </TableCell>
-                  <TableCell>R$ {(c.productRevenue / 100).toFixed(2)}</TableCell>
-                  <TableCell className="text-emerald-400">
-                    R$ {(c.productCommission / 100).toFixed(2)}
-                    {c.productPercent > 0 && <span className="text-xs text-muted-foreground ml-1">({c.productPercent}%)</span>}
-                  </TableCell>
+                  <TableCell>{fmt(c.serviceRevenue)}</TableCell>
+                  <TableCell className="text-emerald-400">{fmt(c.serviceCommission)}</TableCell>
+                  <TableCell>{fmt(c.productRevenue)}</TableCell>
+                  <TableCell className="text-emerald-400">{fmt(c.productCommission)}</TableCell>
                   <TableCell>
                     <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
-                      R$ {(c.totalCommission / 100).toFixed(2)}
+                      {fmt(c.totalCommission)}
                     </Badge>
                   </TableCell>
                 </TableRow>
@@ -342,7 +219,7 @@ export function CommissionsTab() {
             <DialogTitle className="flex items-center gap-2">
               Detalhes — {selectedStaff?.staffName}
               <Badge variant="secondary" className="text-xs">
-                {commissionBasis === "received" ? "Recebido" : "Teórico"}
+                <Lock className="h-3 w-3 mr-1" /> Snapshot
               </Badge>
             </DialogTitle>
           </DialogHeader>
@@ -352,71 +229,73 @@ export function CommissionsTab() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="p-3 rounded-lg bg-muted/30 border border-border text-center">
                   <p className="text-xs text-muted-foreground">Serviços</p>
-                  <p className="font-bold">R$ {(selectedStaff.serviceRevenue / 100).toFixed(2)}</p>
-                  <p className="text-xs text-emerald-400">Com: R$ {(selectedStaff.serviceCommission / 100).toFixed(2)}</p>
+                  <p className="font-bold">{fmt(selectedStaff.serviceRevenue)}</p>
+                  <p className="text-xs text-emerald-400">Com: {fmt(selectedStaff.serviceCommission)}</p>
                 </div>
                 <div className="p-3 rounded-lg bg-muted/30 border border-border text-center">
                   <p className="text-xs text-muted-foreground">Produtos</p>
-                  <p className="font-bold">R$ {(selectedStaff.productRevenue / 100).toFixed(2)}</p>
-                  <p className="text-xs text-emerald-400">Com: R$ {(selectedStaff.productCommission / 100).toFixed(2)}</p>
+                  <p className="font-bold">{fmt(selectedStaff.productRevenue)}</p>
+                  <p className="text-xs text-emerald-400">Com: {fmt(selectedStaff.productCommission)}</p>
                 </div>
                 <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-center">
                   <p className="text-xs text-muted-foreground">Total a Pagar</p>
-                  <p className="font-bold text-emerald-400">R$ {(selectedStaff.totalCommission / 100).toFixed(2)}</p>
+                  <p className="font-bold text-emerald-400">{fmt(selectedStaff.totalCommission)}</p>
                 </div>
               </div>
 
-              {selectedStaff.bookingDetails.length > 0 && (
+              {/* Service snapshots */}
+              {selectedStaff.snapshots.filter(s => s.item_type === "service").length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold mb-2">Serviços ({selectedStaff.bookingDetails.length})</h4>
+                  <h4 className="text-sm font-semibold mb-2">
+                    Serviços ({selectedStaff.snapshots.filter(s => s.item_type === "service").length})
+                  </h4>
                   <div className="space-y-1 max-h-48 overflow-y-auto">
-                    {selectedStaff.bookingDetails.map((b) => (
-                      <div key={b.id} className="flex items-center justify-between py-2 px-3 text-sm rounded-lg bg-muted/20">
-                        <div>
-                          <span className="font-medium">{b.service_name}</span>
-                          <span className="text-muted-foreground ml-2 text-xs">
-                            {format(new Date(b.starts_at), "dd/MM", { locale: ptBR })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          {commissionBasis === "received" && b.received_cents !== b.price_cents && (
-                            <span className="text-xs text-muted-foreground line-through">
-                              R$ {(b.price_cents / 100).toFixed(2)}
+                    {selectedStaff.snapshots
+                      .filter(s => s.item_type === "service")
+                      .map((s) => (
+                        <div key={s.id} className="flex items-center justify-between py-2 px-3 text-sm rounded-lg bg-muted/20">
+                          <div>
+                            <span className="font-medium">{s.item_title}</span>
+                            <span className="text-muted-foreground ml-2 text-xs">
+                              {format(new Date(s.created_at), "dd/MM", { locale: ptBR })}
                             </span>
-                          )}
-                          <span>R$ {(b.received_cents / 100).toFixed(2)}</span>
-                          <span className="text-emerald-400 text-xs">+R$ {(b.commission_cents / 100).toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span>{fmt(s.base_amount_cents)}</span>
+                            <span className="text-xs text-muted-foreground">{s.commission_percent}%</span>
+                            <span className="text-emerald-400 text-xs">+{fmt(s.commission_cents)}</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 </div>
               )}
 
-              {selectedStaff.productDetails.length > 0 && (
+              {/* Product snapshots */}
+              {selectedStaff.snapshots.filter(s => s.item_type === "product").length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold mb-2">Produtos ({selectedStaff.productDetails.length})</h4>
+                  <h4 className="text-sm font-semibold mb-2">
+                    Produtos ({selectedStaff.snapshots.filter(s => s.item_type === "product").length})
+                  </h4>
                   <div className="space-y-1 max-h-48 overflow-y-auto">
-                    {selectedStaff.productDetails.map((p) => (
-                      <div key={p.id} className="flex items-center justify-between py-2 px-3 text-sm rounded-lg bg-muted/20">
-                        <div>
-                          <span className="font-medium">{p.product_name}</span>
-                          <span className="text-muted-foreground ml-2 text-xs">
-                            {format(new Date(p.sale_date), "dd/MM", { locale: ptBR })}
-                          </span>
+                    {selectedStaff.snapshots
+                      .filter(s => s.item_type === "product")
+                      .map((s) => (
+                        <div key={s.id} className="flex items-center justify-between py-2 px-3 text-sm rounded-lg bg-muted/20">
+                          <div>
+                            <span className="font-medium">{s.item_title}</span>
+                            <span className="text-muted-foreground ml-2 text-xs">
+                              {format(new Date(s.created_at), "dd/MM", { locale: ptBR })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span>{fmt(s.base_amount_cents)}</span>
+                            <span className="text-xs text-muted-foreground">{s.commission_percent}%</span>
+                            <span className="text-emerald-400 text-xs">+{fmt(s.commission_cents)}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span>R$ {(p.revenue_cents / 100).toFixed(2)}</span>
-                          <span className="text-emerald-400 text-xs">+R$ {(p.commission_cents / 100).toFixed(2)}</span>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
-                  {commissionBasis === "received" && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      ⚠️ Produtos usam valor teórico (sem rastreio de recebimento por venda).
-                    </p>
-                  )}
                 </div>
               )}
             </div>
