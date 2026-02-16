@@ -245,7 +245,21 @@ export function BookingDetailsModal({
           )}
 
           {/* ═══════════════ SEÇÃO 3: PAGAMENTO ═══════════════ */}
-          {!isRecurring && isCompleted && !isCancelled && booking.customer_id && !isBenefitBooking && (
+          {/* Benefit banner */}
+          {!isRecurring && isCompleted && isBenefitBooking && !comandaClosed && (
+            <>
+              <Separator />
+              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <p className="text-sm font-medium text-amber-600 dark:text-amber-400 text-center">
+                  🎫 Serviço coberto por {booking.customer_package_id ? "pacote" : "assinatura"}
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* Payment section: show for non-benefit OR benefit with unpaid extras */}
+          {!isRecurring && isCompleted && !isCancelled && booking.customer_id &&
+            (!isBenefitBooking || bookingItems.some(i => i.paid_status === "unpaid")) && (
             <div ref={paymentSectionRef}>
               <Separator />
               <ComandaPaymentSection
@@ -259,18 +273,6 @@ export function BookingDetailsModal({
                 comandaClosed={comandaClosed}
               />
             </div>
-          )}
-
-          {/* Benefit bookings: all items covered */}
-          {!isRecurring && isCompleted && isBenefitBooking && !comandaClosed && (
-            <>
-              <Separator />
-              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <p className="text-sm font-medium text-amber-600 dark:text-amber-400 text-center">
-                  🎫 Serviço coberto por {booking.customer_package_id ? "pacote" : "assinatura"}
-                </p>
-              </div>
-            </>
           )}
 
           {/* ═══════════════ SEÇÃO 4: FECHAR COMANDA ═══════════════ */}
