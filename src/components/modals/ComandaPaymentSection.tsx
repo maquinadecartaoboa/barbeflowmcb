@@ -57,7 +57,7 @@ export function ComandaPaymentSection({
     [items]
   );
 
-  const totalToCharge = Math.max(0, totalUnpaid - Math.max(0, customerBalance));
+  const totalToCharge = Math.max(0, totalUnpaid - customerBalance);
 
   const totalReceived = useMemo(() =>
     lines.reduce((sum, l) => sum + Math.round(parseFloat(l.amount || "0") * 100), 0),
