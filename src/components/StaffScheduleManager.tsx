@@ -429,7 +429,36 @@ export const StaffScheduleManager = ({ staffId, staffName }: StaffScheduleManage
                   ))}
                 </select>
               ) : (
-                // Multiple day checkboxes for creating
+              // Multiple day checkboxes for creating
+                <>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {[
+                    { label: "Seg-Sex", days: [1, 2, 3, 4, 5] },
+                    { label: "Seg-Sáb", days: [1, 2, 3, 4, 5, 6] },
+                    { label: "Todos", days: [0, 1, 2, 3, 4, 5, 6] },
+                  ].map(({ label, days }) => {
+                    const availableDays = days.filter(d => !schedules.some(s => s.weekday === d));
+                    const allSelected = availableDays.length > 0 && availableDays.every(d => formData.weekdays.includes(d));
+                    return (
+                      <Button
+                        key={label}
+                        type="button"
+                        variant={allSelected ? "default" : "outline"}
+                        size="sm"
+                        disabled={availableDays.length === 0}
+                        onClick={() => {
+                          if (allSelected) {
+                            setFormData({ ...formData, weekdays: formData.weekdays.filter(w => !availableDays.includes(w)) });
+                          } else {
+                            setFormData({ ...formData, weekdays: [...new Set([...formData.weekdays, ...availableDays])] });
+                          }
+                        }}
+                      >
+                        {label}
+                      </Button>
+                    );
+                  })}
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   {WEEKDAYS.map((day, index) => {
                     const hasExistingSchedule = schedules.some(s => s.weekday === index);
@@ -470,6 +499,7 @@ export const StaffScheduleManager = ({ staffId, staffName }: StaffScheduleManage
                     );
                   })}
                 </div>
+                </>
               )}
               
               {!editingSchedule && formData.weekdays.length === 0 && (
