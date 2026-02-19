@@ -1,136 +1,114 @@
 
-# Dominio Personalizado (White Label) - Plano Profissional
 
-## Resumo
-Criar uma aba "Dominio" nas Configuracoes onde barbeiros do plano Profissional podem conectar seu proprio dominio (ex: barbeariadoze.com.br) via Cloudflare for SaaS. Usuarios do plano Essencial verao uma tela de upsell com CTA para upgrade.
+# Automatizar Domínios Personalizados via API do Vercel
 
----
+## Problema Atual
+Quando um tenant do plano Profissional adiciona um domínio personalizado:
+1. O Cloudflare registra o custom hostname corretamente
+2. O DNS do cliente aponta para o Cloudflare
+3. O Cloudflare tenta fazer proxy para o origin (`app.modogestor.com.br` no Vercel)
+4. **O Vercel rejeita** porque o domínio customizado nao esta cadastrado la -- **passo manual necessario**
 
-## Etapa 1: Secrets do Cloudflare
+## Solucao
 
-Antes de qualquer codigo, precisamos adicionar dois secrets:
-- `CLOUDFLARE_API_TOKEN` - Token da API Cloudflare com permissao "Zone: Edit"
-- `CLOUDFLARE_ZONE_ID` - ID da zona no Cloudflare onde o SaaS esta configurado
+Integrar a **API do Vercel** nas edge functions para que, ao adicionar/remover um dominio, o Vercel tambem seja configurado automaticamente.
 
-Voce precisara fornecer esses valores apos ativar o "Cloudflare for SaaS" no painel.
+```text
+Fluxo automatizado:
 
----
-
-## Etapa 2: Migracao do Banco de Dados
-
-Adicionar 3 colunas na tabela `tenants`:
-
-```sql
-ALTER TABLE tenants
-  ADD COLUMN custom_domain text UNIQUE,
-  ADD COLUMN cloudflare_status text DEFAULT 'none',
-  ADD COLUMN cloudflare_hostname_id text;
+Usuario adiciona dominio
+        |
+        v
+Edge Function "add-custom-domain"
+        |
+        +---> 1. Cloudflare: registra custom hostname
+        +---> 2. Vercel API: adiciona dominio ao projeto
+        +---> 3. DB: salva status
+        |
+        v
+Dominio funcionando automaticamente
 ```
 
-- `custom_domain`: dominio do cliente (ex: barbeariadoze.com.br)
-- `cloudflare_status`: 'none', 'pending', 'active', 'error'
-- `cloudflare_hostname_id`: ID retornado pela Cloudflare para gerenciamento
+## Pre-requisito: Secrets
 
----
+Duas novas secrets precisam ser configuradas:
 
-## Etapa 3: Edge Function `add-custom-domain`
+| Secret | Onde obter |
+|--------|-----------|
+| `VERCEL_API_TOKEN` | Vercel Dashboard > Settings > Tokens > Create |
+| `VERCEL_PROJECT_ID` | Vercel Dashboard > Project Settings > General > Project ID |
 
-Nova edge function que:
-1. Valida autenticacao do usuario
-2. Verifica se o plano e "profissional" (via `stripe_subscriptions`)
-3. Chama `POST /zones/:zone_id/custom_hostnames` na API Cloudflare
-4. Salva o `hostname_id` e os registros DNS de validacao na tabela `tenants`
-5. Retorna os registros CNAME/TXT que o usuario precisa configurar
+## Alteracoes Tecnicas
 
----
+### 1. Edge Function `add-custom-domain/index.ts`
 
-## Etapa 4: Edge Function `check-domain-status`
+Apos registrar o dominio no Cloudflare com sucesso, adicionar uma chamada a API do Vercel:
 
-Nova edge function que:
-1. Busca o `cloudflare_hostname_id` do tenant
-2. Chama `GET /zones/:zone_id/custom_hostnames/:id` na Cloudflare
-3. Atualiza `cloudflare_status` no banco
-4. Retorna o status atual
+```typescript
+// Apos o registro no Cloudflare, adicionar no Vercel
+const vercelToken = Deno.env.get("VERCEL_API_TOKEN");
+const vercelProjectId = Deno.env.get("VERCEL_PROJECT_ID");
 
----
+if (vercelToken && vercelProjectId) {
+  const vercelRes = await fetch(
+    `https://api.vercel.com/v10/projects/${vercelProjectId}/domains`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${vercelToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: cleanDomain }),
+    }
+  );
+  const vercelData = await vercelRes.json();
+  if (!vercelRes.ok) {
+    console.error("Vercel domain error:", JSON.stringify(vercelData));
+    // Nao bloqueia o fluxo, apenas loga o erro
+  }
+}
+```
 
-## Etapa 5: Edge Function `remove-custom-domain`
+### 2. Edge Function `remove-custom-domain/index.ts`
 
-Nova edge function para desconectar:
-1. Chama `DELETE /zones/:zone_id/custom_hostnames/:id` na Cloudflare
-2. Limpa `custom_domain`, `cloudflare_status`, `cloudflare_hostname_id` no banco
+Ao remover o dominio, tambem remover do Vercel:
 
----
+```typescript
+// Apos deletar do Cloudflare, remover do Vercel
+const vercelToken = Deno.env.get("VERCEL_API_TOKEN");
+const vercelProjectId = Deno.env.get("VERCEL_PROJECT_ID");
 
-## Etapa 6: Componente `CustomDomainTab`
+if (vercelToken && vercelProjectId && tenant?.custom_domain) {
+  await fetch(
+    `https://api.vercel.com/v10/projects/${vercelProjectId}/domains/${tenant.custom_domain}`,
+    {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${vercelToken}` },
+    }
+  );
+}
+```
 
-Novo componente `src/components/settings/CustomDomainTab.tsx`:
+### 3. Buscar `custom_domain` antes de deletar
 
-**Se plano != profissional:**
-- Card com icone de cadeado
-- Titulo: "Sua marca em primeiro lugar."
-- Texto: "Nao divulgue o nosso link. Tenha o seu proprio site (www.suabarbearia.com.br) e passe mais credibilidade."
-- Botao: "Quero fazer Upgrade" → navega para aba billing
+Na funcao `remove-custom-domain`, a query atual so busca `cloudflare_hostname_id`. Precisa tambem buscar `custom_domain` para poder remover do Vercel:
 
-**Se plano == profissional e sem dominio:**
-- Input para digitar dominio (com validacao: sem protocolo, sem path)
-- Botao "Conectar Dominio"
-- Instrucoes claras sobre o que digitar
+```typescript
+// Mudar de:
+.select("cloudflare_hostname_id")
+// Para:
+.select("cloudflare_hostname_id, custom_domain")
+```
 
-**Se plano == profissional e dominio pendente:**
-- Badge "Verificando..." (amarelo)
-- Card com registros DNS em bloco de codigo com botao "Copiar"
-  - CNAME record
-  - TXT record para validacao
-- Botao "Verificar Status" para polling manual
-- Botao "Remover Dominio"
+## Resultado Final
 
-**Se plano == profissional e dominio ativo:**
-- Badge "Ativo" (verde) com checkmark
-- Dominio exibido com link
-- Botao "Remover Dominio"
+- **Zero intervencao manual**: quando o usuario conectar um dominio, tudo funciona automaticamente (Cloudflare + Vercel)
+- **Remocao limpa**: ao remover, ambos os servicos sao limpos
+- **Resiliente**: se a chamada ao Vercel falhar, o fluxo do Cloudflare nao e bloqueado (apenas logado)
 
----
+## Proximo Passo
 
-## Etapa 7: Integrar Tab nas Configuracoes
+Antes de implementar, preciso que voce configure as duas secrets:
+- `VERCEL_API_TOKEN`
+- `VERCEL_PROJECT_ID`
 
-Em `Settings.tsx`:
-- Adicionar nova aba "Dominio" com icone `Globe`
-- Renderizar `<CustomDomainTab />` condicionalmente
-- Importar `useSubscription` para verificacao de plano
-
----
-
-## Etapa 8: Roteamento de Dominios Custom
-
-Atualizar `src/lib/hostname.ts`:
-- Adicionar logica para reconhecer dominios customizados (que nao sao os dominios conhecidos)
-- Tratar dominios custom como dominio publico, buscando o tenant pelo `custom_domain` no banco
-
-Atualizar `BookingPublic.tsx`:
-- Quando acessado via dominio custom, buscar tenant por `custom_domain` ao inves de slug na URL
-
----
-
-## Arquivos Envolvidos
-
-| Arquivo | Acao |
-|---------|------|
-| `supabase/migrations/` | Nova migracao (3 colunas em tenants) |
-| `supabase/functions/add-custom-domain/index.ts` | Criar |
-| `supabase/functions/check-domain-status/index.ts` | Criar |
-| `supabase/functions/remove-custom-domain/index.ts` | Criar |
-| `supabase/config.toml` | Registrar 3 novas functions |
-| `src/components/settings/CustomDomainTab.tsx` | Criar |
-| `src/pages/Settings.tsx` | Adicionar aba "Dominio" |
-| `src/lib/hostname.ts` | Reconhecer dominios custom |
-| `src/pages/BookingPublic.tsx` | Resolver tenant por dominio custom |
-
----
-
-## Pre-requisitos (Sua parte)
-
-1. **Ativar Cloudflare for SaaS** no painel Cloudflare (SSL/TLS → Custom Hostnames)
-2. Configurar o **Fallback Origin** (ex: `barberflow.store`)
-3. Criar **API Token** com permissao de Custom Hostnames
-4. Fornecer `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ZONE_ID` quando solicitado
