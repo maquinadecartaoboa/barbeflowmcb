@@ -1,45 +1,73 @@
 
 
-## Corrigir redirect do OAuth do Mercado Pago
+## Adequacao Mercado Pago — Atingir 73+ pontos
 
-### Problema
+Baseado na sua analise de qualidade (28/100 atual), este plano implementa todas as correcoes necessarias em 3 edge functions para atingir a meta de 73+ pontos.
 
-O `mp-oauth-callback` redireciona para `https://www.modogestor.com.br/app/settings?mp_connected=1`, mas:
-- `www.modogestor.com.br` e o dominio **publico** (landing, agendamento) - nao tem rota `/app/settings`
-- O dashboard fica em `app.modogestor.com.br`, onde as rotas **nao usam** o prefixo `/app`
-- A URL correta e: `https://app.modogestor.com.br/settings?mp_connected=1`
+---
 
-### Solucao
+### Sprint 1 — Obrigatorios
 
-Alterar o `mp-oauth-callback` para redirecionar para o dominio do dashboard (`app.modogestor.com.br`) com a rota sem o prefixo `/app`.
+#### 1. `mp-process-payment/index.ts` — Adicionar `notification_url`
+- Ler `MP_WEBHOOK_URL` do env
+- Adicionar `notification_url: webhookUrl` no body do pagamento (tanto PIX quanto cartao)
 
-### Alteracoes
+#### 2. `mp-create-subscription/index.ts` — Adicionar `notification_url`
+- Ler `MP_WEBHOOK_URL` do env
+- Adicionar `notification_url: webhookUrl` no body do `/preapproval`
 
-**`supabase/functions/mp-oauth-callback/index.ts`**:
-- Trocar todas as URLs de redirect de `${frontBaseUrl}/app/settings` para usar o dominio do dashboard
-- Usar uma variavel separada ou hardcoded `https://app.modogestor.com.br/settings` para os redirects
-- Manter o fallback defensivo (protocolo, barra final)
+---
 
-Redirects a corrigir (6 ocorrencias no arquivo):
-1. `?mp_error=missing_params`
-2. `?mp_error=invalid_state`
-3. `?mp_error=expired`
-4. `?mp_error=config_error`
-5. `?mp_error=token_exchange_failed`
-6. `?mp_error=no_token`
-7. `?mp_error=db_error`
-8. `?mp_connected=1` (sucesso)
-9. `?mp_error=server_error` (catch)
+### Sprint 2 — Recomendados
 
-Todas devem apontar para `https://app.modogestor.com.br/settings?...`
+#### 3. `mp-process-payment/index.ts` — Adicionar `statement_descriptor`
+- Usar `booking.tenant?.name?.substring(0, 22)` no body do pagamento
+
+#### 4. `mp-process-payment/index.ts` — Adicionar array `items[]`
+- Montar array items com `id`, `title`, `description`, `quantity`, `unit_price`, `category_id`
+- Usar dados do `booking.service`
+
+#### 5. `mp-process-payment/index.ts` — Payer completo para cartao
+- Adicionar `first_name` e `last_name` no payer de pagamentos por cartao (igual ja faz no PIX)
+
+#### 6. `mp-create-checkout/index.ts` — Adicionar `category_id` nos items
+- Adicionar `category_id: "services"` no item da preference
+
+#### 7. `mp-create-subscription/index.ts` — Adicionar `notification_url`
+- Ja coberto no item 2
+
+---
+
+### Resumo de alteracoes por arquivo
+
+**`supabase/functions/mp-process-payment/index.ts`** (4 alteracoes):
+- `notification_url` no body (PIX e cartao)
+- `statement_descriptor` no body
+- Array `items[]` completo com `category_id`
+- `first_name`/`last_name` no payer de cartao
+
+**`supabase/functions/mp-create-checkout/index.ts`** (1 alteracao):
+- `category_id: "services"` no item existente
+
+**`supabase/functions/mp-create-subscription/index.ts`** (1 alteracao):
+- `notification_url` no body do preapproval
+
+---
+
+### Projecao de pontuacao
+
+| Fase | Pontos |
+|------|--------|
+| Atual | 28 pts |
+| + notification_url (3 fluxos) | ~39 pts |
+| + SSL/TLS (ja ok na infra) | ~55 pts |
+| + statement_descriptor | ~65 pts |
+| + items[] + category_id | ~78 pts |
+| + payer completo | ~84 pts |
 
 ### Secao tecnica
 
-A abordagem mais limpa e usar um secret ou constante dedicada ao dashboard. Como o `FRONT_BASE_URL` e usado por outras funcoes para o dominio publico, vamos usar diretamente `https://app.modogestor.com.br` como base do redirect no callback, ja que o destino e sempre o painel administrativo.
+Todas as alteracoes sao aditivas (novos campos nos payloads JSON). Nenhuma mudanca de banco, nenhuma dependencia nova. As 3 edge functions serao redeployadas automaticamente apos as alteracoes.
 
-```text
-Antes:  https://www.modogestor.com.br/app/settings?mp_connected=1  (404)
-Depois: https://app.modogestor.com.br/settings?mp_connected=1     (correto)
-```
+O secret `MP_WEBHOOK_URL` ja existe e esta configurado. Nenhum secret novo e necessario.
 
-Apos a alteracao, a edge function sera redeployada automaticamente.
