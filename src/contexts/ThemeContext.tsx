@@ -49,23 +49,40 @@ function getLuminance(hex: string): number {
 }
 
 const DEFAULT_ACCENT = "#FFC300";
+const CACHE_KEY = "modogestor_theme";
+
+function getCachedTheme(): { mode: ThemeMode; accent: string } | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if ((parsed.mode === "light" || parsed.mode === "dark") && /^#[0-9A-Fa-f]{6}$/.test(parsed.accent)) {
+      return parsed;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+function setCachedTheme(mode: ThemeMode, accent: string) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ mode, accent })); } catch { /* ignore */ }
+}
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { currentTenant } = useTenant();
-  const [themeMode, setThemeMode] = useState<ThemeMode>("dark");
-  const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
+  const cached = getCachedTheme();
+  const [themeMode, setThemeMode] = useState<ThemeMode>(cached?.mode ?? "dark");
+  const [accentColor, setAccentColor] = useState(cached?.accent ?? DEFAULT_ACCENT);
   const [saving, setSaving] = useState(false);
 
-  // Load settings from tenant
+  // Sync from tenant settings (source of truth) and update cache
   useEffect(() => {
     if (currentTenant?.settings) {
       const s = currentTenant.settings as any;
-      if (s.theme_mode === "light" || s.theme_mode === "dark") {
-        setThemeMode(s.theme_mode);
-      }
-      if (s.accent_color && /^#[0-9A-Fa-f]{6}$/.test(s.accent_color)) {
-        setAccentColor(s.accent_color);
-      }
+      const newMode = (s.theme_mode === "light" || s.theme_mode === "dark") ? s.theme_mode : themeMode;
+      const newAccent = (s.accent_color && /^#[0-9A-Fa-f]{6}$/.test(s.accent_color)) ? s.accent_color : accentColor;
+      setThemeMode(newMode);
+      setAccentColor(newAccent);
+      setCachedTheme(newMode, newAccent);
     }
   }, [currentTenant]);
 
@@ -111,6 +128,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const saveThemeSettings = async () => {
     if (!currentTenant) return;
     setSaving(true);
+    setCachedTheme(themeMode, accentColor);
     try {
       const existingSettings = (currentTenant.settings as any) || {};
       await supabase
