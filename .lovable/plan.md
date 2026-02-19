@@ -1,114 +1,63 @@
 
 
-# Automatizar Domínios Personalizados via API do Vercel
+## O que e o `FRONT_BASE_URL` e o plano de migracao para `modogestor.com.br`
 
-## Problema Atual
-Quando um tenant do plano Profissional adiciona um domínio personalizado:
-1. O Cloudflare registra o custom hostname corretamente
-2. O DNS do cliente aponta para o Cloudflare
-3. O Cloudflare tenta fazer proxy para o origin (`app.modogestor.com.br` no Vercel)
-4. **O Vercel rejeita** porque o domínio customizado nao esta cadastrado la -- **passo manual necessario**
+### O que e `FRONT_BASE_URL`?
 
-## Solucao
+E um secret usado pelas Edge Functions para saber para onde redirecionar o usuario apos operacoes no backend (ex: apos conectar Mercado Pago, apos checkout do Stripe, etc). Atualmente esta apontando para um dominio antigo ou com barra extra, causando o erro de URL dupla (`//app/settings`).
 
-Integrar a **API do Vercel** nas edge functions para que, ao adicionar/remover um dominio, o Vercel tambem seja configurado automaticamente.
+O valor correto sera: `https://www.modogestor.com.br` (sem barra final).
 
-```text
-Fluxo automatizado:
+---
 
-Usuario adiciona dominio
-        |
-        v
-Edge Function "add-custom-domain"
-        |
-        +---> 1. Cloudflare: registra custom hostname
-        +---> 2. Vercel API: adiciona dominio ao projeto
-        +---> 3. DB: salva status
-        |
-        v
-Dominio funcionando automaticamente
-```
+### Problema atual
 
-## Pre-requisito: Secrets
+Existem **referencias hardcoded a `barberflow.store`** espalhadas pelo codigo (frontend e edge functions), alem de fallbacks inconsistentes. Precisamos padronizar tudo para `modogestor.com.br`.
 
-Duas novas secrets precisam ser configuradas:
+---
 
-| Secret | Onde obter |
-|--------|-----------|
-| `VERCEL_API_TOKEN` | Vercel Dashboard > Settings > Tokens > Create |
-| `VERCEL_PROJECT_ID` | Vercel Dashboard > Project Settings > General > Project ID |
+### Plano de alteracoes
 
-## Alteracoes Tecnicas
+#### 1. Atualizar o secret `FRONT_BASE_URL`
 
-### 1. Edge Function `add-custom-domain/index.ts`
+Valor novo: `https://www.modogestor.com.br` (sem barra no final)
 
-Apos registrar o dominio no Cloudflare com sucesso, adicionar uma chamada a API do Vercel:
+#### 2. Atualizar `src/lib/hostname.ts`
 
-```typescript
-// Apos o registro no Cloudflare, adicionar no Vercel
-const vercelToken = Deno.env.get("VERCEL_API_TOKEN");
-const vercelProjectId = Deno.env.get("VERCEL_PROJECT_ID");
+- Remover `barberflow.store` e `app.barberflow.store` dos arrays de hosts
+- Manter apenas `modogestor.com.br` e `app.modogestor.com.br`
 
-if (vercelToken && vercelProjectId) {
-  const vercelRes = await fetch(
-    `https://api.vercel.com/v10/projects/${vercelProjectId}/domains`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${vercelToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name: cleanDomain }),
-    }
-  );
-  const vercelData = await vercelRes.json();
-  if (!vercelRes.ok) {
-    console.error("Vercel domain error:", JSON.stringify(vercelData));
-    // Nao bloqueia o fluxo, apenas loga o erro
-  }
-}
-```
+#### 3. Atualizar Edge Functions (fallbacks e hosts hardcoded)
 
-### 2. Edge Function `remove-custom-domain/index.ts`
+| Arquivo | Alteracao |
+|---|---|
+| `mp-oauth-callback/index.ts` | Fallback `'https://lovable.dev'` -> `'https://www.modogestor.com.br'` |
+| `mp-create-checkout/index.ts` | Fallback `'https://lovable.dev'` -> `'https://www.modogestor.com.br'` |
+| `mp-create-subscription/index.ts` | Fallback `'https://www.barberflow.store'` -> `'https://www.modogestor.com.br'` |
+| `create-checkout/index.ts` | Fallback `'https://barbeflowmcb.lovable.app'` -> `'https://www.modogestor.com.br'`; dashboardHosts `app.barberflow.store` -> `app.modogestor.com.br` |
+| `customer-portal/index.ts` | Fallback `'https://barbeflowmcb.lovable.app'` -> `'https://www.modogestor.com.br'` |
 
-Ao remover o dominio, tambem remover do Vercel:
+#### 4. Atualizar Frontend (textos e emails)
 
-```typescript
-// Apos deletar do Cloudflare, remover do Vercel
-const vercelToken = Deno.env.get("VERCEL_API_TOKEN");
-const vercelProjectId = Deno.env.get("VERCEL_PROJECT_ID");
+| Arquivo | Alteracao |
+|---|---|
+| `src/pages/Settings.tsx` | Texto `barberflow.store/` -> `modogestor.com.br/` no input de slug |
+| `src/pages/Landing.tsx` | URL mockup `app.barberflow.store/dashboard` -> `app.modogestor.com.br/dashboard`; email `contato@barberflow.store` -> `contato@modogestor.com.br` |
+| `src/pages/Terms.tsx` | Email `contato@barberflow.store` -> `contato@modogestor.com.br` |
+| `src/pages/Privacy.tsx` | Email `privacidade@barberflow.store` -> `privacidade@modogestor.com.br` |
+| `src/App.tsx` | Comentario `barberflow.store` -> `modogestor.com.br` |
 
-if (vercelToken && vercelProjectId && tenant?.custom_domain) {
-  await fetch(
-    `https://api.vercel.com/v10/projects/${vercelProjectId}/domains/${tenant.custom_domain}`,
-    {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${vercelToken}` },
-    }
-  );
-}
-```
+#### 5. Nao alterar
 
-### 3. Buscar `custom_domain` antes de deletar
+- `src/hooks/useSubscription.ts` - o slug `"barberflow"` e um slug de tenant no banco, nao um dominio
+- `supabase/functions/test-all-notifications/index.ts` - dados de teste internos
+- Migracoes SQL existentes - sao historicas e nao devem ser alteradas
 
-Na funcao `remove-custom-domain`, a query atual so busca `cloudflare_hostname_id`. Precisa tambem buscar `custom_domain` para poder remover do Vercel:
+---
 
-```typescript
-// Mudar de:
-.select("cloudflare_hostname_id")
-// Para:
-.select("cloudflare_hostname_id, custom_domain")
-```
+### Secao tecnica
 
-## Resultado Final
+A correcao do bug do Mercado Pago (dupla barra `//app/settings`) sera resolvida pelo passo 1 (secret sem barra final). O `mp-oauth-callback` concatena `${frontBaseUrl}/app/settings`, entao o valor deve ser `https://www.modogestor.com.br` sem `/` no final.
 
-- **Zero intervencao manual**: quando o usuario conectar um dominio, tudo funciona automaticamente (Cloudflare + Vercel)
-- **Remocao limpa**: ao remover, ambos os servicos sao limpos
-- **Resiliente**: se a chamada ao Vercel falhar, o fluxo do Cloudflare nao e bloqueado (apenas logado)
-
-## Proximo Passo
-
-Antes de implementar, preciso que voce configure as duas secrets:
-- `VERCEL_API_TOKEN`
-- `VERCEL_PROJECT_ID`
+Apos aprovacao, todas as edge functions alteradas serao redeployadas automaticamente.
 
