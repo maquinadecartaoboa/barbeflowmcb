@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getPublicUrl } from "@/lib/hostname";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,8 +47,7 @@ export function SubscriptionPlanCard({ plan, tenantSlug, onEdit, onDelete, onTog
       toast({ title: "Slug não encontrado", variant: "destructive" });
       return;
     }
-    const baseUrl = window.location.origin;
-    const url = `${baseUrl}/${tenantSlug}?tab=subscriptions`;
+    const url = getPublicUrl(`/${tenantSlug}?tab=subscriptions`);
     navigator.clipboard.writeText(url).then(() => {
       toast({ title: "Link copiado!", description: "Envie para o cliente assinar o plano." });
     }).catch(() => {
