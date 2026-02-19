@@ -1,90 +1,89 @@
 
 
-## Corrigir Webhook MP e Melhorar Score de Qualidade
+## Melhorias para Score de Qualidade Mercado Pago: 38 -> 83+
 
-### Problema 1: Webhook com 27% de entrega (erros 400/404)
+### Contexto
 
-Os logs mostram dois cenários de falha:
+O score atual de 38/100 foi medido em um pagamento de **assinatura recorrente** (gerado pelo scheduler interno do MP), que nao carrega os campos enriquecidos do nosso codigo. O codigo em `mp-process-payment` ja envia todos os campos obrigatorios (items, notification_url, statement_descriptor, etc.), mas **nenhum pagamento passou por esse fluxo em producao ainda**.
 
-**Cenario A**: Mercado Pago envia requisicoes GET para verificar se a URL do webhook esta ativa. O codigo atual tenta fazer `req.json()` em todas as requisicoes que nao sao OPTIONS, causando `SyntaxError: Unexpected end of JSON input`.
+### O que ja esta pronto (sem alteracoes necessarias)
 
-**Cenario B**: Pagamentos criados diretamente no painel do MP (nao pelo sistema) chegam ao webhook com `external_reference: null` e `metadata: {}`. O webhook retorna 400, e o MP continua tentando reenviar.
+Os seguintes campos **ja estao implementados** em `mp-process-payment` e serao contabilizados assim que um pagamento real passar pelo fluxo:
 
-### Problema 2: Score de qualidade - Device ID (acao obrigatoria)
+- `items[].id`, `items[].title`, `items[].description`, `items[].quantity`, `items[].unit_price`, `items[].category_id` (+14 pts)
+- `notification_url` via `MP_WEBHOOK_URL` (+11 pts)
+- `statement_descriptor` (+10 pts ja contados)
+- `application_fee` (marketplace fee) ja implementado
+- `device_id` / `X-meli-session-id` ja implementado no ultimo deploy
 
-O MP recomenda enviar o identificador do dispositivo (`X-meli-session-id`) nos pagamentos transparentes (`/v1/payments`). Isso requer capturar o device ID no frontend usando o SDK MercadoPago.JS V2 e envia-lo ao `mp-process-payment`.
+### Melhorias adicionais propostas (boas praticas)
 
-### Alteracoes
+Embora nao impactem diretamente a pontuacao, o MP recomenda enviar dados completos do pagador. Atualmente, o frontend (`BookingPublic.tsx`) so envia `payer.email` -- mas ja possui `customerPhone` e `customerName` disponveis no estado.
 
-#### 1. `supabase/functions/mp-webhook/index.ts`
+#### 1. Frontend: Enviar telefone e CPF do cliente no `payer` (BookingPublic.tsx)
 
-Adicionar tratamento para requisicoes GET e para pagamentos sem referencia interna:
-
-- **Antes do `req.json()`** (linha 33): Verificar se o metodo e GET e retornar 200 imediatamente
-- **No bloco de pagamentos sem referencia** (linhas 117-121): Retornar status 200 em vez de 400, para que o MP pare de reenviar
-
+Atualmente na linha 1850-1852:
 ```typescript
-// ADICIONAR antes da linha 33:
-if (req.method === 'GET') {
-  return new Response(
-    JSON.stringify({ status: 'ok' }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
-}
-
-// Na linha 118-120, TROCAR status 400 por 200:
-return new Response(JSON.stringify({ received: true, ignored: true, reason: 'no_internal_reference' }), {
-  status: 200,  // <-- era 400
-  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-});
+payer={{
+  email: customerEmail || 'cliente@email.com',
+}}
 ```
 
-#### 2. `supabase/functions/mp-process-payment/index.ts`
+Alterar para incluir o telefone (ja disponivel como `customerPhone` no componente):
+```typescript
+payer={{
+  email: customerEmail || 'cliente@email.com',
+  identification: customerCpf ? { type: 'CPF', number: customerCpf.replace(/\D/g, '') } : undefined,
+}}
+```
 
-Adicionar suporte ao `device_id` recebido do frontend:
+#### 2. Backend: Enviar telefone do cliente no payer (mp-process-payment)
 
-- Aceitar campo `device_id` no body da requisicao
-- Incluir header `X-meli-session-id` na chamada ao MP
+O backend ja tem acesso ao `booking.customer.phone`. Adicionar `payer.phone` no body do MP:
 
 ```typescript
-// No destructuring do body (linha 23), adicionar:
-device_id,
-
-// Na chamada fetch ao MP (linha ~178), adicionar header:
-headers: {
-  'Content-Type': 'application/json',
-  'Authorization': `Bearer ${mpToken.access_token}`,
-  'X-Idempotency-Key': `${booking_id}-${payment_type}-${Date.now()}`,
-  ...(device_id ? { 'X-meli-session-id': device_id } : {}),
+payer: {
+  email: payer?.email || booking.customer?.email || 'cliente@example.com',
+  first_name: customerFirstName,
+  last_name: customerLastName,
+  identification: payer?.identification || undefined,
+  // NOVO: adicionar telefone do cliente
+  phone: booking.customer?.phone ? {
+    area_code: booking.customer.phone.substring(0, 2),
+    number: booking.customer.phone.substring(2),
+  } : undefined,
 },
 ```
 
-#### 3. `src/components/MercadoPagoCheckout.tsx`
+Isso se aplica a **ambos os blocos** (PIX e Card) no `mp-process-payment`.
 
-Capturar o device ID do SDK e envia-lo junto com o pagamento:
+#### 3. Frontend: Enviar CPF na interface do MercadoPagoCheckout
 
-- Apos inicializar o SDK MP, obter o `deviceId` via `window.MP_DEVICE_SESSION_ID` ou `mp.getIdentificationTypes()` (o SDK popula automaticamente)
-- Enviar o `device_id` no body da chamada a `mp-process-payment`
+A interface `PayerInfo` ja suporta `identification`, mas o `BookingPublic` nao envia o CPF quando disponivel. A alteracao e simples: passar `customerCpf` no campo `payer.identification` se ele existir.
 
-### Resumo do impacto
+### Detalhamento tecnico
 
-| Alteracao | Impacto |
-|---|---|
-| GET handler no webhook | Elimina erros de verificacao (SyntaxError) |
-| 200 para pagamentos sem referencia | Elimina erros 400 de pagamentos externos |
-| Device ID no pagamento transparente | +2 pontos no score MP (acao obrigatoria) |
+| Arquivo | Alteracao | Impacto |
+|---|---|---|
+| `src/pages/BookingPublic.tsx` (linha 1850) | Enviar CPF no payer.identification | Boa pratica MP |
+| `supabase/functions/mp-process-payment/index.ts` (linhas 169-174, 197-202) | Adicionar `phone` ao payer em ambos os blocos | Boa pratica MP |
 
-### Arquivos alterados
+### Acao principal: Teste manual obrigatorio
 
-| Arquivo | Tipo |
-|---|---|
-| `supabase/functions/mp-webhook/index.ts` | Alterar (2 pontos) |
-| `supabase/functions/mp-process-payment/index.ts` | Alterar (device_id header) |
-| `src/components/MercadoPagoCheckout.tsx` | Alterar (capturar e enviar device_id) |
+**A acao mais importante nao e uma alteracao de codigo** — e fazer um pagamento real com CARTAO via frontend Bricks. Isso fara o MP medir o score em um pagamento que inclui:
 
-### O que NAO sera alterado
+- Todos os campos de items (+14 pts)
+- notification_url (+11 pts)
+- SDK frontend Bricks (+10 pts)
+- PCI / Secure Fields (+8 pts)
+- Device ID (+2 pts)
 
-- `mp-create-checkout` - Checkout Pro ja envia items com todos os campos recomendados (id, title, quantity, unit_price, category_id, description)
-- `mp-process-payment` - ja envia `additional_info.items` com category_id, description, quantity, unit_price
-- Nenhum dado existente sera perdido
+**Score esperado apos um pagamento com cartao: 83-99 pontos** (acima da meta de 73).
+
+### Resumo das alteracoes
+
+1. **`src/pages/BookingPublic.tsx`**: Enviar `payer.identification` com CPF quando disponivel
+2. **`supabase/functions/mp-process-payment/index.ts`**: Adicionar `payer.phone` com DDD e numero do cliente nos blocos PIX e Card
+
+Sao alteracoes pequenas (aproximadamente 10 linhas no total) que complementam o que ja esta implementado, focando em dados do pagador para boas praticas.
 
