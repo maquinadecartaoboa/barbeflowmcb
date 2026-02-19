@@ -89,6 +89,7 @@ serve(async (req) => {
     oauthUrl.searchParams.set('platform_id', 'mp');
     oauthUrl.searchParams.set('redirect_uri', redirectUri);
     oauthUrl.searchParams.set('state', state);
+    oauthUrl.searchParams.set('prompt', 'consent');
 
     console.log('Generated OAuth URL for tenant:', tenant_id);
 
