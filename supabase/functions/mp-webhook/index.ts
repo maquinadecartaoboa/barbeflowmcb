@@ -106,6 +106,14 @@ serve(async (req) => {
 
     let paymentId = mpPaymentData.metadata?.payment_id || mpPaymentData.external_reference;
     if (!paymentId) {
+      // Check if this is a subscription-related payment (no external_reference)
+      // These are handled by subscription_authorized_payment events, so we can safely ignore
+      if (mpPaymentData.point_of_interaction?.type === 'SUBSCRIPTIONS' || mpPaymentData.operation_type === 'recurring_payment') {
+        console.log('Ignoring subscription payment notification (handled by subscription_authorized_payment):', mpPaymentId);
+        return new Response(JSON.stringify({ received: true, ignored: true, reason: 'subscription_payment' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       console.error('No payment_id found in metadata or external_reference');
       return new Response(JSON.stringify({ error: 'No internal payment reference' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -428,39 +436,50 @@ async function handleSubscriptionPreapproval(supabase: any, mpPreapprovalId: str
 // =============================================
 // SUBSCRIPTION PAYMENT HANDLER
 // =============================================
-async function handleSubscriptionPayment(supabase: any, mpPaymentId: string, connections: any[]) {
-  console.log('Processing subscription payment:', mpPaymentId);
+async function handleSubscriptionPayment(supabase: any, mpAuthorizedPaymentId: string, connections: any[]) {
+  console.log('Processing subscription authorized_payment:', mpAuthorizedPaymentId);
 
-  let mpPaymentData: any = null;
+  // IMPORTANT: subscription_authorized_payment events use /authorized_payments/{id}, NOT /v1/payments/{id}
+  let mpAuthData: any = null;
   let usedConnection: any = null;
   for (const conn of connections) {
     try {
-      const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${mpPaymentId}`, {
+      const mpResponse = await fetch(`https://api.mercadopago.com/authorized_payments/${mpAuthorizedPaymentId}`, {
         headers: { 'Authorization': `Bearer ${conn.access_token}` },
       });
-      if (mpResponse.ok) { mpPaymentData = await mpResponse.json(); usedConnection = conn; break; }
+      if (mpResponse.ok) { mpAuthData = await mpResponse.json(); usedConnection = conn; break; }
+      console.log(`[SUB_PAY] authorized_payments fetch failed for tenant ${conn.tenant_id}: ${mpResponse.status}`);
     } catch (e) { console.log('Connection failed for tenant:', conn.tenant_id); }
   }
 
-  if (!mpPaymentData || !usedConnection) {
+  if (!mpAuthData || !usedConnection) {
+    console.error(`[SUB_PAY] Could not fetch authorized_payment ${mpAuthorizedPaymentId} from any connection`);
     return new Response(JSON.stringify({ error: 'Payment not found' }), {
       status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 
-  const preapprovalId = mpPaymentData.metadata?.preapproval_id 
-    || mpPaymentData.point_of_interaction?.transaction_data?.subscription_id
-    || mpPaymentData.point_of_interaction?.subscription_id 
-    || mpPaymentData.preapproval_id;
+  // Extract data from authorized_payment response
+  // authorized_payment has: id, preapproval_id, payment.id, payment.status, transaction_amount, currency_id, etc.
+  const mpPaymentData = {
+    status: mpAuthData.payment?.status || mpAuthData.status,
+    transaction_amount: mpAuthData.transaction_amount || mpAuthData.payment?.transaction_amount || 0,
+    payer: mpAuthData.payer || {},
+    metadata: mpAuthData.metadata || {},
+    external_reference: mpAuthData.external_reference,
+    point_of_interaction: mpAuthData.point_of_interaction,
+  };
 
-  console.log('Subscription payment details:', JSON.stringify({
-    payment_id: mpPaymentId,
+  const preapprovalId = mpAuthData.preapproval_id;
+  const actualPaymentId = mpAuthData.payment?.id || mpAuthorizedPaymentId;
+
+  console.log('Subscription authorized_payment details:', JSON.stringify({
+    authorized_payment_id: mpAuthorizedPaymentId,
+    actual_payment_id: actualPaymentId,
     status: mpPaymentData.status,
     amount: mpPaymentData.transaction_amount,
     preapprovalId,
-    external_reference: mpPaymentData.external_reference,
-    metadata: mpPaymentData.metadata,
-    point_of_interaction: mpPaymentData.point_of_interaction,
+    payer_email: mpPaymentData.payer?.email,
   }));
 
   let subscription: any = null;
@@ -504,7 +523,7 @@ async function handleSubscriptionPayment(supabase: any, mpPaymentId: string, con
   }
 
   if (!subscription) {
-    console.log('No subscription found for payment:', mpPaymentId, 'preapprovalId:', preapprovalId);
+    console.log('No subscription found for authorized_payment:', mpAuthorizedPaymentId, 'preapprovalId:', preapprovalId);
     return new Response(JSON.stringify({ received: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -514,13 +533,13 @@ async function handleSubscriptionPayment(supabase: any, mpPaymentId: string, con
   if (subscription.status === 'cancelled') {
     console.log(`[GUARD] Ignored payment event for cancelled subscription ${subscription.id}. Cancelled is terminal.`);
     const { data: existingPayment } = await supabase.from('subscription_payments').select('id')
-      .eq('mp_payment_id', mpPaymentId.toString()).maybeSingle();
+      .eq('mp_payment_id', actualPaymentId.toString()).maybeSingle();
     if (!existingPayment) {
       await supabase.from('subscription_payments').insert({
         subscription_id: subscription.id, tenant_id: subscription.tenant_id,
         amount_cents: Math.round((mpPaymentData.transaction_amount || 0) * 100),
         status: mpPaymentData.status === 'approved' ? 'paid' : 'failed',
-        mp_payment_id: mpPaymentId.toString(),
+        mp_payment_id: actualPaymentId.toString(),
         period_start: new Date().toISOString().split('T')[0], period_end: new Date().toISOString().split('T')[0],
         paid_at: mpPaymentData.status === 'approved' ? new Date().toISOString() : null,
       });
@@ -533,7 +552,7 @@ async function handleSubscriptionPayment(supabase: any, mpPaymentId: string, con
   // PAYMENT APPROVED → Renew or Recover
   if (mpPaymentData.status === 'approved') {
     const { data: existingPayment } = await supabase.from('subscription_payments').select('id')
-      .eq('mp_payment_id', mpPaymentId.toString()).maybeSingle();
+      .eq('mp_payment_id', actualPaymentId.toString()).maybeSingle();
 
     if (!existingPayment) {
       const now = new Date();
@@ -543,7 +562,7 @@ async function handleSubscriptionPayment(supabase: any, mpPaymentId: string, con
       await supabase.from('subscription_payments').insert({
         subscription_id: subscription.id, tenant_id: subscription.tenant_id,
         amount_cents: Math.round(mpPaymentData.transaction_amount * 100), status: 'paid',
-        mp_payment_id: mpPaymentId.toString(),
+        mp_payment_id: actualPaymentId.toString(),
         period_start: now.toISOString().split('T')[0], period_end: periodEnd.toISOString().split('T')[0],
         paid_at: new Date().toISOString(),
       });
@@ -556,7 +575,7 @@ async function handleSubscriptionPayment(supabase: any, mpPaymentId: string, con
         kind: 'income', source: 'subscription',
         payment_method: 'online',
         session_id: sessionId,
-        notes: `Assinatura ${subscription.id} | MP payment: ${mpPaymentId}`,
+        notes: `Assinatura ${subscription.id} | MP authorized_payment: ${mpAuthorizedPaymentId}`,
         occurred_at: new Date().toISOString(),
       });
 
@@ -599,12 +618,12 @@ async function handleSubscriptionPayment(supabase: any, mpPaymentId: string, con
       }).eq('id', subscription.id);
 
       const { data: existingPayment } = await supabase.from('subscription_payments').select('id')
-        .eq('mp_payment_id', mpPaymentId.toString()).maybeSingle();
+        .eq('mp_payment_id', actualPaymentId.toString()).maybeSingle();
       if (!existingPayment) {
         await supabase.from('subscription_payments').insert({
           subscription_id: subscription.id, tenant_id: subscription.tenant_id,
           amount_cents: Math.round((mpPaymentData.transaction_amount || 0) * 100), status: 'failed',
-          mp_payment_id: mpPaymentId.toString(),
+          mp_payment_id: actualPaymentId.toString(),
           period_start: now.toISOString().split('T')[0], period_end: now.toISOString().split('T')[0],
         });
       }
