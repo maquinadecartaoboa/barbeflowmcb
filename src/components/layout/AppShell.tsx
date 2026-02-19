@@ -77,7 +77,7 @@ import { useBookingModal } from "@/hooks/useBookingModal";
 import { BookingModal } from "@/components/modals/BookingModal";
 import InstallPWA from "@/components/InstallPWA";
 import { motion, AnimatePresence } from "framer-motion";
-import logoBranca from "@/assets/modoGESTOR_branca.png";
+const logoBranca = "/images/modoGESTOR_branca.png";
 
 interface NavItem {
   title: string;

@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import logoBranca from "@/assets/modoGESTOR_branca.png";
+const logoBranca = "/images/modoGESTOR_branca.png";
 import { isDashboardDomain } from "@/lib/hostname";
 
 const ResetPassword = () => {

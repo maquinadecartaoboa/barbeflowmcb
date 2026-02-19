@@ -1,8 +1,8 @@
-import mpIcon from "@/assets/mercadopago-icon.jpg";
+const mpIcon = "/images/mercadopago-icon.jpg";
 import { useState, useEffect } from "react";
 import { useWhatsAppStatus } from "@/hooks/useWhatsAppStatus";
 import { CustomerImportExport } from "@/components/CustomerImportExport";
-import WhatsAppConfigEmbed from "@/pages/WhatsAppConfig";
+import WhatsAppConfigEmbed from "@/views/WhatsAppConfig";
 import { AppearanceTab } from "@/components/settings/AppearanceTab";
 import { CustomDomainTab } from "@/components/settings/CustomDomainTab";
 import { BillingTab } from "@/components/billing/BillingTab";
