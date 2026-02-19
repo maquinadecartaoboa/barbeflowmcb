@@ -297,7 +297,7 @@ export const MercadoPagoCheckout = ({
         .from('payments')
         .select('status')
         .eq('id', paymentIdToCheck)
-        .single();
+        .maybeSingle();
       
       if (error) {
         console.error('Error polling payment status:', error);
