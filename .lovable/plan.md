@@ -1,75 +1,91 @@
 
 
-# Tema Claro/Escuro + Cor de Destaque Personalizável
+# Plano: Landing Page de Alta Conversao focada em Assinaturas e Receita Recorrente
 
-## Resumo
-Adicionar nas configurações a opção de alternar entre tema claro e escuro, e permitir que o cliente escolha uma cor de destaque (primária) para todo o painel administrativo. As preferências são salvas por tenant no campo `settings` (JSON) que já existe no banco.
+## Contexto
 
-## Como vai funcionar
+A Landing Page atual (`src/pages/Landing.tsx`) e generica -- vende "agendamento + gestao". O sistema ja possui um motor completo de assinaturas recorrentes (Mercado Pago), pacotes de servicos, comissoes, caixa e WhatsApp. O que falta e uma narrativa de vendas focada no valor principal: **receita recorrente garantida**.
 
-O sistema já usa CSS variables (`--primary`, `--background`, etc.) para todas as cores. A implementação consiste em:
+Este plano transforma a Landing Page de "ferramenta de agendamento" para "sistema de receita recorrente para barbeiros empreendedores".
 
-1. Criar um **ThemeProvider** que lê as preferências do tenant e aplica dinamicamente as variáveis CSS no `<html>`
-2. Definir um **tema claro** completo (fundos claros, textos escuros)
-3. Adicionar uma **aba "Aparência"** nas configurações com toggle claro/escuro e seletor de cor
-4. Converter hardcoded dark colors (como `bg-zinc-950`, `text-zinc-100`, `border-zinc-800`) para usar as variáveis semânticas do Tailwind (`bg-background`, `text-foreground`, `border-border`)
+---
 
-## Detalhes Técnicos
+## Mudancas Planejadas
 
-### 1. Novo arquivo: `src/contexts/ThemeContext.tsx`
-- Cria um contexto React que gerencia `themeMode` ("light" | "dark") e `accentColor` (string hex)
-- Lê os valores de `currentTenant.settings.theme_mode` e `currentTenant.settings.accent_color`
-- Aplica a classe `dark` / `light` no `<html>` e injeta override de `--primary` via `document.documentElement.style`
-- Converte a cor hex escolhida para HSL para manter compatibilidade com o sistema de design
-- Calcula automaticamente `--primary-foreground` (preto ou branco) baseado na luminosidade da cor
+### 1. Nova Secao Hero -- Copy focada em Receita Recorrente
 
-### 2. Tema claro em `src/index.css`
-- Definir variáveis `:root` (tema claro) com:
-  - `--background`: branco/cinza claro
-  - `--foreground`: preto/cinza escuro
-  - `--card`, `--popover`: fundos claros
-  - `--border`, `--input`, `--muted`: tons de cinza claro
-  - `--sidebar-*`: versões claras
-- Mover o tema escuro atual para `.dark { ... }`
+Substituir o headline generico por copy que toca na dor financeira:
 
-### 3. Nova aba "Aparência" em `src/pages/Settings.tsx`
-- Toggle claro/escuro com preview visual
-- Grade de cores predefinidas (amarelo, azul, verde, roxo, vermelho, rosa, laranja)
-- Input para cor customizada (hex)
-- Preview em tempo real antes de salvar
-- Salva em `tenants.settings` como `{ theme_mode, accent_color }`
+- **Headline**: "Pare de matar um leao por dia. Garanta seu aluguel logo no dia 01."
+- **Subtitulo**: "Transforme clientes eventuais em membros fieis do seu clube. Crie planos de assinatura e pacotes de servicos em segundos."
+- **CTA principal**: "Quero Criar Meu Clube de Assinatura Agora"
+- **Badges abaixo**: "14 dias gratis", "Cobranca automatica", "Sem fiado"
 
-### 4. Atualizar navegação em `AppShell.tsx`
-- Adicionar item "Aparência" no submenu de Configurações (`/app/settings?tab=appearance`)
-- Ícone: `Palette` do lucide-react
+### 2. Calculadora de Receita Recorrente (novo componente interativo)
 
-### 5. Refatorar cores hardcoded
-Os seguintes arquivos precisam ter cores fixas (`zinc-950`, `zinc-800`, etc.) substituídas por variáveis semânticas para responder ao tema:
-- `src/components/layout/AppShell.tsx` - sidebar, header, bottom tabs
-- `src/components/ui/input.tsx` - border e background fixos
-- `src/components/ui/button.tsx` - ring-offset hardcoded
-- `src/components/ui/dropdown-menu.tsx` - backgrounds fixos
-- Demais componentes UI com cores `zinc-*` hardcoded
+Adicionar logo abaixo do hero uma secao com fundo diferenciado (gradiente gold/dark) contendo:
 
-### 6. Envolver App com ThemeProvider
-- Em `src/App.tsx`, envolver o conteúdo com `<ThemeProvider>` (dentro do `QueryClientProvider` para ter acesso ao tenant)
+- **Input 1**: "Quantos clientes fieis voce tem hoje?" (slider ou input numerico, default 30)
+- **Input 2**: "Valor do plano mensal?" (currency input, default R$ 80,00)
+- **Resultado dinamico**: "Voce pode comecar o mes com **R$ 2.400,00 GARANTIDOS** na conta."
+- Animacao nos numeros (contagem progressiva)
+- Botao CTA abaixo: "Comecar a Faturar Agora"
 
-## Paleta de cores sugeridas para o seletor
+Novo arquivo: `src/components/landing/RevenueCalculator.tsx`
 
-| Cor | Hex | Nome |
-|-----|-----|------|
-| Amarelo (atual) | #FFC300 | Ouro |
-| Azul | #3B82F6 | Azul |
-| Verde | #10B981 | Esmeralda |
-| Roxo | #8B5CF6 | Violeta |
-| Vermelho | #EF4444 | Vermelho |
-| Rosa | #EC4899 | Rosa |
-| Laranja | #F97316 | Laranja |
-| Ciano | #06B6D4 | Ciano |
+### 3. Secao "Clube de Assinatura" (nova secao dedicada)
 
-## Escopo de impacto
-- Aproximadamente 15-20 arquivos precisarão de ajuste de cores hardcoded
-- Nenhuma migração de banco necessária (usa campo JSON existente)
-- Nenhuma edge function nova necessária
-- Compatível com o tema da página pública (que permanece independente)
+Secao com fundo escuro premium (preto/gold) entre Features e Depoimentos, com 4 bullets de beneficios:
+
+- "O Fim da Agenda Vazia" -- crie seu clube de assinatura
+- "Fidelizacao Automatica" -- quem assina nao corta no concorrente
+- "Cobranca no Piloto Automatico" -- sem fiado, debito automatico
+- "Previsibilidade de Caixa" -- saiba quanto entra antes de trabalhar
+
+Cada bullet com icone contextual e micro-animacao ao entrar na viewport.
+
+### 4. Mockup do Cliente Final (ajuste na secao Showcase)
+
+Atualizar a secao "Para seu Negocio" existente:
+
+- Trocar o floating card "Confirmado R$45" por um card mostrando **"Plano VIP Ativo -- Proximo agendamento: Gratis"**
+- Trocar o floating card "Novo agendamento" por **"Assinante desde Jan/2025 -- 4 cortes este mes"**
+- Reforcar a ideia de status/experiencia premium para o cliente final
+
+### 5. Depoimento Focado em Assinatura
+
+Substituir um dos depoimentos existentes por um focado em receita recorrente:
+
+- "Antes eu nao sabia se ia conseguir pagar as contas na semana fraca. Hoje, com 40 assinantes no modoGESTOR, eu ja pago o aluguel e a luz no dia 5. O resto e lucro." -- Barbearia do Joao
+
+### 6. Reordenacao das Features
+
+Mover "Pacotes e Assinaturas" para a primeira posicao no grid de features (atualmente e o ultimo item), renomear para **"Clube de Assinatura Recorrente"** e trocar o icone para `Crown` (VIP).
+
+### 7. FAQ Atualizado
+
+Adicionar 2 novas perguntas ao FAQ:
+
+- "Como funciona o Clube de Assinatura?" -- Explica que o barbeiro cria planos, o cliente paga automaticamente todo mes, e os agendamentos ficam como R$0,00.
+- "Posso usar meu proprio dominio?" -- Sim, no plano Profissional voce pode ter seudominio.com.br em vez de modogestor.com/seudominio.
+
+---
+
+## Detalhes Tecnicos
+
+### Arquivos a criar
+- `src/components/landing/RevenueCalculator.tsx` -- componente interativo com useState para clientes/valor, calculo dinamico, animacao de numeros com framer-motion
+
+### Arquivos a modificar
+- `src/pages/Landing.tsx` -- reestruturacao do hero, reordenacao de features, nova secao Clube, ajuste dos floating cards, depoimento atualizado, FAQ expandido, import do RevenueCalculator
+
+### Dependencias
+- Nenhuma nova dependencia necessaria. Usa framer-motion (ja instalado), componentes UI existentes (Button, Badge, Input/Slider), e CurrencyInput existente.
+
+### Padrao de design
+- Manter o dark mode premium ja existente (bg-[hsl(240,6%,4%)])
+- Secao da calculadora com gradiente gold sutil (from-primary/10)
+- Secao do clube com borda primary/30 para destaque
+- Numeros financeiros em tamanho grande com cor primary (gold)
+- Animacoes consistentes com as existentes (framer-motion, ease curves)
 
