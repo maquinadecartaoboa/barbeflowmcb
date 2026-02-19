@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Mail, Lock, Sparkles } from "lucide-react";
-import { getPublicUrl } from "@/lib/hostname";
+import { ArrowLeft, Mail, Lock } from "lucide-react";
+import { getPublicUrl, isDashboardDomain } from "@/lib/hostname";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
@@ -126,7 +126,7 @@ const Login = () => {
             {!isSignUp && (
               <div className="flex justify-end">
                 <a
-                  href="/app/forgot-password"
+                  href={`${isDashboardDomain() ? '' : '/app'}/forgot-password`}
                   className="text-sm text-primary hover:text-primary-hover transition-colors"
                 >
                   Esqueci minha senha
