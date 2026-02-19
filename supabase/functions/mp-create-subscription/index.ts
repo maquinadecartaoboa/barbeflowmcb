@@ -20,7 +20,7 @@ serve(async (req) => {
   }
 
   try {
-    const { tenant_id, plan_id, customer_name, customer_phone, customer_email, card_token_id } = await req.json();
+    const { tenant_id, plan_id, customer_name, customer_phone, customer_email, card_token_id, customer_cpf } = await req.json();
 
     // Validação campo a campo
     const missingFields = [];
@@ -147,6 +147,11 @@ serve(async (req) => {
 
     const webhookUrl = Deno.env.get('MP_WEBHOOK_URL');
 
+    const customerFirstName = customer_name.trim().split(' ')[0] || 'Cliente';
+    const customerLastName = customer_name.trim().split(' ').slice(1).join(' ') || '';
+    let payerPhone = canonical;
+    if (!payerPhone.startsWith('55')) payerPhone = '55' + payerPhone;
+
     const mpBody: any = {
       reason: `${plan.name} - ${plan.tenant?.name || 'modoGESTOR'}`,
       auto_recurring: {
@@ -160,6 +165,26 @@ serve(async (req) => {
       back_url: backUrl,
       notification_url: webhookUrl || undefined,
     };
+
+    // Add payer identification (CPF) if provided
+    if (customer_cpf) {
+      const cpfDigits = customer_cpf.replace(/\D/g, '');
+      if (cpfDigits.length === 11) {
+        mpBody.payer = {
+          email: customer_email,
+          first_name: customerFirstName,
+          last_name: customerLastName,
+          phone: {
+            area_code: payerPhone.slice(2, 4),
+            number: payerPhone.slice(4),
+          },
+          identification: {
+            type: "CPF",
+            number: cpfDigits,
+          },
+        };
+      }
+    }
 
     // If card_token_id is provided, authorize immediately (in-site payment)
     if (card_token_id) {

@@ -18,6 +18,7 @@ interface SubscriptionCardPaymentProps {
   customerName: string;
   customerPhone: string;
   customerEmail: string;
+  customerCpf?: string;
   onSuccess: () => void;
   onBack: () => void;
 }
@@ -33,6 +34,7 @@ export function SubscriptionCardPayment({
   customerName,
   customerPhone,
   customerEmail,
+  customerCpf,
   onSuccess,
   onBack,
 }: SubscriptionCardPaymentProps) {
@@ -176,6 +178,7 @@ export function SubscriptionCardPayment({
           customer_name: customerName,
           customer_phone: customerPhone,
           customer_email: customerEmail,
+          customer_cpf: customerCpf,
           card_token_id: formData.token,
         },
       });

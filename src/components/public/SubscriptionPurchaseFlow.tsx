@@ -19,6 +19,7 @@ export function SubscriptionPurchaseFlow({ tenant, plans }: SubscriptionPurchase
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [cpf, setCpf] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const formatPhoneInput = (value: string): string => {
@@ -28,14 +29,41 @@ export function SubscriptionPurchaseFlow({ tenant, plans }: SubscriptionPurchase
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
   };
 
+  const formatCpfInput = (value: string): string => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+  };
+
+  const isValidCpf = (value: string): boolean => {
+    const digits = value.replace(/\D/g, '');
+    if (digits.length !== 11 || /^(\d)\1+$/.test(digits)) return false;
+    let sum = 0;
+    for (let i = 0; i < 9; i++) sum += parseInt(digits[i]) * (10 - i);
+    let rest = (sum * 10) % 11;
+    if (rest === 10) rest = 0;
+    if (rest !== parseInt(digits[9])) return false;
+    sum = 0;
+    for (let i = 0; i < 10; i++) sum += parseInt(digits[i]) * (11 - i);
+    rest = (sum * 10) % 11;
+    if (rest === 10) rest = 0;
+    return rest === parseInt(digits[10]);
+  };
+
   const handleSubscribe = async () => {
-    if (!selectedPlan || !name || !phone || !email) {
-      toast({ title: "Preencha todos os campos, incluindo e-mail", variant: "destructive" });
+    if (!selectedPlan || !name || !phone || !email || !cpf) {
+      toast({ title: "Preencha todos os campos obrigatórios", variant: "destructive" });
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       toast({ title: "E-mail inválido", description: "Verifique o e-mail digitado e tente novamente.", variant: "destructive" });
+      return;
+    }
+    if (!isValidCpf(cpf)) {
+      toast({ title: "CPF inválido", description: "Verifique o CPF digitado e tente novamente.", variant: "destructive" });
       return;
     }
     setSubmitting(true);
@@ -44,6 +72,7 @@ export function SubscriptionPurchaseFlow({ tenant, plans }: SubscriptionPurchase
         body: {
           tenant_id: tenant.id, plan_id: selectedPlan.id,
           customer_name: name.trim(), customer_phone: phone, customer_email: email.trim(),
+          customer_cpf: cpf.replace(/\D/g, ''),
         },
       });
       if (error) { const errorMessage = data?.error || error.message || 'Erro ao criar assinatura'; throw new Error(errorMessage); }
@@ -101,13 +130,19 @@ export function SubscriptionPurchaseFlow({ tenant, plans }: SubscriptionPurchase
               className="h-11 bg-zinc-900/50 border-zinc-800 rounded-xl" />
           </div>
           <div>
-            <label className="block text-sm text-zinc-400 mb-1.5">E-mail * (obrigatório para assinatura)</label>
+            <label className="block text-sm text-zinc-400 mb-1.5">E-mail *</label>
             <Input type="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)}
+              className="h-11 bg-zinc-900/50 border-zinc-800 rounded-xl" />
+          </div>
+          <div>
+            <label className="block text-sm text-zinc-400 mb-1.5">CPF *</label>
+            <Input placeholder="000.000.000-00" value={cpf} onChange={(e) => setCpf(formatCpfInput(e.target.value))}
+              inputMode="numeric" maxLength={14}
               className="h-11 bg-zinc-900/50 border-zinc-800 rounded-xl" />
           </div>
         </div>
 
-        <Button onClick={handleSubscribe} disabled={submitting || !name || !phone || !email}
+        <Button onClick={handleSubscribe} disabled={submitting || !name || !phone || !email || !cpf}
           className="w-full h-12 bg-white text-zinc-900 hover:bg-zinc-100 rounded-xl font-medium">
           {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processando...</> : <><ExternalLink className="h-4 w-4 mr-2" /> Assinar agora</>}
         </Button>
