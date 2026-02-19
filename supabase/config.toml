@@ -110,3 +110,12 @@ verify_jwt = false
 
 [functions.send-recurring-weekly-summaries]
 verify_jwt = false
+
+[functions.add-custom-domain]
+verify_jwt = false
+
+[functions.check-domain-status]
+verify_jwt = false
+
+[functions.remove-custom-domain]
+verify_jwt = false
