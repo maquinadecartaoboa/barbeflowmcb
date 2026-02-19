@@ -19,10 +19,34 @@ export function PublicSubscriptionPlans({ tenant, plans, onBack }: PublicSubscri
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [cpf, setCpf] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showCardPayment, setShowCardPayment] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
   const [customerFound, setCustomerFound] = useState(false);
+
+  const formatCpfInput = (value: string): string => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+  };
+
+  const isValidCpf = (value: string): boolean => {
+    const digits = value.replace(/\D/g, '');
+    if (digits.length !== 11 || /^(\d)\1+$/.test(digits)) return false;
+    let sum = 0;
+    for (let i = 0; i < 9; i++) sum += parseInt(digits[i]) * (10 - i);
+    let rest = (sum * 10) % 11;
+    if (rest === 10) rest = 0;
+    if (rest !== parseInt(digits[9])) return false;
+    sum = 0;
+    for (let i = 0; i < 10; i++) sum += parseInt(digits[i]) * (11 - i);
+    rest = (sum * 10) % 11;
+    if (rest === 10) rest = 0;
+    return rest === parseInt(digits[10]);
+  };
 
   const formatPhoneInput = (value: string): string => {
     const digits = value.replace(/\D/g, '');
@@ -55,7 +79,7 @@ export function PublicSubscriptionPlans({ tenant, plans, onBack }: PublicSubscri
   };
 
   const handleProceedToPayment = () => {
-    if (!selectedPlan || !phone || !email || !name) return;
+    if (!selectedPlan || !phone || !email || !name || !cpf) return;
 
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 10) {
@@ -65,6 +89,11 @@ export function PublicSubscriptionPlans({ tenant, plans, onBack }: PublicSubscri
 
     if (!email.includes('@')) {
       toast({ title: "Email obrigatório para assinaturas", description: "O Mercado Pago exige um email válido.", variant: "destructive" });
+      return;
+    }
+
+    if (!isValidCpf(cpf)) {
+      toast({ title: "CPF inválido", description: "Verifique o CPF digitado.", variant: "destructive" });
       return;
     }
 
@@ -84,12 +113,14 @@ export function PublicSubscriptionPlans({ tenant, plans, onBack }: PublicSubscri
           customerName={name.trim()}
           customerPhone={phone.replace(/\D/g, '')}
           customerEmail={email.trim()}
+          customerCpf={cpf.replace(/\D/g, '')}
           onSuccess={() => {
             setShowCardPayment(false);
             setSelectedPlan(null);
             setPhone('');
             setEmail('');
             setName('');
+            setCpf('');
             toast({ title: "Assinatura ativada!", description: "Sua assinatura está ativa." });
           }}
           onBack={() => setShowCardPayment(false)}
@@ -159,22 +190,35 @@ export function PublicSubscriptionPlans({ tenant, plans, onBack }: PublicSubscri
           )}
 
           {(customerFound || phone.replace(/\D/g, '').length >= 10) && (
-            <div>
-              <label className="block text-sm text-zinc-400 mb-2">E-mail * <span className="text-zinc-600">(obrigatório para assinaturas)</span></label>
-              <Input
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-12 bg-zinc-900/50 border-zinc-800 rounded-xl focus:border-zinc-600 placeholder:text-zinc-600"
-              />
-            </div>
+            <>
+              <div>
+                <label className="block text-sm text-zinc-400 mb-2">E-mail *</label>
+                <Input
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-12 bg-zinc-900/50 border-zinc-800 rounded-xl focus:border-zinc-600 placeholder:text-zinc-600"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-zinc-400 mb-2">CPF *</label>
+                <Input
+                  placeholder="000.000.000-00"
+                  value={cpf}
+                  onChange={(e) => setCpf(formatCpfInput(e.target.value))}
+                  inputMode="numeric"
+                  maxLength={14}
+                  className="h-12 bg-zinc-900/50 border-zinc-800 rounded-xl focus:border-zinc-600 placeholder:text-zinc-600"
+                />
+              </div>
+            </>
           )}
 
           <div className="pt-4 space-y-3">
             <Button
               onClick={handleProceedToPayment}
-              disabled={!name || !phone || !email}
+              disabled={!name || !phone || !email || !cpf}
               className="w-full h-12 bg-white text-zinc-900 hover:bg-zinc-100 rounded-xl font-medium disabled:opacity-50"
             >
               <CreditCard className="h-4 w-4 mr-2" />
