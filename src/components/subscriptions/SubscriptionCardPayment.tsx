@@ -9,7 +9,7 @@ declare global {
   }
 }
 
-interface SubscriptionCardPaymentProps {
+export interface SubscriptionCardPaymentProps {
   tenantSlug: string;
   tenantId: string;
   planId: string;
