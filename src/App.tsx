@@ -9,6 +9,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { isDashboardDomain, isPublicDomain, isPreviewOrLocal } from "@/lib/hostname";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Finance from "./pages/Finance";
 import CommissionsPage from "./pages/CommissionsPage";
@@ -80,6 +82,8 @@ const App = () => (
               <>
                 <Route path={`${dashPrefix}/login`} element={<Login />} />
                 <Route path={`${dashPrefix}/register`} element={<Login />} />
+                <Route path={`${dashPrefix}/forgot-password`} element={<ForgotPassword />} />
+                <Route path={`${dashPrefix}/reset-password`} element={<ResetPassword />} />
                 
                 <Route path={`${dashPrefix}/onboarding`} element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
                 
