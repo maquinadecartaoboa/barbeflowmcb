@@ -1,4 +1,6 @@
-import logoBranca from "@/assets/modoGESTOR_branca.png";
+"use client";
+
+const logoBranca = "/images/modoGESTOR_branca.png";
 import { getDashboardUrl, getPublicUrl } from "@/lib/hostname";
 import { ArrowLeft } from "lucide-react";
 

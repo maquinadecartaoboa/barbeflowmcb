@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Calendar, Users, Clock, Shield, Smartphone, CreditCard, ArrowRight, Check, Sparkles, BarChart3, Zap, Star, ChevronRight, TrendingUp, MessageCircle, LayoutDashboard, Minus, Globe, UserPlus, Settings, CalendarCheck, Crown, Lock, Bot, ChartNoAxesCombined } from "lucide-react";
 import { PLANS } from "@/hooks/useSubscription";
@@ -7,14 +9,14 @@ import { getDashboardUrl, getPublicUrl } from "@/lib/hostname";
 import { useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import dashboardMockup from "@/assets/dashboard-mockup.png";
-import logoBranca from "@/assets/modoGESTOR_branca.png";
-import mobileMockup from "@/assets/mobile-mockup.png";
-import testimonialCarlos from "@/assets/testimonial-carlos.jpg";
-import testimonialRafael from "@/assets/testimonial-rafael.jpg";
-import testimonialAndre from "@/assets/testimonial-andre.jpg";
-import testimonialD from "@/assets/testimonial-d.jpg";
-import testimonialE from "@/assets/testimonial-e.jpg";
+const dashboardMockup = "/images/dashboard-mockup.png";
+const logoBranca = "/images/modoGESTOR_branca.png";
+const mobileMockup = "/images/mobile-mockup.png";
+const testimonialCarlos = "/images/testimonial-carlos.jpg";
+const testimonialRafael = "/images/testimonial-rafael.jpg";
+const testimonialAndre = "/images/testimonial-andre.jpg";
+const testimonialD = "/images/testimonial-d.jpg";
+const testimonialE = "/images/testimonial-e.jpg";
 import RevenueCalculator from "@/components/landing/RevenueCalculator";
 
 const Landing = () => {
