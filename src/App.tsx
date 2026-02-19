@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { DateRangeProvider } from "@/contexts/DateRangeContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { isDashboardDomain, isPublicDomain, isPreviewOrLocal } from "@/lib/hostname";
+import { isDashboardDomain, isPublicDomain, isPreviewOrLocal, isCustomDomain } from "@/lib/hostname";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -38,7 +38,7 @@ import { ScrollToTop } from "./components/ScrollToTop";
 
 const queryClient = new QueryClient();
 
-const showPublic = isPublicDomain() || isPreviewOrLocal();
+const showPublic = isPublicDomain() || isPreviewOrLocal() || isCustomDomain();
 const showDashboard = isDashboardDomain() || isPreviewOrLocal();
 
 // On dashboard domain, routes have no /app prefix

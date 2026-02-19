@@ -13,6 +13,7 @@
 
 const DASHBOARD_HOSTS = ['app.barberflow.store', 'app.modogestor.com.br'];
 const PUBLIC_HOSTS = ['barberflow.store', 'modogestor.com.br'];
+const ALL_KNOWN_HOSTS = [...DASHBOARD_HOSTS, ...PUBLIC_HOSTS, ...PUBLIC_HOSTS.map(h => `www.${h}`)];
 
 export function isDashboardDomain(): boolean {
   const host = window.location.hostname;
@@ -22,6 +23,16 @@ export function isDashboardDomain(): boolean {
 export function isPublicDomain(): boolean {
   const host = window.location.hostname;
   return PUBLIC_HOSTS.includes(host) || PUBLIC_HOSTS.some(h => host === `www.${h}`);
+}
+
+/**
+ * Returns true if the current hostname is a custom domain (not one of our known hosts).
+ * Custom domains are mapped to tenants via the `custom_domain` column.
+ */
+export function isCustomDomain(): boolean {
+  const host = window.location.hostname;
+  if (isPreviewOrLocal()) return false;
+  return !ALL_KNOWN_HOSTS.includes(host);
 }
 
 export function isPreviewOrLocal(): boolean {

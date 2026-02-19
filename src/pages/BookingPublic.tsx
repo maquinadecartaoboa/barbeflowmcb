@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { isCustomDomain } from "@/lib/hostname";
 import { useToast } from "@/hooks/use-toast";
 import { TenantNotFound } from "@/components/TenantNotFound";
 import { Button } from "@/components/ui/button";
@@ -114,10 +115,36 @@ const BookingPublic = () => {
   const [forcedOnlinePayment, setForcedOnlinePayment] = useState(false);
 
   useEffect(() => {
-    if (slug) {
+    if (isCustomDomain()) {
+      loadTenantByCustomDomain();
+    } else if (slug) {
       loadTenantData();
     }
   }, [slug]);
+
+  const loadTenantByCustomDomain = async () => {
+    try {
+      setLoading(true);
+      const host = window.location.hostname;
+      const { data: tenantData, error } = await supabase
+        .from("tenants")
+        .select("*")
+        .eq("custom_domain", host)
+        .single();
+
+      if (error || !tenantData) {
+        setTenantNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      await loadTenantDataFromRecord(tenantData);
+    } catch (err) {
+      console.error("Error loading by custom domain:", err);
+      setTenantNotFound(true);
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedService && selectedDate) {
@@ -141,113 +168,7 @@ const BookingPublic = () => {
         return;
       }
 
-      setTenant(tenantData);
-      
-      // Extract payment settings
-      const settings = (tenantData.settings || {}) as Record<string, any>;
-      setAllowOnlinePayment(settings.allow_online_payment || false);
-      setRequirePrepayment(settings.require_prepayment || false);
-      setPrepaymentPercentage(settings.prepayment_percentage || 0);
-      setMaxAdvanceDays(settings.max_advance_days || 0);
-
-      const [servicesRes, staffRes, blocksRes] = await Promise.all([
-        supabase
-          .from('services')
-          .select('*')
-          .eq('tenant_id', tenantData.id)
-          .eq('active', true)
-          .order('name'),
-        
-        supabase
-          .from('staff')
-          .select('*')
-          .eq('tenant_id', tenantData.id)
-          .eq('active', true)
-          .order('name'),
-        
-        // Load full-day blocks to disable dates in calendar
-        supabase
-          .from('blocks')
-          .select('starts_at, ends_at, staff_id')
-          .eq('tenant_id', tenantData.id)
-          .gte('ends_at', new Date().toISOString())
-      ]);
-
-      if (servicesRes.error) throw servicesRes.error;
-      if (staffRes.error) throw staffRes.error;
-      
-      // Process blocked dates (full-day blocks that apply to all staff)
-      const blocked = new Set<string>();
-      if (blocksRes.data) {
-        for (const block of blocksRes.data) {
-          // Check if it's a full-day block (00:00 to 23:59)
-          const startDate = new Date(block.starts_at);
-          const endDate = new Date(block.ends_at);
-          const startHours = startDate.getHours();
-          const startMinutes = startDate.getMinutes();
-          const endHours = endDate.getHours();
-          const endMinutes = endDate.getMinutes();
-          
-          const isFullDay = startHours === 0 && startMinutes === 0 && 
-                            endHours === 23 && endMinutes >= 59;
-          
-          // Only block dates if it's a full-day block for all staff
-          if (isFullDay && block.staff_id === null) {
-            const dateStr = startDate.toISOString().split('T')[0];
-            blocked.add(dateStr);
-          }
-        }
-      }
-      setBlockedDates(blocked);
-
-      setServices(servicesRes.data || []);
-      setStaff(staffRes.data || []);
-
-      // Load active packages with their services
-      const { data: pkgsData } = await supabase
-        .from("service_packages")
-        .select("*")
-        .eq("tenant_id", tenantData.id)
-        .eq("active", true)
-        .eq("public", true)
-        .order("name");
-
-      if (pkgsData && pkgsData.length > 0) {
-        const { data: pkgSvcs } = await supabase
-          .from("package_services")
-          .select("*, service:services(name, duration_minutes, price_cents, photo_url)")
-          .in("package_id", pkgsData.map(p => p.id));
-
-        for (const pkg of pkgsData) {
-          (pkg as any).package_services = (pkgSvcs || []).filter((ps: any) => ps.package_id === pkg.id);
-        }
-        setPackages(pkgsData);
-      } else {
-        setPackages([]);
-      }
-
-      // Load subscription plans
-      const { data: subPlansData } = await supabase
-        .from("subscription_plans")
-        .select("*")
-        .eq("tenant_id", tenantData.id)
-        .eq("active", true)
-        .eq("public", true)
-        .order("name");
-
-      if (subPlansData && subPlansData.length > 0) {
-        const { data: planSvcs } = await supabase
-          .from("subscription_plan_services")
-          .select("*, service:services(name)")
-          .in("plan_id", subPlansData.map(p => p.id));
-
-        for (const plan of subPlansData) {
-          (plan as any).plan_services = (planSvcs || []).filter((ps: any) => ps.plan_id === plan.id);
-        }
-        setSubscriptionPlans(subPlansData);
-      } else {
-        setSubscriptionPlans([]);
-      }
+      await loadTenantDataFromRecord(tenantData);
     } catch (error) {
       console.error('Error loading tenant data:', error);
       toast({
@@ -257,6 +178,100 @@ const BookingPublic = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTenantDataFromRecord = async (tenantData: any) => {
+    setTenant(tenantData);
+    
+    // Extract payment settings
+    const settings = (tenantData.settings || {}) as Record<string, any>;
+    setAllowOnlinePayment(settings.allow_online_payment || false);
+    setRequirePrepayment(settings.require_prepayment || false);
+    setPrepaymentPercentage(settings.prepayment_percentage || 0);
+    setMaxAdvanceDays(settings.max_advance_days || 0);
+
+    const [servicesRes, staffRes, blocksRes] = await Promise.all([
+      supabase
+        .from('services')
+        .select('*')
+        .eq('tenant_id', tenantData.id)
+        .eq('active', true)
+        .order('name'),
+      
+      supabase
+        .from('staff')
+        .select('*')
+        .eq('tenant_id', tenantData.id)
+        .eq('active', true)
+        .order('name'),
+      
+      supabase
+        .from('blocks')
+        .select('starts_at, ends_at, staff_id')
+        .eq('tenant_id', tenantData.id)
+        .gte('ends_at', new Date().toISOString())
+    ]);
+
+    if (servicesRes.error) throw servicesRes.error;
+    if (staffRes.error) throw staffRes.error;
+    
+    const blocked = new Set<string>();
+    if (blocksRes.data) {
+      for (const block of blocksRes.data) {
+        const startDate = new Date(block.starts_at);
+        const endDate = new Date(block.ends_at);
+        const isFullDay = startDate.getHours() === 0 && startDate.getMinutes() === 0 && 
+                          endDate.getHours() === 23 && endDate.getMinutes() >= 59;
+        if (isFullDay && block.staff_id === null) {
+          blocked.add(startDate.toISOString().split('T')[0]);
+        }
+      }
+    }
+    setBlockedDates(blocked);
+    setServices(servicesRes.data || []);
+    setStaff(staffRes.data || []);
+
+    const { data: pkgsData } = await supabase
+      .from("service_packages")
+      .select("*")
+      .eq("tenant_id", tenantData.id)
+      .eq("active", true)
+      .eq("public", true)
+      .order("name");
+
+    if (pkgsData && pkgsData.length > 0) {
+      const { data: pkgSvcs } = await supabase
+        .from("package_services")
+        .select("*, service:services(name, duration_minutes, price_cents, photo_url)")
+        .in("package_id", pkgsData.map(p => p.id));
+      for (const pkg of pkgsData) {
+        (pkg as any).package_services = (pkgSvcs || []).filter((ps: any) => ps.package_id === pkg.id);
+      }
+      setPackages(pkgsData);
+    } else {
+      setPackages([]);
+    }
+
+    const { data: subPlansData } = await supabase
+      .from("subscription_plans")
+      .select("*")
+      .eq("tenant_id", tenantData.id)
+      .eq("active", true)
+      .eq("public", true)
+      .order("name");
+
+    if (subPlansData && subPlansData.length > 0) {
+      const { data: planSvcs } = await supabase
+        .from("subscription_plan_services")
+        .select("*, service:services(name)")
+        .in("plan_id", subPlansData.map(p => p.id));
+      for (const plan of subPlansData) {
+        (plan as any).plan_services = (planSvcs || []).filter((ps: any) => ps.plan_id === plan.id);
+      }
+      setSubscriptionPlans(subPlansData);
+    } else {
+      setSubscriptionPlans([]);
     }
   };
 

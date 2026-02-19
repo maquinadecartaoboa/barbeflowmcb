@@ -2025,8 +2025,11 @@ export type Database = {
       tenants: {
         Row: {
           address: string | null
+          cloudflare_hostname_id: string | null
+          cloudflare_status: string | null
           cover_url: string | null
           created_at: string
+          custom_domain: string | null
           email: string | null
           id: string
           logo_url: string | null
@@ -2039,8 +2042,11 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          cloudflare_hostname_id?: string | null
+          cloudflare_status?: string | null
           cover_url?: string | null
           created_at?: string
+          custom_domain?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
@@ -2053,8 +2059,11 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          cloudflare_hostname_id?: string | null
+          cloudflare_status?: string | null
           cover_url?: string | null
           created_at?: string
+          custom_domain?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
