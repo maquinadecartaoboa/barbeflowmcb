@@ -68,7 +68,8 @@ const App = () => (
             {/* Public routes - barberflow.store */}
             {showPublic && (
               <>
-                <Route path="/" element={<Landing />} />
+                {/* On custom domains, root shows the booking page directly */}
+                <Route path="/" element={isCustomDomain() ? <BookingPublic /> : <Landing />} />
                 <Route path="/termos" element={<Terms />} />
                 <Route path="/privacidade" element={<Privacy />} />
                 <Route path="/:slug" element={<BookingPublic />} />

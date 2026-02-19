@@ -134,7 +134,6 @@ const BookingPublic = () => {
 
       if (error || !tenantData) {
         setTenantNotFound(true);
-        setLoading(false);
         return;
       }
 
@@ -142,6 +141,7 @@ const BookingPublic = () => {
     } catch (err) {
       console.error("Error loading by custom domain:", err);
       setTenantNotFound(true);
+    } finally {
       setLoading(false);
     }
   };
@@ -1123,9 +1123,20 @@ END:VCALENDAR`;
             )}
             
             {loading ? (
-              <div className="flex flex-col items-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-zinc-500 mb-4" />
-                <p className="text-zinc-500">Carregando...</p>
+              <div className="space-y-4 py-4">
+                <div className="h-5 w-48 bg-zinc-800 rounded-md animate-pulse mx-auto" />
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl flex items-center gap-4">
+                      <div className="w-14 h-14 bg-zinc-800 rounded-xl animate-pulse shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 w-32 bg-zinc-800 rounded animate-pulse" />
+                        <div className="h-3 w-20 bg-zinc-800/60 rounded animate-pulse" />
+                      </div>
+                      <div className="h-4 w-16 bg-zinc-800 rounded animate-pulse" />
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : bookingTab === 'services' ? (
               <div className="space-y-3">
