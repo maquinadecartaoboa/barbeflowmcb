@@ -6,7 +6,7 @@ import { getPublicUrl, isDashboardDomain } from "@/lib/hostname";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
-const logoBranca = "/images/modoGESTOR_branca.png";
+import logoBranca from "@/assets/modoGESTOR_branca.png";
 
 const Login = () => {
   const [email, setEmail] = useState("");

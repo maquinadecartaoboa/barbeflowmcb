@@ -1,24 +1,20 @@
-"use client";
-
 import { Button } from "@/components/ui/button";
 import { Calendar, Users, Clock, Shield, Smartphone, CreditCard, ArrowRight, Check, Sparkles, BarChart3, Zap, Star, ChevronRight, TrendingUp, MessageCircle, LayoutDashboard, Minus, Globe, UserPlus, Settings, CalendarCheck, Crown, Lock, Bot, ChartNoAxesCombined } from "lucide-react";
 import { PLANS } from "@/hooks/useSubscription";
 import { Badge } from "@/components/ui/badge";
 import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { getDashboardUrl, getPublicUrl } from "@/lib/hostname";
-import { useRef, useState, useEffect } from "react";
-import { trackEvent } from "@/utils/metaTracking";
+import { useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { CookieBanner } from "@/components/CookieBanner";
-const dashboardMockup = "/images/dashboard-mockup.png";
-const logoBranca = "/images/modoGESTOR_branca.png";
-const mobileMockup = "/images/mobile-mockup.png";
-const testimonialCarlos = "/images/testimonial-carlos.jpg";
-const testimonialRafael = "/images/testimonial-rafael.jpg";
-const testimonialAndre = "/images/testimonial-andre.jpg";
-const testimonialD = "/images/testimonial-d.jpg";
-const testimonialE = "/images/testimonial-e.jpg";
+import dashboardMockup from "@/assets/dashboard-mockup.png";
+import logoBranca from "@/assets/modoGESTOR_branca.png";
+import mobileMockup from "@/assets/mobile-mockup.png";
+import testimonialCarlos from "@/assets/testimonial-carlos.jpg";
+import testimonialRafael from "@/assets/testimonial-rafael.jpg";
+import testimonialAndre from "@/assets/testimonial-andre.jpg";
+import testimonialD from "@/assets/testimonial-d.jpg";
+import testimonialE from "@/assets/testimonial-e.jpg";
 import RevenueCalculator from "@/components/landing/RevenueCalculator";
 
 const Landing = () => {
@@ -29,20 +25,6 @@ const Landing = () => {
   const { scrollYProgress } = useScroll();
   const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
   const heroScale = useTransform(scrollYProgress, [0, 0.15], [1, 0.95]);
-
-  // Track ViewContent when pricing section is viewed
-  const pricingRef = useRef<HTMLElement>(null);
-  const pricingInView = useInView(pricingRef, { once: true });
-  useEffect(() => {
-    if (pricingInView) {
-      trackEvent('ViewContent', {
-        content_name: 'Planos modoGESTOR',
-        content_category: 'pricing',
-        content_ids: ['essencial', 'profissional'],
-        content_type: 'product',
-      }, {}, { pixelOnly: true });
-    }
-  }, [pricingInView]);
 
   return (
     <div className="min-h-screen bg-[hsl(240,6%,4%)] text-zinc-100 overflow-x-hidden">
@@ -554,7 +536,7 @@ const Landing = () => {
       </section>
 
       {/* Pricing Section */}
-      <section id="preços" ref={pricingRef} className="py-28 px-6 border-t border-zinc-800/30">
+      <section id="preços" className="py-28 px-6 border-t border-zinc-800/30">
         <div className="max-w-5xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -890,8 +872,6 @@ const Landing = () => {
           </p>
         </div>
       </footer>
-
-      <CookieBanner />
     </div>
   );
 };
