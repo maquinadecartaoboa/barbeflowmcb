@@ -1,42 +1,63 @@
 
 
-## Permitir cadastro com telefone duplicado (com aviso)
+## Edicao de horario e encaixe de servicos no painel administrativo
 
-Casos como pai e filho compartilhando o mesmo telefone sao comuns. A solucao sera **remover a restricao unica do banco** e **adicionar um aviso no frontend** antes de confirmar o cadastro.
+### Resumo
 
-### O que muda
+Duas melhorias no painel de agendamentos:
 
-1. **Banco de dados** -- Remover o indice unico `idx_customers_phone_tenant` que impede dois clientes com o mesmo telefone no mesmo tenant. Isso elimina o erro de constraint.
-
-2. **Validacao no cadastro (`handleAddCustomer`)** -- Antes de inserir, fazer uma query no banco buscando clientes com o mesmo telefone normalizado no tenant. Se encontrar, exibir um `AlertDialog` informando:
-   - "Ja existe(m) cliente(s) com este telefone: **Nome do cliente**"
-   - Botao "Cancelar" -- fecha o dialog
-   - Botao "Cadastrar mesmo assim" -- prossegue com a insercao normalmente
-
-3. **Validacao na edicao (`handleSaveEdit`)** -- Mesma logica: ao alterar o telefone, verificar se outro cliente ja usa aquele numero e avisar antes de salvar.
-
-4. **Remover a funcao `isCustomerDuplicate` local** -- Substituir pela consulta direta no banco (mais confiavel que verificar apenas clientes paginados na tela).
+1. **Editar horario de inicio e termino** de agendamentos existentes, com validacao de conflitos antes de salvar
+2. **Visualizacao de encaixe** no grid administrativo, mostrando intervalos livres entre agendamentos (ex: 08:15-08:30) que nao aparecem na pagina publica
 
 ---
 
 ### Detalhes tecnicos
 
-**Migracao SQL:**
-```sql
-DROP INDEX IF EXISTS idx_customers_phone_tenant;
-```
+#### 1. Edicao de horario inicio/fim com validacao de conflitos
 
-**Novos estados em `src/pages/Customers.tsx`:**
-- `showDuplicateWarning: boolean` -- controla o AlertDialog
-- `duplicateNames: string` -- nomes dos clientes encontrados
-- `pendingAction: 'add' | 'edit'` -- qual acao executar apos confirmacao
+**Arquivo: `src/pages/Bookings.tsx`**
 
-**Fluxo no `handleAddCustomer`:**
-1. Normaliza telefone
-2. Query: `supabase.from('customers').select('name').eq('tenant_id', tenantId).eq('phone', normalizedPhone)`
-3. Se encontrar resultados: abre AlertDialog com os nomes
-4. Se usuario confirmar: executa o insert
-5. Se nao encontrar: executa o insert direto
+- Adicionar campo `end_time` ao `editForm` (atualmente so tem `time` para inicio)
+- Ao alterar `time` (inicio), auto-calcular `end_time` com base na duracao do servico selecionado
+- Permitir alteracao manual do `end_time` para ajustar livremente
+- Antes de salvar (`saveBookingEdit`):
+  - Consultar agendamentos existentes do mesmo `staff_id` no mesmo dia que colidam com o novo intervalo (excluindo o proprio booking sendo editado e status `cancelled`)
+  - Se houver conflito, exibir um `AlertDialog` listando os agendamentos conflitantes (nome do cliente, horario) e impedir a gravacao
+  - Se nao houver conflito, salvar normalmente com o novo `starts_at` e `ends_at`
+- A query de conflito sera:
+  ```
+  bookings onde staff_id = X
+  AND id != bookingAtual
+  AND status != 'cancelled'
+  AND starts_at < novoEndsAt
+  AND ends_at > novoStartsAt
+  ```
 
-**Arquivo modificado:** apenas `src/pages/Customers.tsx` (+ migracao SQL)
+#### 2. Grid administrativo com resolucao fina (encaixe)
+
+**Arquivo: `src/components/calendar/ScheduleGrid.tsx`**
+
+- Atualmente o grid usa `settings.slot_duration` (ex: 30min) para definir os intervalos visiveis
+- Alterar para usar uma resolucao fixa de **15 minutos** no grid administrativo, independente do `slot_duration` configurado pelo tenant
+- Isso faz com que gaps naturais (ex: 08:15-08:30 apos um servico de 15min) aparecam como slots clicaveis no painel
+- Nenhuma alteracao na pagina publica (`BookingPublic.tsx`) -- ela continua usando o `slot_duration` configurado pelo tenant via a Edge Function `get-available-slots`
+
+**Arquivo: `src/hooks/useBookingsByDate.ts`**
+
+- Ajustar o calculo de `timeRange` para considerar a resolucao de 15min quando necessario (nenhuma mudanca necessaria, ja funciona com qualquer granularidade)
+
+#### 3. Pagina publica inalterada
+
+A pagina publica (`BookingPublic.tsx`) e a Edge Function `get-available-slots` continuam usando o `slot_duration` do tenant (ex: 30min). Nenhuma alteracao necessaria.
+
+---
+
+### Arquivos a modificar
+
+1. **`src/pages/Bookings.tsx`** -- Adicionar campo end_time no formulario de edicao, validacao de conflitos antes de salvar
+2. **`src/components/calendar/ScheduleGrid.tsx`** -- Usar resolucao fixa de 15min no grid administrativo
+
+### Nenhuma migracao de banco necessaria
+
+Todas as alteracoes sao apenas no frontend.
 
