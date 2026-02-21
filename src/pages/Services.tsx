@@ -88,6 +88,7 @@ export default function Services() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [enhancingServiceId, setEnhancingServiceId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [photoRemoved, setPhotoRemoved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,6 +132,7 @@ export default function Services() {
   const removePhoto = () => {
     setPhotoFile(null);
     setPhotoPreview(null);
+    setPhotoRemoved(true);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -188,12 +190,14 @@ export default function Services() {
       setFormLoading(true);
 
       if (editingService) {
-        // Upload photo if there's a new one
+        // Upload photo if there's a new one, or clear if removed
         let photoUrl = editingService.photo_url;
         if (photoFile) {
           setUploadingPhoto(true);
           photoUrl = await uploadPhoto(editingService.id);
           setUploadingPhoto(false);
+        } else if (photoRemoved) {
+          photoUrl = null;
         }
 
         // Update existing service
@@ -243,6 +247,7 @@ export default function Services() {
 
       form.reset();
       removePhoto();
+      setPhotoRemoved(false);
       setShowForm(false);
       setEditingService(null);
       loadServices();
@@ -270,6 +275,7 @@ export default function Services() {
     });
     setPhotoPreview(service.photo_url || null);
     setPhotoFile(null);
+    setPhotoRemoved(false);
     setShowForm(true);
   };
 
