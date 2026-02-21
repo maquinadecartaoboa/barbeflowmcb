@@ -130,10 +130,20 @@ Responda EXATAMENTE neste formato JSON (sem markdown):
         });
       }
 
+      // Detect if service is feminine based on name keywords
+      const nameLower = item.name.toLowerCase();
+      const descLower = (item.description || '').toLowerCase();
+      const combinedText = `${nameLower} ${descLower}`;
+      const feminineKeywords = ['feminino', 'feminina', 'mulher', 'mulheres', 'dama', 'lady', 'ladies', 'fem', 'cabelo feminino', 'manicure', 'pedicure', 'sobrancelha feminina', 'depilação', 'unha', 'gel', 'esmaltação'];
+      const isFeminine = feminineKeywords.some(kw => combinedText.includes(kw));
+      const genderSubject = isFeminine ? 'FEMALE' : 'MALE';
+      const genderNoun = isFeminine ? 'a woman' : 'a man';
+      const environmentDesc = isFeminine ? 'premium beauty salon' : 'premium barbershop';
+
       const imagePrompts: Record<AllowedTable, string> = {
         products: `Professional product photography of "${item.name}"${item.description ? ` (${item.description})` : ''}. Dark moody background, warm amber lighting, studio quality, centered, luxurious e-commerce aesthetic. Sharp focus, high resolution.`,
-        services: `Realistic close-up photograph of a MALE client in a premium barbershop receiving the service: "${item.name}"${item.description ? ` (${item.description})` : ''}. The image must show the specific procedure being performed on a man — for example: scissors cutting a man's hair, a barber trimming a man's beard, a barber shaping a man's eyebrows, a straight razor shaving a man's face. Always feature masculine subjects. Professional barbershop environment, warm cinematic lighting, shallow depth of field, editorial photography style.`,
-        service_packages: `Elegant promotional image for a barbershop service package called "${item.name}"${item.description ? ` (${item.description})` : ''}. Show multiple barbershop services being performed on male clients. Premium warm tones, luxury masculine atmosphere, professional marketing style.`,
+        services: `Realistic close-up photograph of a ${genderSubject} client in a ${environmentDesc} receiving the service: "${item.name}"${item.description ? ` (${item.description})` : ''}. The image must show the specific procedure being performed on ${genderNoun}. ${isFeminine ? 'Feature a feminine subject. Elegant beauty salon environment' : 'Always feature masculine subjects. Professional barbershop environment'}, warm cinematic lighting, shallow depth of field, editorial photography style.`,
+        service_packages: `Elegant promotional image for a service package called "${item.name}"${item.description ? ` (${item.description})` : ''}. Show multiple ${isFeminine ? 'beauty salon' : 'barbershop'} services being performed on ${isFeminine ? 'female' : 'male'} clients. Premium warm tones, luxury ${isFeminine ? 'feminine' : 'masculine'} atmosphere, professional marketing style.`,
         subscription_plans: `Premium VIP membership card concept for "${item.name}"${item.description ? ` (${item.description})` : ''}. Exclusive feel with gold and dark tones, modern clean design, professional marketing aesthetic.`,
       };
 
