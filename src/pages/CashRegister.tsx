@@ -909,27 +909,50 @@ export default function CashRegister() {
               </div>
             )}
 
-            {/* === EXPENSE: Category selector === */}
+            {/* === EXPENSE: Category selector (collapsible) === */}
             {entryModal === 'expense' && expenseCategories.length > 0 && (
               <div>
-                <label className="text-sm font-medium mb-2 block">Categoria</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {expenseCategories.map(cat => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border text-xs font-medium transition-all ${
-                        selectedCategoryId === cat.id
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border bg-muted/20 text-muted-foreground hover:bg-muted/40"
-                      }`}
-                      onClick={() => setSelectedCategoryId(cat.id)}
-                    >
-                      <span className="text-lg">{cat.icon || "📦"}</span>
-                      <span className="truncate w-full text-center">{cat.name}</span>
-                    </button>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  className="flex items-center justify-between w-full text-sm font-medium mb-2"
+                  onClick={() => setSelectedCategoryId(prev => prev ? "" : prev)}
+                >
+                  <span className="flex items-center gap-2">
+                    {selectedCategoryId ? (
+                      <>
+                        <span className="text-base">{expenseCategories.find(c => c.id === selectedCategoryId)?.icon || "📦"}</span>
+                        <span>{expenseCategories.find(c => c.id === selectedCategoryId)?.name}</span>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">Categoria (opcional)</span>
+                    )}
+                  </span>
+                  <span className="text-muted-foreground text-xs">{selectedCategoryId ? "Alterar" : "Selecionar"}</span>
+                </button>
+                {!selectedCategoryId && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {expenseCategories.map(cat => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        className="flex flex-col items-center gap-1 p-2.5 rounded-xl border border-border bg-muted/20 text-muted-foreground hover:bg-muted/40 text-xs font-medium transition-all"
+                        onClick={() => setSelectedCategoryId(cat.id)}
+                      >
+                        <span className="text-lg">{cat.icon || "📦"}</span>
+                        <span className="truncate w-full text-center">{cat.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {selectedCategoryId && (
+                  <button
+                    type="button"
+                    className="text-xs text-destructive hover:underline mt-1"
+                    onClick={() => setSelectedCategoryId("")}
+                  >
+                    Remover categoria
+                  </button>
+                )}
               </div>
             )}
 
