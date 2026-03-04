@@ -51,6 +51,52 @@ import type { DateValue } from "react-aria-components";
 type PaymentMethod = 'on_site' | 'online' | null;
 type BookingTab = 'services' | 'packages' | 'subscriptions';
 
+type CreateBookingParsedError = {
+  type?: string;
+  message: string;
+};
+
+const parseCreateBookingError = (invokeError: any, data: any): CreateBookingParsedError => {
+  const fallbackMessage = invokeError?.message || 'Erro ao criar agendamento';
+
+  if (data?.error && typeof data.error === 'object') {
+    return {
+      type: data.error.type,
+      message: data.error.message || fallbackMessage,
+    };
+  }
+
+  if (typeof data?.error === 'string') {
+    return { message: data.error };
+  }
+
+  if (typeof data?.message === 'string') {
+    return { message: data.message };
+  }
+
+  if (invokeError?.context) {
+    try {
+      const parsedContext = JSON.parse(invokeError.context);
+      if (parsedContext?.error && typeof parsedContext.error === 'object') {
+        return {
+          type: parsedContext.error.type,
+          message: parsedContext.error.message || fallbackMessage,
+        };
+      }
+      if (typeof parsedContext?.error === 'string') {
+        return { message: parsedContext.error };
+      }
+      if (typeof parsedContext?.message === 'string') {
+        return { message: parsedContext.message };
+      }
+    } catch {
+      // ignore context parse errors and use fallback
+    }
+  }
+
+  return { message: fallbackMessage };
+};
+
 const BookingPublic = () => {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
@@ -779,8 +825,10 @@ const BookingPublic = () => {
 
       // Handle structured error responses (e.g. 403 forced_online_payment)
       if (error) {
-        const msg = data?.message || data?.error || error.message;
-        throw new Error(msg || 'Erro ao criar agendamento');
+        const parsedError = parseCreateBookingError(error, data);
+        const typedError = new Error(parsedError.message);
+        (typedError as any).type = parsedError.type;
+        throw typedError;
       }
 
       if (data.success) {
@@ -809,6 +857,18 @@ const BookingPublic = () => {
       }
     } catch (error: any) {
       console.error('Error creating booking:', error);
+
+      if (error?.type === 'FORCED_ONLINE_PAYMENT' && allowOnlinePayment && !packageCoveredService && !subscriptionCoveredService) {
+        setForcedOnlinePayment(true);
+        setPaymentMethod('online');
+        toast({
+          title: 'Pagamento online necessário',
+          description: error.message || 'Para este cliente, o agendamento exige pagamento antecipado online.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       toast({
         title: "Erro no agendamento",
         description: error.message || "Tente novamente em alguns instantes.",
