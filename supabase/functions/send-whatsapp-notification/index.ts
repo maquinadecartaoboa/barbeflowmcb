@@ -320,25 +320,47 @@ serve(async (req) => {
       );
     }
 
-    const n8nResponse = await fetch(n8nWebhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(n8nPayload),
-    });
+    // Send with timeout to avoid Edge Function hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+    let n8nResponse: Response;
+    try {
+      n8nResponse = await fetch(n8nWebhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(n8nPayload),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      const errMsg = fetchError instanceof Error ? fetchError.message : String(fetchError);
+      console.error("[WhatsApp] N8N webhook unreachable:", errMsg);
+      // Return success to caller – notification failure should NOT block booking flow
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          skipped: true,
+          reason: "N8N webhook unreachable: " + errMsg 
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const n8nResult = await n8nResponse.text();
     console.log("N8N response:", n8nResponse.status, n8nResult);
 
     if (!n8nResponse.ok) {
       console.error("N8N webhook failed:", n8nResponse.status, n8nResult);
+      // Return 200 with failure info instead of 502 to avoid blocking callers
       return new Response(
         JSON.stringify({ 
-          error: "Failed to send notification", 
-          details: n8nResult 
+          success: false,
+          skipped: true,
+          reason: "N8N webhook returned " + n8nResponse.status
         }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
