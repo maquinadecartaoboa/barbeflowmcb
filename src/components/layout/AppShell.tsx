@@ -7,7 +7,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { dashPath } from "@/lib/hostname";
 import { SubscriptionBanner } from "@/components/billing/SubscriptionBanner";
-import { TrialBanner } from "@/components/billing/TrialBanner";
+
 import { TenantSelector } from "@/components/TenantSelector";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -608,8 +608,7 @@ export default function AppShell() {
             </div>
           </header>
 
-          {/* Trial & Subscription Banners */}
-          <TrialBanner />
+          {/* Subscription Banners */}
           <SubscriptionBanner />
 
           {/* Mobile Content */}
@@ -665,8 +664,7 @@ export default function AppShell() {
               </div>
             </header>
 
-            {/* Trial & Subscription Banners */}
-            <TrialBanner />
+            {/* Subscription Banners */}
             <SubscriptionBanner />
 
             {/* Desktop Content */}
