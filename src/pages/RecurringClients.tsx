@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
@@ -73,6 +73,61 @@ interface Customer {
   id: string;
   name: string;
   phone: string;
+}
+
+function CustomerSearchSelect({ customers, value, onChange }: { customers: Customer[]; value: string; onChange: (id: string) => void }) {
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const filtered = customers.filter((c) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return c.name.toLowerCase().includes(q) || c.phone.includes(q);
+  }).slice(0, 30);
+
+  const selected = customers.find((c) => c.id === value);
+
+  return (
+    <div className="space-y-2" ref={ref}>
+      <Label>Cliente</Label>
+      <Input
+        placeholder="Buscar por nome ou telefone..."
+        value={search}
+        onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+      />
+      {value && selected && !open && (
+        <p className="text-xs text-muted-foreground">Selecionado: {selected.name} — {selected.phone}</p>
+      )}
+      {open && (
+        <div className="max-h-48 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+          {filtered.length === 0 ? (
+            <p className="p-3 text-sm text-muted-foreground">Nenhum cliente encontrado</p>
+          ) : (
+            filtered.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors ${c.id === value ? "bg-accent text-accent-foreground" : ""}`}
+                onClick={() => { onChange(c.id); setSearch(c.name); setOpen(false); }}
+              >
+                {c.name} — {c.phone}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function RecurringClients() {
@@ -348,33 +403,11 @@ export default function RecurringClients() {
             </DialogHeader>
 
             <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label>Cliente</Label>
-                <Input
-                  placeholder="Buscar por nome ou telefone..."
-                  value={customerSearch}
-                  onChange={(e) => setCustomerSearch(e.target.value)}
-                />
-                <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o cliente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers
-                      .filter((c) => {
-                        if (!customerSearch) return true;
-                        const q = customerSearch.toLowerCase();
-                        return c.name.toLowerCase().includes(q) || c.phone.includes(q);
-                      })
-                      .slice(0, 30)
-                      .map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name} — {c.phone}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <CustomerSearchSelect
+                customers={customers}
+                value={selectedCustomer}
+                onChange={setSelectedCustomer}
+              />
 
               <div className="space-y-2">
                 <Label>Profissional</Label>
