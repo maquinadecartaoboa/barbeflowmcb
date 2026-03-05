@@ -6,9 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Reminder window: 1 hour before, with a 10-minute buffer
-const REMINDER_HOURS_BEFORE = 1;
-const BUFFER_MINUTES = 10;
+// Reminder window: 24 hours before, with a 15-minute buffer
+const REMINDER_HOURS_BEFORE = 24;
+const BUFFER_MINUTES = 15;
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -21,7 +21,7 @@ async function sendWhatsAppNotification(bookingId: string, tenantId: string): Pr
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+        "Authorization": `Bearer ${supabaseServiceKey}`,
       },
       body: JSON.stringify({
         type: "booking_reminder",
@@ -55,8 +55,8 @@ serve(async (req) => {
     const now = new Date();
     console.log(`[${now.toISOString()}] Running send-booking-reminders`);
 
-    // Calculate the time window for reminders
-    // We want to find bookings that start in approximately 2 hours
+    // Calculate the time window for reminders (24h before)
+    // We want to find bookings that start in approximately 24 hours
     const windowStart = new Date(now.getTime() + (REMINDER_HOURS_BEFORE * 60 - BUFFER_MINUTES) * 60000);
     const windowEnd = new Date(now.getTime() + (REMINDER_HOURS_BEFORE * 60 + BUFFER_MINUTES) * 60000);
 
