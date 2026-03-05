@@ -48,9 +48,14 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || Deno.env.get("FRONT_BASE_URL") || "https://www.modogestor.com.br";
 
+    // On dashboard domains (app.*), routes don't use /app prefix
+    const dashboardHosts = ["app.modogestor.com.br"];
+    const isDashDomain = dashboardHosts.some((h) => origin.includes(h));
+    const settingsPath = isDashDomain ? "/settings" : "/app/settings";
+
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${origin}/app/settings?tab=billing`,
+      return_url: `${origin}${settingsPath}?tab=billing`,
     });
 
     logStep("Portal session created", { url: portalSession.url });
