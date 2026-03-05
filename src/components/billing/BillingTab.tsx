@@ -106,7 +106,7 @@ export function BillingTab() {
     try {
       const { data } = await supabase
         .from("stripe_subscriptions")
-        .select("additional_professionals, billing_interval")
+        .select("additional_professionals, billing_interval, discount_name, discount_percent_off, discount_amount_off")
         .eq("tenant_id", currentTenant.id)
         .in("status", ["active", "trialing"])
         .order("created_at", { ascending: false })
@@ -117,6 +117,11 @@ export function BillingTab() {
         setCurrentBillingInterval(data.billing_interval as "month" | "year");
         setBillingInterval(data.billing_interval as "month" | "year");
       }
+      setDiscountInfo({
+        name: data?.discount_name || null,
+        percent_off: data?.discount_percent_off || null,
+        amount_off: data?.discount_amount_off || null,
+      });
     } catch (err) {
       console.error("Error loading subscription details:", err);
     }
