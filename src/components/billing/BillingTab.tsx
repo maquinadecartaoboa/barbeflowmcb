@@ -268,6 +268,13 @@ export function BillingTab() {
                 <p className="text-muted-foreground text-xs mt-1">
                   Taxa de transação: {plan.commission}
                 </p>
+                {discountInfo.name && (
+                  <p className="text-emerald-400 text-xs mt-1">
+                    🏷️ Cupom ativo: <span className="font-medium">{discountInfo.name}</span>
+                    {discountInfo.percent_off ? ` (${discountInfo.percent_off}% de desconto)` : ""}
+                    {discountInfo.amount_off ? ` (R$ ${(discountInfo.amount_off / 100).toFixed(2).replace(".", ",")} de desconto)` : ""}
+                  </p>
+                )}
                 {additionalProfessionals > 0 && (
                   <p className="text-muted-foreground text-xs mt-1">
                     👥 {additionalProfessionals} profissional(is) adicional(is) — +R$ {(additionalProfessionals * 14.9).toFixed(2).replace(".", ",")}/mês
