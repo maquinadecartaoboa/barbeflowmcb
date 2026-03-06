@@ -144,6 +144,12 @@ export default function RecurringClients() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // Filters
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterStaff, setFilterStaff] = useState("all");
+  const [filterWeekday, setFilterWeekday] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+
   // Form
   const [selectedCustomer, setSelectedCustomer] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
