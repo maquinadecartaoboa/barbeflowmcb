@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Mail, Lock } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Building2, Phone } from "lucide-react";
 import { getPublicUrl, isDashboardDomain } from "@/lib/hostname";
 import { useState } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -9,22 +9,51 @@ import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
 import logoBranca from "@/assets/modoGESTOR_branca.png";
 import { trackEvent } from "@/utils/metaTracking";
+import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
   usePageTitle("Login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [ownerName, setOwnerName] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [phone, setPhone] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp } = useAuth();
+  const { toast } = useToast();
+
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 11);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
+    if (isSignUp) {
+      const phoneDigits = phone.replace(/\D/g, "");
+      if (!ownerName.trim() || !businessName.trim() || phoneDigits.length < 10) {
+        toast({
+          title: "Campos obrigatórios",
+          description: "Preencha seu nome, nome do negócio e telefone com DDD.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+    }
+
     try {
       const { error } = isSignUp 
-        ? await signUp(email, password)
+        ? await signUp(email, password, {
+            owner_name: ownerName.trim(),
+            business_name: businessName.trim(),
+            phone: phone.replace(/\D/g, ""),
+          })
         : await signIn(email, password);
 
       if (error) {
