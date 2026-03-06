@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Mail, Lock } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Building2, Phone } from "lucide-react";
 import { getPublicUrl, isDashboardDomain } from "@/lib/hostname";
 import { useState } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -9,22 +9,51 @@ import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
 import logoBranca from "@/assets/modoGESTOR_branca.png";
 import { trackEvent } from "@/utils/metaTracking";
+import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
   usePageTitle("Login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [ownerName, setOwnerName] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [phone, setPhone] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp } = useAuth();
+  const { toast } = useToast();
+
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 11);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
+    if (isSignUp) {
+      const phoneDigits = phone.replace(/\D/g, "");
+      if (!ownerName.trim() || !businessName.trim() || phoneDigits.length < 10) {
+        toast({
+          title: "Campos obrigatórios",
+          description: "Preencha seu nome, nome do negócio e telefone com DDD.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+    }
+
     try {
       const { error } = isSignUp 
-        ? await signUp(email, password)
+        ? await signUp(email, password, {
+            owner_name: ownerName.trim(),
+            business_name: businessName.trim(),
+            phone: phone.replace(/\D/g, ""),
+          })
         : await signIn(email, password);
 
       if (error) {
@@ -100,9 +129,67 @@ const Login = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {isSignUp && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="ownerName" className="text-zinc-400 text-sm">
+                    Seu nome *
+                  </Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600" />
+                    <Input
+                      id="ownerName"
+                      type="text"
+                      placeholder="João Silva"
+                      value={ownerName}
+                      onChange={(e) => setOwnerName(e.target.value)}
+                      required
+                      className="h-12 pl-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 placeholder:text-zinc-600 focus:border-primary/50 focus:ring-primary/20"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="businessName" className="text-zinc-400 text-sm">
+                    Nome do negócio *
+                  </Label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600" />
+                    <Input
+                      id="businessName"
+                      type="text"
+                      placeholder="Barbearia do João"
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)}
+                      required
+                      className="h-12 pl-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 placeholder:text-zinc-600 focus:border-primary/50 focus:ring-primary/20"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-zinc-400 text-sm">
+                    Telefone com DDD *
+                  </Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600" />
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="(11) 99999-9999"
+                      value={phone}
+                      onChange={(e) => setPhone(formatPhone(e.target.value))}
+                      required
+                      className="h-12 pl-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 placeholder:text-zinc-600 focus:border-primary/50 focus:ring-primary/20"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email" className="text-zinc-400 text-sm">
-                E-mail
+                E-mail *
               </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600" />
