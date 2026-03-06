@@ -170,6 +170,7 @@ export default function RecurringClients() {
   const [notes, setNotes] = useState("");
   const [frequency, setFrequency] = useState("weekly");
   const [customDuration, setCustomDuration] = useState("");
+  const [serviceBenefitsMap, setServiceBenefitsMap] = useState<Map<string, DetectedBenefit>>(new Map());
 
   const loadData = useCallback(async () => {
     if (!currentTenant) return;
