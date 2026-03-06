@@ -380,6 +380,20 @@ export default function RecurringClients() {
     );
   }
 
+  const filteredRecords = records.filter((r) => {
+    if (filterStatus === "active" && !r.active) return false;
+    if (filterStatus === "inactive" && r.active) return false;
+    if (filterStaff !== "all" && r.staff_id !== filterStaff) return false;
+    if (filterWeekday !== "all" && String(r.weekday) !== filterWeekday) return false;
+    if (filterSearch) {
+      const q = filterSearch.toLowerCase();
+      const name = r.customer?.name?.toLowerCase() || "";
+      const phone = r.customer?.phone || "";
+      if (!name.includes(q) && !phone.includes(q)) return false;
+    }
+    return true;
+  });
+
   if (!currentTenant) return <NoTenantState />;
 
   return (
