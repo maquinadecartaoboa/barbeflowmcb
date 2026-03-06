@@ -545,6 +545,58 @@ export default function RecurringClients() {
         </Dialog>
       </div>
 
+      {/* Filters */}
+      {records.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-3 md:p-4 space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome ou telefone..."
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              className="pl-9 h-9"
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <Select value={filterStaff} onValueChange={setFilterStaff}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Profissional" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos profissionais</SelectItem>
+                {staff.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterWeekday} onValueChange={setFilterWeekday}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Dia" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os dias</SelectItem>
+                {WEEKDAY_LABELS.map((label, i) => (
+                  <SelectItem key={i} value={String(i)}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="active">Ativos</SelectItem>
+                <SelectItem value="inactive">Inativos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Exibindo {filteredRecords.length} de {records.length} clientes fixos
+          </p>
+        </div>
+      )}
+
       {/* List */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
