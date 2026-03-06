@@ -1,0 +1,2 @@
+ALTER TABLE public.bookings DROP CONSTRAINT bookings_created_via_check;
+ALTER TABLE public.bookings ADD CONSTRAINT bookings_created_via_check CHECK (created_via = ANY (ARRAY['public', 'admin', 'whatsapp', 'recurring']));
