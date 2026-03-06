@@ -22,7 +22,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Plus, Loader2, Trash2, Pencil, UserCheck, Clock, CalendarClock, Ban, Scissors
+  Plus, Loader2, Trash2, Pencil, UserCheck, Clock, CalendarClock, Ban, Scissors, Search
 } from "lucide-react";
 
 const WEEKDAY_LABELS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -143,6 +143,12 @@ export default function RecurringClients() {
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Filters
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterStaff, setFilterStaff] = useState("all");
+  const [filterWeekday, setFilterWeekday] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
 
   // Form
   const [selectedCustomer, setSelectedCustomer] = useState("");
@@ -374,6 +380,20 @@ export default function RecurringClients() {
     );
   }
 
+  const filteredRecords = records.filter((r) => {
+    if (filterStatus === "active" && !r.active) return false;
+    if (filterStatus === "inactive" && r.active) return false;
+    if (filterStaff !== "all" && r.staff_id !== filterStaff) return false;
+    if (filterWeekday !== "all" && String(r.weekday) !== filterWeekday) return false;
+    if (filterSearch) {
+      const q = filterSearch.toLowerCase();
+      const name = r.customer?.name?.toLowerCase() || "";
+      const phone = r.customer?.phone || "";
+      if (!name.includes(q) && !phone.includes(q)) return false;
+    }
+    return true;
+  });
+
   if (!currentTenant) return <NoTenantState />;
 
   return (
@@ -525,6 +545,58 @@ export default function RecurringClients() {
         </Dialog>
       </div>
 
+      {/* Filters */}
+      {records.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-3 md:p-4 space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome ou telefone..."
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              className="pl-9 h-9"
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <Select value={filterStaff} onValueChange={setFilterStaff}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Profissional" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos profissionais</SelectItem>
+                {staff.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterWeekday} onValueChange={setFilterWeekday}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Dia" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os dias</SelectItem>
+                {WEEKDAY_LABELS.map((label, i) => (
+                  <SelectItem key={i} value={String(i)}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="active">Ativos</SelectItem>
+                <SelectItem value="inactive">Inativos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Exibindo {filteredRecords.length} de {records.length} clientes fixos
+          </p>
+        </div>
+      )}
+
       {/* List */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
@@ -540,9 +612,16 @@ export default function RecurringClients() {
             </p>
           </CardContent>
         </Card>
+      ) : filteredRecords.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-8">
+            <Search className="h-8 w-8 text-muted-foreground mb-3" />
+            <p className="text-sm text-muted-foreground">Nenhum cliente fixo encontrado com os filtros selecionados.</p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-3">
-          {records.map((r) => (
+          {filteredRecords.map((r) => (
             <Card key={r.id} className={!r.active ? "opacity-60" : ""}>
               <CardContent className="p-3 md:p-4">
                 {/* Mobile: stacked compact layout */}
