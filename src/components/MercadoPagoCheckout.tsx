@@ -28,6 +28,8 @@ interface MercadoPagoCheckoutProps {
   customerPackageId?: string;
   packageAmountCents?: number;
   paymentId?: string;
+  onlineDiscountPercent?: number;
+  originalAmountCents?: number;
 }
 
 const getFunctionErrorMessage = (error: any): string => {
@@ -69,6 +71,8 @@ export const MercadoPagoCheckout = ({
   customerPackageId,
   packageAmountCents,
   paymentId: externalPaymentId,
+  onlineDiscountPercent = 0,
+  originalAmountCents,
 }: MercadoPagoCheckoutProps) => {
   const isPackagePayment = !!customerPackageId && !bookingId;
   const [status, setStatus] = useState<PaymentStatus>('idle');
@@ -669,15 +673,31 @@ export const MercadoPagoCheckout = ({
       );
     }
 
+    // Helper to render price with discount
+    const renderPrice = () => {
+      if (onlineDiscountPercent > 0 && originalAmountCents) {
+        return (
+          <div className="text-right">
+            <span className="text-sm text-muted-foreground line-through mr-2">
+              R$ {(originalAmountCents / 100).toFixed(2)}
+            </span>
+            <span className="font-semibold text-emerald-500">
+              R$ {amount.toFixed(2)}
+            </span>
+            <p className="text-xs text-emerald-500">{onlineDiscountPercent}% de desconto online</p>
+          </div>
+        );
+      }
+      return <span className="font-semibold text-primary">R$ {amount.toFixed(2)}</span>;
+    };
+
     // Normal inline payment selection
     return (
       <div className="space-y-4">
         {/* Payment info */}
         <div className="flex items-center justify-between p-3 bg-secondary/50 border border-border rounded-xl">
           <span className="text-sm text-muted-foreground">{serviceName}</span>
-           <span className="font-semibold text-primary">
-            R$ {amount.toFixed(2)}
-          </span>
+          {renderPrice()}
         </div>
 
         <p className="text-center text-sm text-muted-foreground">Escolha a forma de pagamento:</p>
@@ -728,9 +748,16 @@ export const MercadoPagoCheckout = ({
             <QrCode className="h-5 w-5 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{serviceName}</span>
           </div>
-           <span className="font-semibold text-primary">
-            R$ {amount.toFixed(2)}
-          </span>
+          {onlineDiscountPercent > 0 && originalAmountCents ? (
+            <div className="text-right">
+              <span className="text-sm text-muted-foreground line-through mr-2">
+                R$ {(originalAmountCents / 100).toFixed(2)}
+              </span>
+              <span className="font-semibold text-emerald-500">R$ {amount.toFixed(2)}</span>
+            </div>
+          ) : (
+            <span className="font-semibold text-primary">R$ {amount.toFixed(2)}</span>
+          )}
         </div>
 
         <div className="text-center">
@@ -823,15 +850,23 @@ export const MercadoPagoCheckout = ({
   if (status === 'card-form' || status === 'ready' || (status === 'processing' && paymentMethod === 'card')) {
     return (
       <div className="space-y-4">
-        {/* Payment info */}
+        {/* Payment info with discount */}
         <div className="flex items-center justify-between p-3 bg-secondary/50 border border-border rounded-xl">
           <div className="flex items-center gap-3">
             <CreditCard className="h-5 w-5 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{serviceName}</span>
           </div>
-          <span className="font-semibold text-primary">
-            R$ {amount.toFixed(2)}
-          </span>
+          {onlineDiscountPercent > 0 && originalAmountCents ? (
+            <div className="text-right">
+              <span className="text-sm text-muted-foreground line-through mr-2">
+                R$ {(originalAmountCents / 100).toFixed(2)}
+              </span>
+              <span className="font-semibold text-emerald-500">R$ {amount.toFixed(2)}</span>
+              <p className="text-xs text-emerald-500">{onlineDiscountPercent}% off online</p>
+            </div>
+          ) : (
+            <span className="font-semibold text-primary">R$ {amount.toFixed(2)}</span>
+          )}
         </div>
 
         {/* Error message */}
@@ -852,13 +887,6 @@ export const MercadoPagoCheckout = ({
           </div>
         )}
 
-        {/* Turnstile verification */}
-        <TurnstileWidget
-          onVerify={(token) => setTurnstileToken(token)}
-          onExpire={() => setTurnstileToken(null)}
-          onError={() => setTurnstileToken(null)}
-        />
-
         {/* Billing Address */}
         <BillingAddressForm value={billingAddress} onChange={setBillingAddress} />
 
@@ -866,6 +894,13 @@ export const MercadoPagoCheckout = ({
         <div 
           id="cardPaymentBrick_container" 
           className="mp-checkout-container"
+        />
+
+        {/* Turnstile verification — near pay button */}
+        <TurnstileWidget
+          onVerify={(token) => setTurnstileToken(token)}
+          onExpire={() => setTurnstileToken(null)}
+          onError={() => setTurnstileToken(null)}
         />
 
         {/* Back button */}
