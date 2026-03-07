@@ -833,7 +833,9 @@ const BookingPublic = () => {
           customer_email: customerEmail,
           customer_birthday: customerBirthday || undefined,
           starts_at: startsAt.toISOString(),
-          notes: notes || undefined,
+          notes: useLoyaltyReward
+            ? `🏆 FIDELIDADE: Cliente completou o cartão e tem ${loyaltyData?.reward_type === 'free_service' ? 'serviço grátis' : `${loyaltyData?.reward_percent}% de desconto`} pendente.`
+            : (notes || undefined),
           payment_method: effectivePaymentMethod,
           customer_package_id: (packageCoveredService && activeCustomerPackage) ? activeCustomerPackage.id : undefined,
           customer_subscription_id: (subscriptionCoveredService && activeSubscription) ? activeSubscription.id : undefined,

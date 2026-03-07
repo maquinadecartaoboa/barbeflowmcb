@@ -945,7 +945,10 @@ export default function Customers() {
                   </div>
 
                   {currentTenant && (
-                    <CustomerBalanceAlert customerId={selectedCustomer.id} tenantId={currentTenant.id} />
+                    <>
+                      <CustomerBalanceAlert customerId={selectedCustomer.id} tenantId={currentTenant.id} />
+                      <CustomerLoyaltySection customerId={selectedCustomer.id} customerName={selectedCustomer.name} />
+                    </>
                   )}
 
                   {selectedCustomer.notes && (
