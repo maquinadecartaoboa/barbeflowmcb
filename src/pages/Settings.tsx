@@ -15,6 +15,7 @@ import { NewTenantModal } from "@/components/modals/NewTenantModal";
 import { NoTenantState } from "@/components/NoTenantState";
 import { AvailabilityBlocksManager } from "@/components/AvailabilityBlocksManager";
 import { supabase } from "@/integrations/supabase/client";
+import { OnlineDiscountSettings } from "@/components/settings/OnlineDiscountSettings";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1368,28 +1369,43 @@ export default function Settings() {
                   />
 
                   {settingsForm.watch("allow_online_payment") && (
-                    <FormField
-                      control={settingsForm.control}
-                      name="prepayment_percentage"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Percentual de Pré-pagamento (%)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              min={0} 
-                              max={100}
-                              {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Percentual do valor total a ser pago (0 = valor integral)
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <>
+                      <FormField
+                        control={settingsForm.control}
+                        name="prepayment_percentage"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Percentual de Pré-pagamento (%)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min={0} 
+                                max={100}
+                                {...field}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Percentual do valor total a ser pago (0 = valor integral)
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <Separator className="my-4" />
+
+                      <h3 className="text-sm font-medium mb-3">Desconto para Pagamento Online</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Ofereça um desconto para clientes que pagam antecipadamente pelo app.
+                      </p>
+
+                      <OnlineDiscountSettings 
+                        currentTenant={currentTenant}
+                        loading={loading}
+                        setLoading={setLoading}
+                      />
+                    </>
                   )}
 
                   {!mpConnected && (
