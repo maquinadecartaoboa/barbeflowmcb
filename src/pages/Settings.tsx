@@ -1402,8 +1402,7 @@ export default function Settings() {
 
                       <OnlineDiscountSettings 
                         currentTenant={currentTenant}
-                        loading={loading}
-                        setLoading={setLoading}
+                        onChange={(vals) => { discountSettingsRef.current = vals; }}
                       />
                     </>
                   )}
