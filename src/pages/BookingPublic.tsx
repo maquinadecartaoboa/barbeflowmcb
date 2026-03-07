@@ -682,6 +682,8 @@ const BookingPublic = () => {
     setBenefitsMap(new Map());
     setForcedOnlinePayment(false);
     setOrderBumpItems([]);
+    setLoyaltyData(null);
+    setUseLoyaltyReward(false);
     setStep(1);
   };
 
@@ -708,6 +710,8 @@ const BookingPublic = () => {
         setCustomerBirthday(data.customer.birthday || '');
         setCustomerFound(true);
         setForcedOnlinePayment(data.customer.forced_online_payment || false);
+        // Set loyalty data
+        setLoyaltyData(data.loyalty || null);
         // Fetch benefits to show badges
         await fetchCustomerBenefits(digits);
       } else {
@@ -717,6 +721,7 @@ const BookingPublic = () => {
         setCustomerPhone(phoneValue);
         setCustomerFound(false);
         setBenefitsMap(new Map());
+        setLoyaltyData(null);
       }
     } catch (err) {
       console.error('Error in early identification:', err);
