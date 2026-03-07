@@ -1127,6 +1127,7 @@ export type Database = {
           created_at: string
           currency: string
           customer_package_id: string | null
+          discount_cents: number
           expires_at: string | null
           external_id: string | null
           id: string
@@ -1148,6 +1149,7 @@ export type Database = {
           created_at?: string
           currency?: string
           customer_package_id?: string | null
+          discount_cents?: number
           expires_at?: string | null
           external_id?: string | null
           id?: string
@@ -1169,6 +1171,7 @@ export type Database = {
           created_at?: string
           currency?: string
           customer_package_id?: string | null
+          discount_cents?: number
           expires_at?: string | null
           external_id?: string | null
           id?: string
@@ -3059,6 +3062,7 @@ export type Database = {
         Returns: {
           amount_cents: number
           booking_id: string
+          discount_cents: number
           id: string
           payment_method: string
           pix_expires_at: string
