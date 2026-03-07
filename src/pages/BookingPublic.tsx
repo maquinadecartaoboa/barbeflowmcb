@@ -13,6 +13,7 @@ import { PackagePurchaseFlow } from "@/components/public/PackagePurchaseFlow";
 import { BenefitBadge } from "@/components/public/BenefitBadge";
 import { OrderBumpSection, type OrderBumpProduct } from "@/components/public/OrderBumpSection";
 import InstallPWA from "@/components/InstallPWA";
+import { LoyaltyWidget } from "@/components/public/LoyaltyWidget";
 
 import { Calendar as CalendarRac } from "@/components/ui/calendar-rac";
 import { MercadoPagoCheckout } from "@/components/MercadoPagoCheckout";
@@ -182,7 +183,11 @@ const BookingPublic = () => {
   const [earlyIdentifiedName, setEarlyIdentifiedName] = useState('');
   const [earlyLoading, setEarlyLoading] = useState(false);
   const [forcedOnlinePayment, setForcedOnlinePayment] = useState(false);
-  
+
+  // Loyalty
+  const [loyaltyData, setLoyaltyData] = useState<any>(null);
+  const [useLoyaltyReward, setUseLoyaltyReward] = useState(false);
+
   // Order Bump
   const [orderBumpItems, setOrderBumpItems] = useState<OrderBumpProduct[]>([]);
   const [serviceSearch, setServiceSearch] = useState("");
