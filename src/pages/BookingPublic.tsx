@@ -13,6 +13,7 @@ import { PackagePurchaseFlow } from "@/components/public/PackagePurchaseFlow";
 import { BenefitBadge } from "@/components/public/BenefitBadge";
 import { OrderBumpSection, type OrderBumpProduct } from "@/components/public/OrderBumpSection";
 import InstallPWA from "@/components/InstallPWA";
+import { LoyaltyWidget } from "@/components/public/LoyaltyWidget";
 
 import { Calendar as CalendarRac } from "@/components/ui/calendar-rac";
 import { MercadoPagoCheckout } from "@/components/MercadoPagoCheckout";
@@ -182,7 +183,11 @@ const BookingPublic = () => {
   const [earlyIdentifiedName, setEarlyIdentifiedName] = useState('');
   const [earlyLoading, setEarlyLoading] = useState(false);
   const [forcedOnlinePayment, setForcedOnlinePayment] = useState(false);
-  
+
+  // Loyalty
+  const [loyaltyData, setLoyaltyData] = useState<any>(null);
+  const [useLoyaltyReward, setUseLoyaltyReward] = useState(false);
+
   // Order Bump
   const [orderBumpItems, setOrderBumpItems] = useState<OrderBumpProduct[]>([]);
   const [serviceSearch, setServiceSearch] = useState("");
@@ -677,6 +682,8 @@ const BookingPublic = () => {
     setBenefitsMap(new Map());
     setForcedOnlinePayment(false);
     setOrderBumpItems([]);
+    setLoyaltyData(null);
+    setUseLoyaltyReward(false);
     setStep(1);
   };
 
@@ -703,6 +710,8 @@ const BookingPublic = () => {
         setCustomerBirthday(data.customer.birthday || '');
         setCustomerFound(true);
         setForcedOnlinePayment(data.customer.forced_online_payment || false);
+        // Set loyalty data
+        setLoyaltyData(data.loyalty || null);
         // Fetch benefits to show badges
         await fetchCustomerBenefits(digits);
       } else {
@@ -712,6 +721,7 @@ const BookingPublic = () => {
         setCustomerPhone(phoneValue);
         setCustomerFound(false);
         setBenefitsMap(new Map());
+        setLoyaltyData(null);
       }
     } catch (err) {
       console.error('Error in early identification:', err);
@@ -823,7 +833,9 @@ const BookingPublic = () => {
           customer_email: customerEmail,
           customer_birthday: customerBirthday || undefined,
           starts_at: startsAt.toISOString(),
-          notes: notes || undefined,
+          notes: useLoyaltyReward
+            ? `🏆 FIDELIDADE: Cliente completou o cartão e tem ${loyaltyData?.reward_type === 'free_service' ? 'serviço grátis' : `${loyaltyData?.reward_percent}% de desconto`} pendente.`
+            : (notes || undefined),
           payment_method: effectivePaymentMethod,
           customer_package_id: (packageCoveredService && activeCustomerPackage) ? activeCustomerPackage.id : undefined,
           customer_subscription_id: (subscriptionCoveredService && activeSubscription) ? activeSubscription.id : undefined,
@@ -1332,6 +1344,9 @@ END:VCALENDAR`;
                   )}
                 </div>
 
+                {/* Loyalty Widget */}
+                {loyaltyData && <LoyaltyWidget loyalty={loyaltyData} variant="dark" />}
+
                 {/* Search bar — show when 3+ services */}
                 {services.length >= 3 && (
                   <div className="relative">
@@ -1790,6 +1805,44 @@ END:VCALENDAR`;
             </div>
             
             <div className="space-y-3">
+              {/* Loyalty Reward Option */}
+              {loyaltyData?.reward_pending && (
+                <button
+                  onClick={() => {
+                    setUseLoyaltyReward(true);
+                    setPaymentMethod('on_site');
+                    setStep(5);
+                  }}
+                  className="w-full p-5 bg-zinc-900/50 border-2 border-amber-500/40 hover:border-amber-500/70 rounded-2xl text-left transition-all duration-200 hover:bg-zinc-900 group relative overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 bg-amber-500 text-zinc-900 text-[10px] font-bold px-3 py-0.5 rounded-bl-lg uppercase tracking-wider">
+                    🏆 Prêmio
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-xl">🎉</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-white mb-1">🎁 Prêmio Fidelidade</h3>
+                      <p className="text-amber-300 text-sm mb-2">
+                        Você completou seu cartão fidelidade!
+                      </p>
+                      <div className="flex items-baseline gap-2 mb-3">
+                        <span className="text-zinc-500 line-through text-sm">R$ {(originalPriceCents / 100).toFixed(2)}</span>
+                        <span className="text-amber-400 font-bold text-xl">
+                          {loyaltyData.reward_type === 'free_service'
+                            ? 'R$ 0,00'
+                            : `R$ ${((originalPriceCents * (100 - loyaltyData.reward_percent) / 100) / 100).toFixed(2)}`}
+                        </span>
+                      </div>
+                      <p className="text-zinc-500 text-xs">
+                        O resgate será confirmado pelo profissional no momento do atendimento.
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              )}
+
               {/* Online payment card — RECOMMENDED */}
               <button
                 onClick={() => handlePaymentMethodSelect('online')}

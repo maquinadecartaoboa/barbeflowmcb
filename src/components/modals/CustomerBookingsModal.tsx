@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { LoyaltyWidget } from "@/components/public/LoyaltyWidget";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -84,6 +85,7 @@ export function CustomerBookingsModal({
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+  const [loyalty, setLoyalty] = useState<any>(null);
   useEffect(() => {
     if (!open) {
       setPhone('');
@@ -119,6 +121,7 @@ export function CustomerBookingsModal({
       if (error) throw error;
 
       setBookings(data?.bookings || []);
+      setLoyalty(data?.loyalty || null);
       setStep('bookings');
     } catch (error) {
       console.error('Error searching bookings:', error);
@@ -258,6 +261,9 @@ export function CustomerBookingsModal({
               <ArrowLeft className="h-4 w-4" />
               Trocar número
             </button>
+
+            {/* Loyalty Widget */}
+            {loyalty && <LoyaltyWidget loyalty={loyalty} variant="light" />}
 
             {bookings.length === 0 ? (
               <div className="text-center py-8">

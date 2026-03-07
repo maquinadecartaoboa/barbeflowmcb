@@ -8,6 +8,7 @@ import { CustomerBalanceTab } from "@/components/CustomerBalanceTab";
 import { CustomerPackagesTab } from "@/components/CustomerPackagesTab";
 import { NoTenantState } from "@/components/NoTenantState";
 import { CustomerBalanceAlert } from "@/components/CustomerBalanceAlert";
+import { CustomerLoyaltySection } from "@/components/CustomerLoyaltySection";
 import { CustomerImportModal } from "@/components/CustomerImportModal";
 import { CustomerMergeModal } from "@/components/CustomerMergeModal";
 import { AddressFieldsGroup } from "@/components/AddressFieldsGroup";
@@ -945,7 +946,10 @@ export default function Customers() {
                   </div>
 
                   {currentTenant && (
-                    <CustomerBalanceAlert customerId={selectedCustomer.id} tenantId={currentTenant.id} />
+                    <>
+                      <CustomerBalanceAlert customerId={selectedCustomer.id} tenantId={currentTenant.id} />
+                      <CustomerLoyaltySection customerId={selectedCustomer.id} customerName={selectedCustomer.name} />
+                    </>
                   )}
 
                   {selectedCustomer.notes && (
