@@ -1803,6 +1803,44 @@ END:VCALENDAR`;
             </div>
             
             <div className="space-y-3">
+              {/* Loyalty Reward Option */}
+              {loyaltyData?.reward_pending && (
+                <button
+                  onClick={() => {
+                    setUseLoyaltyReward(true);
+                    setPaymentMethod('on_site');
+                    setStep(5);
+                  }}
+                  className="w-full p-5 bg-zinc-900/50 border-2 border-amber-500/40 hover:border-amber-500/70 rounded-2xl text-left transition-all duration-200 hover:bg-zinc-900 group relative overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 bg-amber-500 text-zinc-900 text-[10px] font-bold px-3 py-0.5 rounded-bl-lg uppercase tracking-wider">
+                    🏆 Prêmio
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-xl">🎉</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-white mb-1">🎁 Prêmio Fidelidade</h3>
+                      <p className="text-amber-300 text-sm mb-2">
+                        Você completou seu cartão fidelidade!
+                      </p>
+                      <div className="flex items-baseline gap-2 mb-3">
+                        <span className="text-zinc-500 line-through text-sm">R$ {(originalPriceCents / 100).toFixed(2)}</span>
+                        <span className="text-amber-400 font-bold text-xl">
+                          {loyaltyData.reward_type === 'free_service'
+                            ? 'R$ 0,00'
+                            : `R$ ${((originalPriceCents * (100 - loyaltyData.reward_percent) / 100) / 100).toFixed(2)}`}
+                        </span>
+                      </div>
+                      <p className="text-zinc-500 text-xs">
+                        O resgate será confirmado pelo profissional no momento do atendimento.
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              )}
+
               {/* Online payment card — RECOMMENDED */}
               <button
                 onClick={() => handlePaymentMethodSelect('online')}
