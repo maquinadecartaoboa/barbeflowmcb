@@ -489,8 +489,9 @@ export const MercadoPagoCheckout = ({
 
       if (data.pix) {
         setPixData(data.pix);
-        // Store the payment_id for polling
-        if (data.payment_id) {
+        if (data.reused) {
+          console.log('PIX reutilizado (QR code existente)');
+        }
           setPaymentId(data.payment_id);
         }
         setStatus('pix-waiting');
@@ -855,6 +856,9 @@ export const MercadoPagoCheckout = ({
           onExpire={() => setTurnstileToken(null)}
           onError={() => setTurnstileToken(null)}
         />
+
+        {/* Billing Address */}
+        <BillingAddressForm value={billingAddress} onChange={setBillingAddress} />
 
         {/* Card Payment Brick container */}
         <div 
