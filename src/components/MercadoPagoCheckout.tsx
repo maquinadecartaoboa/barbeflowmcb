@@ -748,9 +748,16 @@ export const MercadoPagoCheckout = ({
             <QrCode className="h-5 w-5 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{serviceName}</span>
           </div>
-           <span className="font-semibold text-primary">
-            R$ {amount.toFixed(2)}
-          </span>
+          {onlineDiscountPercent > 0 && originalAmountCents ? (
+            <div className="text-right">
+              <span className="text-sm text-muted-foreground line-through mr-2">
+                R$ {(originalAmountCents / 100).toFixed(2)}
+              </span>
+              <span className="font-semibold text-emerald-500">R$ {amount.toFixed(2)}</span>
+            </div>
+          ) : (
+            <span className="font-semibold text-primary">R$ {amount.toFixed(2)}</span>
+          )}
         </div>
 
         <div className="text-center">
