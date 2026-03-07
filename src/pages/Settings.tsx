@@ -17,6 +17,7 @@ import { AvailabilityBlocksManager } from "@/components/AvailabilityBlocksManage
 import { supabase } from "@/integrations/supabase/client";
 import { OnlineDiscountSettings } from "@/components/settings/OnlineDiscountSettings";
 import { OwnerWeeklySummarySettings } from "@/components/settings/OwnerWeeklySummarySettings";
+import { LoyaltySettingsTab } from "@/components/settings/LoyaltySettingsTab";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1154,6 +1155,10 @@ export default function Settings() {
               <AvailabilityBlocksManager tenantId={currentTenant.id} />
             </CardContent>
           </Card>
+          {/* Loyalty Card */}
+          <div className="mt-6">
+            <LoyaltySettingsTab />
+          </div>
         </TabsContent>
 
         {/* Notifications Settings */}
