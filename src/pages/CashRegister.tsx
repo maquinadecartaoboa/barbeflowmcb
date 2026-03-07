@@ -256,6 +256,92 @@ export default function CashRegister() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Load detail entries for a payment method
+  const loadMethodDetail = useCallback(async (method: string) => {
+    if (!session) return;
+    setLoadingDetail(true);
+    setSelectedMethodDetail(method);
+    try {
+      const { data } = await supabase
+        .from('cash_entries')
+        .select(`
+          id,
+          amount_cents,
+          payment_method,
+          source,
+          kind,
+          notes,
+          occurred_at,
+          staff_id,
+          booking_id
+        `)
+        .eq('session_id', session.id)
+        .eq('payment_method', method)
+        .order('occurred_at', { ascending: false });
+
+      if (data && data.length > 0) {
+        // Fetch booking details for entries that have booking_id
+        const bookingIds = data.filter(e => e.booking_id).map(e => e.booking_id!);
+        const staffIds = data.filter(e => e.staff_id).map(e => e.staff_id!);
+        
+        let bookingsMap: Record<string, any> = {};
+        let staffMap: Record<string, string> = {};
+
+        if (bookingIds.length > 0) {
+          const { data: bookings } = await supabase
+            .from('bookings')
+            .select('id, starts_at, customer:customers(name), service:services(name)')
+            .in('id', [...new Set(bookingIds)]);
+          if (bookings) {
+            bookings.forEach((b: any) => { bookingsMap[b.id] = b; });
+          }
+        }
+
+        if (staffIds.length > 0) {
+          const { data: staffData } = await supabase
+            .from('staff')
+            .select('id, name')
+            .in('id', [...new Set(staffIds)]);
+          if (staffData) {
+            staffData.forEach((s: any) => { staffMap[s.id] = s.name; });
+          }
+        }
+
+        const enriched = data.map(e => ({
+          ...e,
+          booking: e.booking_id ? bookingsMap[e.booking_id] : null,
+          staffName: e.staff_id ? staffMap[e.staff_id] || null : null,
+        }));
+        setDetailEntries(enriched);
+      } else {
+        setDetailEntries([]);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingDetail(false);
+    }
+  }, [session]);
+
+  const handleChangePaymentMethod = async (entryId: string, newMethod: string) => {
+    try {
+      const { error } = await supabase
+        .from('cash_entries')
+        .update({ payment_method: newMethod, updated_at: new Date().toISOString() })
+        .eq('id', entryId);
+      if (error) throw error;
+      toast.success("Forma de pagamento alterada");
+      // Refresh both the detail list and main data
+      await loadData();
+      if (selectedMethodDetail) {
+        // Update local detail entries
+        setDetailEntries(prev => prev.filter(e => e.id !== entryId));
+      }
+    } catch (err: any) {
+      toast.error("Erro: " + err.message);
+    }
+  };
+
   const handleOpenCash = async () => {
     if (!currentTenant || !user) return;
     setSubmitting(true);
