@@ -28,6 +28,8 @@ interface MercadoPagoCheckoutProps {
   customerPackageId?: string;
   packageAmountCents?: number;
   paymentId?: string;
+  onlineDiscountPercent?: number;
+  originalAmountCents?: number;
 }
 
 const getFunctionErrorMessage = (error: any): string => {
@@ -69,6 +71,8 @@ export const MercadoPagoCheckout = ({
   customerPackageId,
   packageAmountCents,
   paymentId: externalPaymentId,
+  onlineDiscountPercent = 0,
+  originalAmountCents,
 }: MercadoPagoCheckoutProps) => {
   const isPackagePayment = !!customerPackageId && !bookingId;
   const [status, setStatus] = useState<PaymentStatus>('idle');
