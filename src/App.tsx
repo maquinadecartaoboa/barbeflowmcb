@@ -56,6 +56,13 @@ const Questionnaire = lazy(() => import("./pages/Questionnaire"));
 const OnboardingWizard = lazy(() => import("./pages/OnboardingWizard"));
 const HighPerformance = lazy(() => import("./pages/HighPerformance"));
 
+// Admin pages
+const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminTenants = lazy(() => import("./pages/admin/AdminTenants"));
+const AdminTenantDetail = lazy(() => import("./pages/admin/AdminTenantDetail"));
+const AdminTracking = lazy(() => import("./pages/admin/AdminTracking"));
+
 // Lazy-loaded components
 const AuthWatcher = lazy(() => import("./components/AuthWatcher"));
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -178,6 +185,16 @@ const App = () => {
                     <Route path="settings" element={<Settings />} />
                   </Route>
                 </>
+              )}
+
+              {/* Admin routes */}
+              {showDashboard && (
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="tenants" element={<AdminTenants />} />
+                  <Route path="tenants/:id" element={<AdminTenantDetail />} />
+                  <Route path="tracking" element={<AdminTracking />} />
+                </Route>
               )}
 
               {/* On dashboard domain, redirect root to login (handled by AuthWatcher if logged in) */}

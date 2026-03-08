@@ -134,3 +134,6 @@ verify_jwt = false
 
 [functions.meta-capi-event]
 verify_jwt = false
+
+[functions.admin-stripe-actions]
+verify_jwt = false
