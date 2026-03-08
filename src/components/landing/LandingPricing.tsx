@@ -2,7 +2,7 @@ import { useState, forwardRef } from "react";
 import { Check, Sparkles } from "lucide-react";
 import { getDashboardUrl } from "@/lib/hostname";
 import { trackViewContent } from "@/lib/tracking";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 const plans = [
   {
@@ -18,17 +18,12 @@ const plans = [
       "Gestão de clientes",
       "Financeiro completo",
       "Notificações via WhatsApp",
-      "Página pública de agendamento",
-      "Pacotes e assinaturas",
-      "Pagamentos online",
+      "Pagamentos online (MP)",
+      "Proteção anti-falta",
+      "Desconto inteligente",
       "Relatórios",
-      "Proteção contra cancelamentos",
-      "Caixa e controle financeiro",
-      "Comissões automáticas",
+      "Comissão automática",
       "App no celular (PWA)",
-      "Desconto Inteligente",
-      "Resumo Semanal WhatsApp",
-      "Proteção Anti-Falta",
     ],
     highlight: false,
   },
@@ -42,12 +37,12 @@ const plans = [
     extra: null,
     features: [
       "Tudo do Profissional",
-      "Foto Profissional (IA de imagem)",
-      "Texto que Vende (IA de texto)",
-      "Vitrine Inteligente (order bump)",
-      "Cartão Fidelidade Digital",
-      "Profissionais ilimitados",
+      "IA de imagem (Foto Profissional)",
+      "IA de texto (Texto que Vende)",
+      "Vitrine inteligente (order bump)",
+      "Cartão Fidelidade Digital incluso",
       "Taxa de transação reduzida (1,5%)",
+      "Profissionais ilimitados",
     ],
     highlight: true,
   },
@@ -70,21 +65,22 @@ const LandingPricing = forwardRef<HTMLElement>((_, ref) => {
             Preços
           </span>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight mb-3">
-            Menos que <span className="text-[#d4a843]">2 cortes</span> por mês.
+            Invista menos do que o preço de{" "}
+            <span className="text-[#d4a843]">2 cortes</span> por mês.
           </h2>
           <p className="text-zinc-500 text-sm">
-            14 dias grátis · Cancele quando quiser
+            14 dias grátis · Sem cartão · Cancele quando quiser
           </p>
         </div>
 
         {/* Toggle */}
         <div className="flex items-center justify-center mb-12">
-          <div className="inline-flex rounded-xl border border-white/[0.06] bg-white/[0.02] p-1">
+          <div className="inline-flex rounded-full bg-white/[0.04] p-1">
             <button
               onClick={() => setCycle("monthly")}
-              className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+              className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
                 cycle === "monthly"
-                  ? "bg-white/[0.08] text-white"
+                  ? "bg-white/[0.1] text-white"
                   : "text-zinc-500 hover:text-zinc-300"
               }`}
             >
@@ -92,14 +88,14 @@ const LandingPricing = forwardRef<HTMLElement>((_, ref) => {
             </button>
             <button
               onClick={() => setCycle("annual")}
-              className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-300 relative ${
+              className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 relative ${
                 cycle === "annual"
-                  ? "bg-white/[0.08] text-white"
+                  ? "bg-[#d4a843] text-[#0a0a0a]"
                   : "text-zinc-500 hover:text-zinc-300"
               }`}
             >
               Anual
-              <span className="absolute -top-2.5 -right-3 text-[8px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+              <span className="absolute -top-2.5 -right-2 text-[8px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
                 −17%
               </span>
             </button>
@@ -107,20 +103,21 @@ const LandingPricing = forwardRef<HTMLElement>((_, ref) => {
         </div>
 
         {/* Cards */}
-        <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
+        <div className="grid sm:grid-cols-2 gap-5">
           {plans.map((plan) => {
             const price = cycle === "monthly" ? plan.monthly : plan.annual_monthly;
+            const oldPrice = cycle === "annual" ? plan.monthly : null;
             return (
               <div
                 key={plan.name}
-                className={`relative rounded-2xl border p-6 sm:p-7 transition-all duration-500 ${
+                className={`relative rounded-2xl border p-7 sm:p-8 transition-all duration-500 ${
                   plan.highlight
                     ? "border-[#d4a843]/20 bg-gradient-to-b from-[#d4a843]/[0.04] to-transparent"
                     : "border-white/[0.06] bg-white/[0.02]"
                 }`}
               >
                 {plan.highlight && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] font-bold tracking-[0.15em] uppercase px-3 py-1 rounded-lg bg-[#d4a843] text-[#0a0a0a] flex items-center gap-1">
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] font-bold tracking-[0.15em] uppercase px-4 py-1 rounded-full bg-[#d4a843] text-[#0a0a0a] flex items-center gap-1 whitespace-nowrap">
                     <Sparkles className="h-3 w-3" />
                     Recomendado
                   </span>
@@ -133,18 +130,34 @@ const LandingPricing = forwardRef<HTMLElement>((_, ref) => {
                 </div>
 
                 <div className="mb-6">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-white">
-                      R$ {price.toFixed(2).replace(".", ",")}
-                    </span>
-                    <span className="text-sm text-zinc-500">/mês</span>
+                  <div className="flex items-baseline gap-2">
+                    {oldPrice && (
+                      <span className="text-lg text-zinc-600 line-through">
+                        R$ {oldPrice.toFixed(2).replace(".", ",")}
+                      </span>
+                    )}
                   </div>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={cycle}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.25 }}
+                      className="flex items-baseline gap-1"
+                    >
+                      <span className="text-4xl font-extrabold text-white">
+                        R$ {price.toFixed(2).replace(".", ",")}
+                      </span>
+                      <span className="text-sm text-zinc-500 font-normal">/mês</span>
+                    </motion.div>
+                  </AnimatePresence>
                   {cycle === "annual" && (
                     <p className="text-xs text-zinc-600 mt-1">
                       R$ {plan.annual_total.toFixed(2).replace(".", ",")} /ano
                     </p>
                   )}
-                  <p className="text-xs text-zinc-600 mt-0.5">
+                  <p className="text-xs text-zinc-500 mt-1">
                     Taxa de transação: {plan.tax}
                   </p>
                 </div>
@@ -157,13 +170,17 @@ const LandingPricing = forwardRef<HTMLElement>((_, ref) => {
                       : "bg-white/[0.06] hover:bg-white/[0.1] text-white border border-white/[0.06]"
                   }`}
                 >
-                  {plan.highlight ? "Começar grátis" : "Escolher plano"}
+                  Começar grátis
                 </button>
 
                 <ul className="space-y-2.5">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-start gap-2.5 text-[13px] text-zinc-400">
-                      <Check className="h-3.5 w-3.5 text-[#d4a843]/70 mt-0.5 shrink-0" />
+                      <Check
+                        className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${
+                          plan.highlight ? "text-[#d4a843]" : "text-zinc-500"
+                        }`}
+                      />
                       {f}
                     </li>
                   ))}

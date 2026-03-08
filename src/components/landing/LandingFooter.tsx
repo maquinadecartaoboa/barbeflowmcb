@@ -2,10 +2,14 @@ import logoBranca from "@/assets/modoGESTOR_branca.png";
 
 export default function LandingFooter() {
   return (
-    <footer className="border-t border-white/5 py-12 px-4 sm:px-6 bg-[#0a0a0a]">
-      <div className="max-w-6xl mx-auto grid sm:grid-cols-3 gap-8">
+    <footer className="border-t border-white/[0.05] py-12 px-5 sm:px-8 bg-[#050505]">
+      <div className="max-w-[900px] mx-auto grid sm:grid-cols-3 gap-8">
         <div>
-          <img src={logoBranca} alt="modoGESTOR" className="h-6 mb-3" />
+          <img
+            src={logoBranca}
+            alt="modoGESTOR"
+            className="h-5 mb-3 opacity-60"
+          />
           <p className="text-xs text-zinc-600 leading-relaxed">
             Um produto da MODOPAG FINTECH LTDA
             <br />
@@ -14,28 +18,47 @@ export default function LandingFooter() {
         </div>
 
         <div>
-          <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Links</h4>
+          <h4 className="text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.15em] mb-3">
+            Links
+          </h4>
           <div className="flex flex-col gap-2">
-            <a href="/termos-de-uso" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
+            <a
+              href="/termos-de-uso"
+              className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+            >
               Termos de Uso
             </a>
-            <a href="/politica-de-privacidade" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
+            <a
+              href="/politica-de-privacidade"
+              className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+            >
               Política de Privacidade
             </a>
-            <a href="/politica-de-reembolso" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
+            <a
+              href="/politica-de-reembolso"
+              className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+            >
               Política de Reembolso
             </a>
           </div>
         </div>
 
         <div>
-          <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Contato</h4>
-          <div className="flex flex-col gap-2 text-sm text-zinc-500">
+          <h4 className="text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.15em] mb-3">
+            Contato
+          </h4>
+          <div className="flex flex-col gap-2 text-xs text-zinc-600">
             <p>contato@modogestor.com.br</p>
             <p>(75) 99205-0743</p>
             <p>Feira de Santana — BA</p>
           </div>
         </div>
+      </div>
+
+      <div className="max-w-[900px] mx-auto mt-10 pt-6 border-t border-white/[0.04]">
+        <p className="text-[10px] text-zinc-700 text-center tracking-wide">
+          © 2026 modoGESTOR. Todos os direitos reservados.
+        </p>
       </div>
     </footer>
   );
