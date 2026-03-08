@@ -43,8 +43,9 @@ interface Props {
 
 export function BookingDetailsModal({
   booking, tenantId, open, onOpenChange,
-  onEdit, onStatusChange, showActions = false,
+  onEdit, onStatusChange, showActions = false, tenantSettings,
 }: Props) {
+  const { toast } = useToast();
   const [customerNotes, setCustomerNotes] = useState<string | null>(null);
   const [customerBalance, setCustomerBalance] = useState<number>(0);
   const [bookingItems, setBookingItems] = useState<BookingItem[]>([]);
