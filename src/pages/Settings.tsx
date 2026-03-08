@@ -1411,10 +1411,6 @@ export default function Settings() {
                         currentTenant={currentTenant}
                         onChange={(vals) => { discountSettingsRef.current = vals; }}
                       />
-                      <NoShowForfeitSettings
-                        currentTenant={currentTenant}
-                        onChange={(val) => { noShowForfeitRef.current = val; }}
-                      />
                     </>
                   )}
 
