@@ -218,7 +218,7 @@ const LandingPricing = forwardRef<HTMLElement>((_, ref) => {
                     <div className="flex items-center gap-3 my-5">
                       <div className="h-px flex-1 bg-[#d4a843]/20" />
                       <span className="text-[10px] text-[#d4a843] font-bold tracking-widest uppercase whitespace-nowrap">
-                        Exclusivo do Profissional
+                        Exclusivo do Ilimitado
                       </span>
                       <div className="h-px flex-1 bg-[#d4a843]/20" />
                     </div>
