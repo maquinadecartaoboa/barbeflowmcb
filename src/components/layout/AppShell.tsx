@@ -347,6 +347,15 @@ function AppSidebar() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
+            {isAdmin && (
+              <>
+                <DropdownMenuItem onClick={() => window.location.href = '/admin'}>
+                  <Shield className="h-4 w-4 mr-2" />
+                  Painel Admin
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem>
               <User className="h-4 w-4 mr-2" />
               Perfil
