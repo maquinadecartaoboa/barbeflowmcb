@@ -53,46 +53,52 @@ const Login = () => {
     try {
       const tracking = getTrackingData();
 
-      const { error, data } = isSignUp 
-        ? await signUp(email, password, {
-            owner_name: ownerName.trim(),
-            business_name: businessName.trim(),
-            phone: phone.replace(/\D/g, ""),
-            terms_accepted_at: new Date().toISOString(),
-            visitor_id: tracking.visitor_id,
-            meta_fbp: tracking.fbp,
-            meta_fbc: tracking.fbc,
-          })
-        : await signIn(email, password);
-
-      if (error) {
-        console.error('Auth failed:', error);
-      } else if (isSignUp && data?.user) {
-        trackCompleteRegistration({
-          email,
+      if (isSignUp) {
+        const result = await signUp(email, password, {
+          owner_name: ownerName.trim(),
+          business_name: businessName.trim(),
           phone: phone.replace(/\D/g, ""),
-          first_name: ownerName.trim().split(' ')[0],
-          external_id: data.user.id,
+          terms_accepted_at: new Date().toISOString(),
+          visitor_id: tracking.visitor_id,
+          meta_fbp: tracking.fbp || '',
+          meta_fbc: tracking.fbc || '',
         });
 
-        // Link visitor sessions for attribution (wait for trigger to create tenant)
-        setTimeout(async () => {
-          try {
-            const { data: ut } = await supabase
-              .from('users_tenant')
-              .select('tenant_id')
-              .eq('user_id', data.user!.id)
-              .limit(1);
-            if (ut && ut.length > 0) {
-              await supabase.rpc('link_visitor_attribution' as any, {
-                p_tenant_id: ut[0].tenant_id,
-                p_visitor_id: tracking.visitor_id,
-              });
+        if (result.error) {
+          console.error('Auth failed:', result.error);
+        } else if (result.data?.user) {
+          const userId = result.data.user.id;
+          trackCompleteRegistration({
+            email,
+            phone: phone.replace(/\D/g, ""),
+            first_name: ownerName.trim().split(' ')[0],
+            external_id: userId,
+          });
+
+          // Link visitor sessions for attribution (wait for trigger to create tenant)
+          setTimeout(async () => {
+            try {
+              const { data: ut } = await supabase
+                .from('users_tenant')
+                .select('tenant_id')
+                .eq('user_id', userId)
+                .limit(1);
+              if (ut && ut.length > 0) {
+                await supabase.rpc('link_visitor_attribution' as any, {
+                  p_tenant_id: ut[0].tenant_id,
+                  p_visitor_id: tracking.visitor_id,
+                });
+              }
+            } catch (e) {
+              console.warn('[TRACKING] Attribution linking failed:', e);
             }
-          } catch (e) {
-            console.warn('[TRACKING] Attribution linking failed:', e);
-          }
-        }, 2000);
+          }, 2000);
+        }
+      } else {
+        const { error } = await signIn(email, password);
+        if (error) {
+          console.error('Auth failed:', error);
+        }
       }
     } catch (err) {
       console.error('Auth error:', err);
