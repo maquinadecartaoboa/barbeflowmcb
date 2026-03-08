@@ -1,17 +1,45 @@
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { motion } from "framer-motion";
 import { useRef } from "react";
-import { useInView } from "framer-motion";
+import { motion, useInView } from "framer-motion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const faqs = [
-  { q: "Preciso pagar para testar?", a: "Não. Os 14 dias de teste são 100% gratuitos. Você só começa a pagar se decidir continuar após o trial." },
-  { q: "Meus clientes precisam baixar algum app?", a: "Não. Eles agendam pelo link no celular, sem instalar nada." },
-  { q: "Funciona com Mercado Pago?", a: "Sim. Você conecta sua conta do Mercado Pago e recebe os pagamentos direto nela." },
-  { q: "E se o cliente não aparecer?", a: "Com a Proteção Anti-Falta, você retém automaticamente uma parte do valor pago online. O resto é devolvido ao cliente." },
-  { q: "Posso cancelar quando quiser?", a: "Sim, sem multa e sem burocracia. Direto pelo painel. Você mantém acesso até o fim do período pago." },
-  { q: "Quantos barbeiros posso cadastrar?", a: "No Profissional, 1 incluso (extras por R$ 14,90/mês). No Ilimitado, sem limite." },
-  { q: "Tem contrato de fidelidade?", a: "Não. Plano mensal ou anual, sem fidelidade obrigatória." },
-  { q: "Como funciona o suporte?", a: "WhatsApp e e-mail, de segunda a sexta, 9h às 18h." },
+  {
+    q: "Preciso de cartão para testar?",
+    a: "Não. Os 14 dias de teste são 100% gratuitos, sem cartão de crédito.",
+  },
+  {
+    q: "Meus clientes precisam baixar algum app?",
+    a: "Não. Eles agendam pelo link direto no celular, sem instalar nada. Funciona como uma página web normal.",
+  },
+  {
+    q: "Como funciona o pagamento online?",
+    a: "Você conecta sua conta do Mercado Pago ao modoGESTOR. Quando o cliente agenda e paga online, o dinheiro cai direto na sua conta do Mercado Pago.",
+  },
+  {
+    q: "E se o cliente marcar e não aparecer?",
+    a: "Com a Proteção Anti-Falta, se o cliente pagou online e não compareceu, o sistema retém automaticamente uma parte do valor e devolve o restante. Sem constrangimento para ninguém.",
+  },
+  {
+    q: "Posso cancelar quando quiser?",
+    a: "Sim, sem multa e sem burocracia. Direto pelo painel. Você mantém acesso até o fim do período que já pagou.",
+  },
+  {
+    q: "Quantos barbeiros posso cadastrar?",
+    a: "No Profissional, 1 profissional incluso com opção de adicionar mais por R$ 14,90/mês cada. No Ilimitado, sem limite de profissionais.",
+  },
+  {
+    q: "Tem contrato de fidelidade?",
+    a: "Não tem. Plano mensal ou anual, sem fidelidade obrigatória. No anual você ganha 2 meses grátis.",
+  },
+  {
+    q: "Como funciona o suporte?",
+    a: "Via WhatsApp e e-mail, de segunda a sexta, das 9h às 18h. A gente responde rápido.",
+  },
 ];
 
 export default function LandingFAQ() {
@@ -31,7 +59,7 @@ export default function LandingFAQ() {
             FAQ
           </span>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight">
-            Ficou com dúvida?
+            Ficou com alguma <span className="text-[#d4a843]">dúvida?</span>
           </h2>
         </motion.div>
 
@@ -40,17 +68,17 @@ export default function LandingFAQ() {
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          <Accordion type="single" collapsible className="space-y-2">
+          <Accordion type="single" collapsible className="space-y-0">
             {faqs.map((faq, i) => (
               <AccordionItem
                 key={i}
                 value={`faq-${i}`}
-                className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 data-[state=open]:border-[#d4a843]/15 transition-colors duration-300"
+                className="border-b border-white/[0.05] last:border-b-0"
               >
-                <AccordionTrigger className="text-sm font-medium text-white hover:no-underline py-4 text-left">
+                <AccordionTrigger className="text-sm font-medium text-white hover:no-underline py-5 text-left">
                   {faq.q}
                 </AccordionTrigger>
-                <AccordionContent className="text-sm text-zinc-500 pb-4 leading-relaxed">
+                <AccordionContent className="text-sm text-zinc-400 pb-5 leading-relaxed">
                   {faq.a}
                 </AccordionContent>
               </AccordionItem>
