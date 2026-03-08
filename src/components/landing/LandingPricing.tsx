@@ -12,7 +12,7 @@ const plans = [
     annual_total: 574.8,
     tax: "2,5%",
     professionals: "1 profissional incluso",
-    extra: "+ R$ 14,90/extra",
+    extra: null,
     features: [
       "Agendamento online 24h",
       "Gestão de clientes",
