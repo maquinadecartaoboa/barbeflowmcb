@@ -69,7 +69,7 @@ const LandingPricing = forwardRef<HTMLElement>((_, ref) => {
             <span className="text-[#d4a843]">2 cortes</span> por mês.
           </h2>
           <p className="text-zinc-500 text-sm">
-            14 dias grátis · Sem cartão · Cancele quando quiser
+            14 dias grátis · Cancele quando quiser
           </p>
         </div>
 

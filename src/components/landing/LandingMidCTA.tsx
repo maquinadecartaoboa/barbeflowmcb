@@ -40,7 +40,7 @@ export default function LandingMidCTA() {
           </div>
 
           <p className="text-xs text-zinc-600 mt-4 tracking-wide">
-            Sem cartão · Sem compromisso
+            Sem compromisso · Cancele quando quiser
           </p>
         </motion.div>
       </div>

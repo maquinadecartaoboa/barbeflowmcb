@@ -6,7 +6,7 @@ const passos = [
   {
     num: "01",
     title: "Crie sua conta",
-    desc: "Preencha seus dados e escolha seu plano. Sem cartão para começar.",
+    desc: "Preencha seus dados, escolha seu plano e comece a testar. 14 dias grátis.",
   },
   {
     num: "02",
