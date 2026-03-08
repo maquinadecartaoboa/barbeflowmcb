@@ -9,14 +9,16 @@ import { CustomerBalanceAlert } from "@/components/CustomerBalanceAlert";
 import { ComandaItemsSection, type BookingItem } from "@/components/modals/ComandaItemsSection";
 import { ComandaPaymentSection } from "@/components/modals/ComandaPaymentSection";
 import { ComandaCloseSection } from "@/components/modals/ComandaCloseSection";
+import { NoShowDialog } from "@/components/modals/NoShowDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   User, Phone, Scissors, Clock, Users, Edit,
-  CheckCircle, XCircle, MessageCircle,
+  CheckCircle, XCircle, MessageCircle, AlertTriangle, RefreshCw, Loader2,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useToast } from "@/hooks/use-toast";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
