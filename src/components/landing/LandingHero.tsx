@@ -87,12 +87,6 @@ export default function LandingHero() {
                 Começar grátis — 14 dias
               </button>
             </a>
-            <a href="#como-funciona" className="w-full sm:w-auto">
-              <button className="w-full sm:w-auto px-7 py-4 border border-white/[0.08] text-zinc-300 rounded-xl text-base font-medium transition-all duration-300 hover:border-white/20 hover:text-white hover:bg-white/[0.03] flex items-center justify-center gap-2.5">
-                <Play className="h-4 w-4 text-[#d4a843]" />
-                Ver como funciona
-              </button>
-            </a>
           </motion.div>
 
           {/* Microcopy */}
