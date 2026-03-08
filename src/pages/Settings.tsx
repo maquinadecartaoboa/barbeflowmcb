@@ -1223,8 +1223,7 @@ export default function Settings() {
               </Form>
             </CardContent>
           </Card>
-
-          <OwnerWeeklySummarySettings currentTenant={currentTenant} />
+          {/* Owner Weekly Summary moved to Alta Performance */}
         </TabsContent>
 
         {/* Payments Settings */}
