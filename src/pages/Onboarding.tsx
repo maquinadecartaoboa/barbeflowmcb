@@ -9,8 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Check, Loader2, Star, Infinity, Trophy, UserPlus } from "lucide-react";
 import logoBranca from "@/assets/modoGESTOR_branca.png";
-import { trackEvent } from "@/utils/metaTracking";
-import { getFbp, getPersistedFbc } from "@/utils/metaTracking";
+import { trackViewContent, trackInitiateCheckout } from "@/lib/tracking";
 
 type PlanKey = "profissional" | "ilimitado";
 
