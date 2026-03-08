@@ -14,6 +14,7 @@ import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { NewTenantModal } from "@/components/modals/NewTenantModal";
 import { NoTenantState } from "@/components/NoTenantState";
 import { AvailabilityBlocksManager } from "@/components/AvailabilityBlocksManager";
+import LegalSettingsSection from "@/components/settings/LegalSettingsSection";
 import { supabase } from "@/integrations/supabase/client";
 
 
