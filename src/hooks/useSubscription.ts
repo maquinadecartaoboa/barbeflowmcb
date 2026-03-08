@@ -71,6 +71,7 @@ export const PLANS = {
       "Foto Profissional (IA de imagem)",
       "Texto que Vende (IA de texto)",
       "Vitrine Inteligente (order bump)",
+      "Cartão Fidelidade Digital (incluso)",
       "Profissionais ilimitados sem custo adicional",
       "Taxa de transação reduzida (1,5%)",
     ],

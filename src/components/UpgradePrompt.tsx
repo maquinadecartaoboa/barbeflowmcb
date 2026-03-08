@@ -108,6 +108,7 @@ function UpgradeDialog({ open, onOpenChange, label, onUpgrade }: {
             <li>✨ Foto Profissional com IA</li>
             <li>✨ Texto que Vende com IA</li>
             <li>✨ Vitrine Inteligente (order bump)</li>
+            <li>✨ Cartão Fidelidade Digital (incluso)</li>
             <li>✨ Profissionais ilimitados sem custo extra</li>
             <li>✨ Taxa de transação reduzida (1,5%)</li>
           </ul>
