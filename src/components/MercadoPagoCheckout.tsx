@@ -896,7 +896,7 @@ export const MercadoPagoCheckout = ({
           className="mp-checkout-container"
         />
 
-        {/* Turnstile verification — near pay button */}
+        {/* Turnstile verification — immediately above pay button */}
         <TurnstileWidget
           onVerify={(token) => setTurnstileToken(token)}
           onExpire={() => setTurnstileToken(null)}

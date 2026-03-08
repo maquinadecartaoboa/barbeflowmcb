@@ -2212,53 +2212,94 @@ END:VCALENDAR`;
               <p className="text-zinc-500 text-sm">Finalize seu agendamento</p>
             </div>
             
-            {/* Booking Summary */}
-            <div className="p-4 bg-zinc-900/30 border border-zinc-800/50 rounded-xl mb-6">
-              <div className="flex items-start gap-3 mb-3">
-                <div className="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
-                  {selectedServiceData?.photo_url ? (
-                    <img src={selectedServiceData.photo_url} alt={selectedServiceData.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
-                  ) : (
-                    <Scissors className="h-4 w-4 text-zinc-400" />
-                  )}
+            {/* Booking Summary with discount */}
+            {(() => {
+              const tenantSettings = (tenant?.settings || {}) as Record<string, any>;
+              const discPct = tenantSettings.online_discount_percent || 0;
+              const svcCents = createdBooking.service?.price_cents || 0;
+              const discCents = discPct > 0 ? Math.round(svcCents * discPct / 100) : 0;
+              const finalSvcCents = svcCents - discCents;
+              const bumpCents = orderBumpItems.reduce((s: number, p: OrderBumpProduct) => s + p.sale_price_cents, 0);
+              
+              return (
+              <div className="p-4 bg-zinc-900/30 border border-zinc-800/50 rounded-xl mb-6">
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+                    {selectedServiceData?.photo_url ? (
+                      <img src={selectedServiceData.photo_url} alt={selectedServiceData.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                    ) : (
+                      <Scissors className="h-4 w-4 text-zinc-400" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{createdBooking.service?.name}</p>
+                    <p className="text-zinc-500 text-xs">
+                      {createdBooking.staff?.name || 'Qualquer profissional'}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {discCents > 0 ? (
+                      <>
+                        <span className="text-sm text-zinc-500 line-through mr-2">
+                          R$ {(svcCents / 100).toFixed(2)}
+                        </span>
+                        <span className="text-emerald-400 font-bold">
+                          R$ {(finalSvcCents / 100).toFixed(2)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-emerald-400 font-bold">
+                        R$ {(svcCents / 100).toFixed(2)}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{createdBooking.service?.name}</p>
-                  <p className="text-zinc-500 text-xs">
-                    {createdBooking.staff?.name || 'Qualquer profissional'}
+                {discCents > 0 && (
+                  <p className="text-xs text-emerald-400 text-right mb-3">
+                    {discPct}% de desconto no pagamento online
                   </p>
-                </div>
-              </div>
-              <div className="flex items-center justify-between pt-3 border-t border-zinc-800">
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-zinc-500" />
-                  <span className="text-zinc-400">{formatDateForDisplay(selectedDate)}</span>
-                  <span className="text-zinc-600">•</span>
-                  <Clock className="h-4 w-4 text-zinc-500" />
-                  <span className="text-zinc-400">{selectedTime}</span>
-                </div>
-              </div>
-              {/* Order bump items in payment summary */}
-              {orderBumpItems.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-zinc-800 space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-zinc-500">Serviço</span>
-                    <span className="text-zinc-300">R$ {((createdBooking.service?.price_cents || 0) / 100).toFixed(2)}</span>
+                )}
+                <div className="flex items-center justify-between pt-3 border-t border-zinc-800">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 text-zinc-500" />
+                    <span className="text-zinc-400">{formatDateForDisplay(selectedDate)}</span>
+                    <span className="text-zinc-600">•</span>
+                    <Clock className="h-4 w-4 text-zinc-500" />
+                    <span className="text-zinc-400">{selectedTime}</span>
                   </div>
-                  {orderBumpItems.map((item) => (
-                    <div key={item.product_id} className="flex items-center justify-between text-sm">
-                      <span className="text-zinc-500 truncate mr-2">{item.name}</span>
-                      <span className="text-zinc-300 whitespace-nowrap">R$ {(item.sale_price_cents / 100).toFixed(2)}</span>
+                </div>
+                {/* Order bump items in payment summary */}
+                {orderBumpItems.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-zinc-500">Serviço</span>
+                      <span className="text-zinc-300">
+                        {discCents > 0 ? (
+                          <>
+                            <span className="line-through text-zinc-600 mr-1">R$ {(svcCents / 100).toFixed(2)}</span>
+                            R$ {(finalSvcCents / 100).toFixed(2)}
+                          </>
+                        ) : (
+                          <>R$ {(svcCents / 100).toFixed(2)}</>
+                        )}
+                      </span>
                     </div>
-                  ))}
-                  <div className="h-px bg-zinc-800" />
-                  <div className="flex items-center justify-between text-sm font-semibold">
-                    <span className="text-zinc-300">Total</span>
-                    <span className="text-emerald-400">R$ {(((createdBooking.service?.price_cents || 0) + orderBumpItems.reduce((s: number, p: OrderBumpProduct) => s + p.sale_price_cents, 0)) / 100).toFixed(2)}</span>
+                    {orderBumpItems.map((item) => (
+                      <div key={item.product_id} className="flex items-center justify-between text-sm">
+                        <span className="text-zinc-500 truncate mr-2">{item.name}</span>
+                        <span className="text-zinc-300 whitespace-nowrap">R$ {(item.sale_price_cents / 100).toFixed(2)}</span>
+                      </div>
+                    ))}
+                    <div className="h-px bg-zinc-800" />
+                    <div className="flex items-center justify-between text-sm font-semibold">
+                      <span className="text-zinc-300">Total</span>
+                      <span className="text-emerald-400">R$ {((finalSvcCents + bumpCents) / 100).toFixed(2)}</span>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+              );
+            })()}
 
             {/* MercadoPago Checkout */}
             <MercadoPagoCheckout
