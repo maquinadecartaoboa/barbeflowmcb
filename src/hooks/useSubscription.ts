@@ -71,7 +71,7 @@ export const PLANS = {
       "Texto que Vende (IA de texto)",
       "Vitrine Inteligente (order bump)",
       "Profissionais ilimitados sem custo adicional",
-      "Taxa de transação reduzida (1,0%)",
+      "Taxa de transação reduzida (1,5%)",
     ],
   },
 };

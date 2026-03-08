@@ -434,7 +434,7 @@ export function BillingTab() {
                         <p className="font-medium mb-1">⚠️ Você perderá acesso a:</p>
                         <ul className="space-y-1 text-xs">
                           <li>• Profissionais ilimitados (limite de 1 + extras pagos)</li>
-                          <li>• Taxa será alterada de 1,0% para {PLANS[selectedPlan || "profissional"]?.commission}</li>
+                          <li>• Taxa será alterada de 1,5% para {PLANS[selectedPlan || "profissional"]?.commission}</li>
                         </ul>
                       </div>
                     </>
