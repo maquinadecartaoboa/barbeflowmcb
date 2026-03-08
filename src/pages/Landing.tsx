@@ -5,7 +5,7 @@ import { useInView } from "framer-motion";
 
 import LandingNavbar from "@/components/landing/LandingNavbar";
 import LandingHero from "@/components/landing/LandingHero";
-import LandingSocialProof from "@/components/landing/LandingSocialProof";
+
 import LandingProblems from "@/components/landing/LandingProblems";
 import LandingSolutions from "@/components/landing/LandingSolutions";
 import LandingHowItWorks from "@/components/landing/LandingHowItWorks";
