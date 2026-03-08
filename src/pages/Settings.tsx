@@ -1517,6 +1517,11 @@ export default function Settings() {
           <AppearanceTab />
         </TabsContent>
 
+        {/* Legal Tab */}
+        <TabsContent value="legal">
+          <LegalSettingsSection termsAcceptedAt={(currentTenant?.settings as any)?.terms_accepted_at} />
+        </TabsContent>
+
         {/* WhatsApp Tab */}
         <TabsContent value="whatsapp">
           <WhatsAppConfigEmbed />
