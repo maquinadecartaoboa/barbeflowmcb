@@ -1889,7 +1889,11 @@ END:VCALENDAR`;
               {/* Cancellation forfeit disclaimer */}
               {showCancellationForfeit && (
                 <p className="text-xs text-zinc-500 mt-2 px-2">
-                  Ao confirmar, caso não compareça ou cancele com menos de {cancellationForfeitHours}h de antecedência, o valor pago não será reembolsado.
+                  {noShowForfeitPercent >= 100
+                    ? `Ao confirmar, caso não compareça ou cancele com menos de ${cancellationForfeitHours}h de antecedência, o valor pago não será reembolsado.`
+                    : noShowForfeitPercent <= 0
+                    ? `Ao confirmar, caso não compareça ou cancele com menos de ${cancellationForfeitHours}h de antecedência, entre em contato para reagendar.`
+                    : `Ao confirmar, caso não compareça ou cancele com menos de ${cancellationForfeitHours}h de antecedência, ${noShowForfeitPercent}% do valor pago será retido e o restante será reembolsado.`}
                 </p>
               )}
 
