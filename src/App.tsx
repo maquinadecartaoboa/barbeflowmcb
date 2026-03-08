@@ -195,6 +195,9 @@ const App = () => {
                   <Route index element={<AdminDashboard />} />
                   <Route path="tenants" element={<AdminTenants />} />
                   <Route path="tenants/:id" element={<AdminTenantDetail />} />
+                  <Route path="analytics" element={<AdminAnalytics />} />
+                  <Route path="onboarding" element={<AdminOnboarding />} />
+                  <Route path="billing" element={<AdminBilling />} />
                 </Route>
               )}
 
