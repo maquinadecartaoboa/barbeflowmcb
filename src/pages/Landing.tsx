@@ -36,10 +36,9 @@ const Landing = () => {
   }, [pricingInView]);
 
   return (
-    <div className="min-h-screen bg-[#0c0c0c] text-zinc-100 overflow-x-hidden">
+    <div className="min-h-screen bg-[#050505] text-zinc-100 overflow-x-hidden" style={{ fontFamily: "'Satoshi', sans-serif" }}>
       <LandingNavbar />
       <LandingHero />
-      <LandingSocialProof />
       <LandingProblems />
       <LandingSolutions />
       <LandingHowItWorks />
