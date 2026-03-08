@@ -16,6 +16,7 @@ import { NoTenantState } from "@/components/NoTenantState";
 import { AvailabilityBlocksManager } from "@/components/AvailabilityBlocksManager";
 import { supabase } from "@/integrations/supabase/client";
 import { OnlineDiscountSettings } from "@/components/settings/OnlineDiscountSettings";
+import { NoShowForfeitSettings } from "@/components/settings/NoShowForfeitSettings";
 import { OwnerWeeklySummarySettings } from "@/components/settings/OwnerWeeklySummarySettings";
 import { LoyaltySettingsTab } from "@/components/settings/LoyaltySettingsTab";
 import { useToast } from "@/hooks/use-toast";
@@ -155,6 +156,7 @@ export default function Settings() {
   const [mpConnecting, setMpConnecting] = useState(false);
   const [mpDisconnecting, setMpDisconnecting] = useState(false);
   const discountSettingsRef = useRef<{ online_discount_percent: number; show_cancellation_forfeit: boolean; cancellation_forfeit_hours: number } | null>(null);
+  const noShowForfeitRef = useRef<number | null>(null);
 
   const tenantForm = useForm<TenantFormData>({
     resolver: zodResolver(tenantSchema),
@@ -545,6 +547,7 @@ export default function Settings() {
             weekly_summary_enabled,
             recurring_reminder_enabled,
             ...(discountSettingsRef.current || {}),
+            ...(noShowForfeitRef.current !== null ? { no_show_forfeit_percent: noShowForfeitRef.current } : {}),
           }
         })
         .eq('id', currentTenant.id);
@@ -1405,10 +1408,16 @@ export default function Settings() {
                   )}
 
                   {settingsForm.watch("allow_online_payment") && (
-                    <OnlineDiscountSettings 
-                      currentTenant={currentTenant}
-                      onChange={(vals) => { discountSettingsRef.current = vals; }}
-                    />
+                    <>
+                      <OnlineDiscountSettings 
+                        currentTenant={currentTenant}
+                        onChange={(vals) => { discountSettingsRef.current = vals; }}
+                      />
+                      <NoShowForfeitSettings
+                        currentTenant={currentTenant}
+                        onChange={(val) => { noShowForfeitRef.current = val; }}
+                      />
+                    </>
                   )}
 
                   {!mpConnected && (

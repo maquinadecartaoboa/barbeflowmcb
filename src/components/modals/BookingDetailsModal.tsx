@@ -9,14 +9,16 @@ import { CustomerBalanceAlert } from "@/components/CustomerBalanceAlert";
 import { ComandaItemsSection, type BookingItem } from "@/components/modals/ComandaItemsSection";
 import { ComandaPaymentSection } from "@/components/modals/ComandaPaymentSection";
 import { ComandaCloseSection } from "@/components/modals/ComandaCloseSection";
+import { NoShowDialog } from "@/components/modals/NoShowDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   User, Phone, Scissors, Clock, Users, Edit,
-  CheckCircle, XCircle, MessageCircle,
+  CheckCircle, XCircle, MessageCircle, AlertTriangle, RefreshCw, Loader2,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useToast } from "@/hooks/use-toast";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -36,18 +38,23 @@ interface Props {
   onEdit?: () => void;
   onStatusChange?: (bookingId: string, status: string, booking?: any) => void;
   showActions?: boolean;
+  tenantSettings?: any;
 }
 
 export function BookingDetailsModal({
   booking, tenantId, open, onOpenChange,
-  onEdit, onStatusChange, showActions = false,
+  onEdit, onStatusChange, showActions = false, tenantSettings,
 }: Props) {
+  const { toast } = useToast();
   const [customerNotes, setCustomerNotes] = useState<string | null>(null);
   const [customerBalance, setCustomerBalance] = useState<number>(0);
   const [bookingItems, setBookingItems] = useState<BookingItem[]>([]);
   const [comandaStatus, setComandaStatus] = useState<string>("open");
   const [balanceKey, setBalanceKey] = useState(0);
   const [prevStatus, setPrevStatus] = useState<string | null>(null);
+  const [showNoShowDialog, setShowNoShowDialog] = useState(false);
+  const [paymentInfo, setPaymentInfo] = useState<any>(null);
+  const [retryingRefund, setRetryingRefund] = useState(false);
   const paymentSectionRef = useRef<HTMLDivElement>(null);
   const closeSectionRef = useRef<HTMLDivElement>(null);
 
@@ -58,7 +65,7 @@ export function BookingDetailsModal({
 
     // Load all data in parallel
     // Load all data in parallel
-    const [custRes, balRes, itemsRes, statusRes] = await Promise.all([
+    const [custRes, balRes, itemsRes, statusRes, payRes] = await Promise.all([
       customerId
         ? supabase.from("customers").select("notes").eq("id", customerId).single()
         : Promise.resolve({ data: null }),
@@ -72,6 +79,10 @@ export function BookingDetailsModal({
         .eq("tenant_id", tenantId)
         .order("created_at", { ascending: true }),
       supabase.from("bookings").select("comanda_status").eq("id", booking.id).single(),
+      supabase.from("payments")
+        .select("id, amount_cents, status, refund_cents, refund_status, forfeit_percent, external_id")
+        .eq("booking_id", booking.id)
+        .maybeSingle(),
     ]);
 
     setCustomerNotes(custRes.data?.notes || null);
@@ -100,6 +111,7 @@ export function BookingDetailsModal({
     setBookingItems(mappedItems);
 
     setComandaStatus(statusRes.data?.comanda_status || "open");
+    setPaymentInfo(payRes.data || null);
   }, [booking?.id, open, tenantId]);
 
   useEffect(() => {
@@ -140,12 +152,45 @@ export function BookingDetailsModal({
   const isRecurring = booking.is_recurring;
   const isCompleted = booking.status === "completed";
   const isCancelled = booking.status === "cancelled";
+  const isNoShow = booking.status === "no_show";
   const isBenefitBooking = !!booking.customer_package_id || !!booking.customer_subscription_id;
   const comandaClosed = comandaStatus === "closed";
 
   const handleRefresh = () => {
     loadData();
     setBalanceKey(prev => prev + 1);
+  };
+
+  const retryRefund = async (paymentId: string) => {
+    setRetryingRefund(true);
+    try {
+      await supabase.from("payments").update({
+        refund_status: "pending",
+        status: "refund_pending",
+      }).eq("id", paymentId);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const resp = await fetch(`${supabaseUrl}/functions/v1/mp-refund-payment`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ payment_id: paymentId, tenant_id: tenantId }),
+      });
+      const data = await resp.json();
+      if (data.success) {
+        toast({ title: "Reembolso processado!" });
+      } else {
+        toast({ title: "Reembolso falhou novamente", variant: "destructive" });
+      }
+      handleRefresh();
+    } catch {
+      toast({ title: "Erro ao tentar reembolso", variant: "destructive" });
+    } finally {
+      setRetryingRefund(false);
+    }
   };
 
   return (
@@ -232,7 +277,7 @@ export function BookingDetailsModal({
           <CustomerBalanceAlert key={balanceKey} customerId={booking.customer_id} tenantId={tenantId} />
 
           {/* ═══════════════ SEÇÃO 2: ITENS DA COMANDA ═══════════════ */}
-          {!isRecurring && !isCancelled && (
+          {!isRecurring && !isCancelled && !isNoShow && (
             <>
               <Separator />
               <ComandaItemsSection
@@ -292,12 +337,57 @@ export function BookingDetailsModal({
             </div>
           )}
 
+          {/* ═══════════════ NO-SHOW REFUND INFO ═══════════════ */}
+          {isNoShow && paymentInfo && paymentInfo.refund_cents > 0 && (
+            <>
+              <Separator />
+              <div className="p-3 rounded-xl border space-y-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                  <span className="text-sm font-medium">Não compareceu</span>
+                </div>
+                <div className="text-xs space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Retenção:</span>
+                    <span className="font-medium text-destructive">
+                      R$ {((paymentInfo.amount_cents - paymentInfo.refund_cents) / 100).toFixed(2)} ({paymentInfo.forfeit_percent}%)
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Reembolso:</span>
+                    <span className="font-medium text-emerald-600">
+                      R$ {(paymentInfo.refund_cents / 100).toFixed(2)}
+                      {paymentInfo.refund_status === "approved" && " ✅"}
+                      {paymentInfo.refund_status === "pending" && " ⏳"}
+                      {paymentInfo.refund_status === "failed" && " ⚠️"}
+                    </span>
+                  </div>
+                </div>
+                {paymentInfo.refund_status === "failed" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full mt-2"
+                    disabled={retryingRefund}
+                    onClick={() => retryRefund(paymentInfo.id)}
+                  >
+                    {retryingRefund ? (
+                      <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Processando...</>
+                    ) : (
+                      <><RefreshCw className="h-3 w-3 mr-1" /> Tentar reembolso novamente</>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+
         </motion.div>
 
         {/* ═══════════════ AÇÕES (sticky bottom) ═══════════════ */}
         {showActions && !isRecurring && (
           <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border flex-shrink-0">
-            {!isCancelled && !isCompleted && onEdit && (
+            {!isCancelled && !isCompleted && !isNoShow && onEdit && (
               <Button size="sm" variant="outline" onClick={onEdit}>
                 <Edit className="h-4 w-4 mr-1" /> Editar
               </Button>
@@ -307,7 +397,12 @@ export function BookingDetailsModal({
                 <CheckCircle className="h-4 w-4 mr-1 text-emerald-500" /> Concluir
               </Button>
             )}
-            {!isCancelled && onStatusChange && (
+            {(booking.status === "confirmed" || booking.status === "completed") && !isNoShow && (
+              <Button size="sm" variant="outline" onClick={() => setShowNoShowDialog(true)}>
+                <AlertTriangle className="h-4 w-4 mr-1 text-amber-500" /> Faltou
+              </Button>
+            )}
+            {!isCancelled && !isNoShow && onStatusChange && (
               <Button size="sm" variant="destructive" onClick={() => { onStatusChange(booking.id, "cancelled", booking); onOpenChange(false); }}>
                 <XCircle className="h-4 w-4 mr-1" /> Cancelar
               </Button>
@@ -327,6 +422,19 @@ export function BookingDetailsModal({
             )}
           </div>
         )}
+
+        {/* No-Show Dialog */}
+        <NoShowDialog
+          open={showNoShowDialog}
+          onOpenChange={setShowNoShowDialog}
+          bookingId={booking.id}
+          tenantId={tenantId}
+          tenantSettings={tenantSettings}
+          onComplete={() => {
+            handleRefresh();
+            if (onStatusChange) onStatusChange(booking.id, "no_show", booking);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );

@@ -1786,6 +1786,7 @@ END:VCALENDAR`;
           const onlineDiscountPercent = tenantSettings.online_discount_percent || 0;
           const showCancellationForfeit = tenantSettings.show_cancellation_forfeit || false;
           const cancellationForfeitHours = tenantSettings.cancellation_forfeit_hours || 24;
+          const noShowForfeitPercent = tenantSettings.no_show_forfeit_percent ?? 30;
           const hasDiscount = onlineDiscountPercent > 0;
 
           const originalPriceCents = selectedServiceData?.price_cents || 0;
@@ -1888,7 +1889,11 @@ END:VCALENDAR`;
               {/* Cancellation forfeit disclaimer */}
               {showCancellationForfeit && (
                 <p className="text-xs text-zinc-500 mt-2 px-2">
-                  Ao confirmar, caso não compareça ou cancele com menos de {cancellationForfeitHours}h de antecedência, o valor pago não será reembolsado.
+                  {noShowForfeitPercent >= 100
+                    ? `Ao confirmar, caso não compareça ou cancele com menos de ${cancellationForfeitHours}h de antecedência, o valor pago não será reembolsado.`
+                    : noShowForfeitPercent <= 0
+                    ? `Ao confirmar, caso não compareça ou cancele com menos de ${cancellationForfeitHours}h de antecedência, entre em contato para reagendar.`
+                    : `Ao confirmar, caso não compareça ou cancele com menos de ${cancellationForfeitHours}h de antecedência, ${noShowForfeitPercent}% do valor pago será retido e o restante será reembolsado.`}
                 </p>
               )}
 
