@@ -153,6 +153,7 @@ const App = () => {
                     <Route path="caixa" element={<CashRegister />} />
                     <Route path="products" element={<Products />} />
                     <Route path="reports" element={<Reports />} />
+                    <Route path="alta-performance" element={<HighPerformance />} />
                     <Route path="settings" element={<Settings />} />
                   </Route>
                 </>

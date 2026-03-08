@@ -74,6 +74,7 @@ import {
   CalendarDays,
   AlertTriangle,
   Trophy,
+  Rocket,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { format } from "date-fns";
