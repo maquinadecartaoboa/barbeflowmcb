@@ -15,10 +15,8 @@ import { NewTenantModal } from "@/components/modals/NewTenantModal";
 import { NoTenantState } from "@/components/NoTenantState";
 import { AvailabilityBlocksManager } from "@/components/AvailabilityBlocksManager";
 import { supabase } from "@/integrations/supabase/client";
-import { OnlineDiscountSettings } from "@/components/settings/OnlineDiscountSettings";
 
-import { OwnerWeeklySummarySettings } from "@/components/settings/OwnerWeeklySummarySettings";
-import { LoyaltySettingsTab } from "@/components/settings/LoyaltySettingsTab";
+
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
