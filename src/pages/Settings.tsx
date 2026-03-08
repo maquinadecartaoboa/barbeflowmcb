@@ -1401,14 +1401,7 @@ export default function Settings() {
                     />
                   )}
 
-                  {settingsForm.watch("allow_online_payment") && (
-                    <>
-                      <OnlineDiscountSettings 
-                        currentTenant={currentTenant}
-                        onChange={(vals) => { discountSettingsRef.current = vals; }}
-                      />
-                    </>
-                  )}
+                  {/* Online Discount & No-Show settings moved to Alta Performance */}
 
                   {!mpConnected && (
                     <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-4">

@@ -150,7 +150,6 @@ const baseNavigationItems: NavItem[] = [
       { title: "Geral", url: "/app/settings?tab=general", icon: Settings },
       { title: "Aparência", url: "/app/settings?tab=appearance", icon: Palette },
       { title: "Agendamento", url: "/app/settings?tab=scheduling", icon: CalendarCheck },
-      { title: "Fidelidade", url: "/app/settings?tab=loyalty", icon: Trophy },
       { title: "Notificações", url: "/app/settings?tab=notifications", icon: MessageCircle },
       { title: "Pagamentos", url: "/app/settings?tab=payments", icon: CreditCard },
       { title: "Assinatura", url: "/app/settings?tab=billing", icon: Crown },
