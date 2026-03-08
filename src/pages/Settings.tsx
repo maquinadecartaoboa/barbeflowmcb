@@ -601,6 +601,7 @@ export default function Settings() {
             <TabsTrigger value="data">Dados</TabsTrigger>
             <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
             {isSuperAdmin && <TabsTrigger value="multi-tenant">Multi-Empresa</TabsTrigger>}
+            <TabsTrigger value="legal">Jurídico</TabsTrigger>
           </TabsList>
         </div>
 
