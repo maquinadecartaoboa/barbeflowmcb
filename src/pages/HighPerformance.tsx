@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useTenant } from "@/hooks/useTenant";
 import { useAuth } from "@/hooks/useAuth";
+import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { Rocket, DollarSign, Trophy, Shield, BarChart3, Loader2, Smartphone, ChevronRight, Info } from "lucide-react";
+import { Rocket, DollarSign, Trophy, Shield, BarChart3, Loader2, Smartphone, ChevronRight, Info, Lock, ExternalLink, MessageCircle } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
