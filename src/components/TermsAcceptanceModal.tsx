@@ -17,12 +17,10 @@ export function TermsAcceptanceModal() {
   const { currentTenant } = useTenant();
   const [accepted, setAccepted] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
-
   const settings = currentTenant?.settings as Record<string, any> | null;
   const alreadyAccepted = !!settings?.terms_accepted_at;
 
-  if (!currentTenant || alreadyAccepted || dismissed) return null;
+  if (!currentTenant || alreadyAccepted) return null;
 
   const handleAccept = async () => {
     if (!accepted) return;
@@ -46,7 +44,7 @@ export function TermsAcceptanceModal() {
 
   return (
     <Dialog open onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto [&>button]:hidden" onPointerDownOutside={(e) => e.preventDefault()}>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto [&>button.absolute]:hidden" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
