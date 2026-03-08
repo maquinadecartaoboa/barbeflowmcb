@@ -150,6 +150,7 @@ const origin = req.headers.get("origin") || Deno.env.get("FRONT_BASE_URL") || "h
       cancel_url: `${origin}${settingsPath}?tab=billing&canceled=true`,
       allow_promotion_codes: true,
       locale: "pt-BR",
+      currency: "brl",
     });
 
     logStep("Checkout session created", { sessionId: session.id });

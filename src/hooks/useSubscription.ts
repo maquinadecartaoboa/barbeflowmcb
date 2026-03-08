@@ -106,19 +106,23 @@ export function useSubscription() {
       try {
         const { data, error } = await supabase.functions.invoke("check-subscription");
         if (!error && data) {
+          // For exempt tenants, force status to active if none/canceled
+          const safeStatus = (data.status && data.status !== "none" && data.status !== "canceled")
+            ? data.status
+            : "active";
           setSubscription({
             subscribed: true,
-            status: data.status || "active",
-            plan_name: data.plan_name || "profissional",
+            status: safeStatus,
+            plan_name: data.plan_name || "ilimitado",
             subscription_end: data.subscription_end,
             trial_end: data.trial_end,
             cancel_at_period_end: data.cancel_at_period_end,
           });
         } else {
-          setSubscription({ subscribed: true, status: "active", plan_name: "profissional" });
+          setSubscription({ subscribed: true, status: "active", plan_name: "ilimitado" });
         }
       } catch {
-        setSubscription({ subscribed: true, status: "active", plan_name: "profissional" });
+        setSubscription({ subscribed: true, status: "active", plan_name: "ilimitado" });
       }
       setLoading(false);
       return;
