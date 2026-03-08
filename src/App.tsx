@@ -140,6 +140,8 @@ const App = () => {
                   <Route path={`${dashPrefix}/reset-password`} element={<ResetPassword />} />
                   
                   <Route path={`${dashPrefix}/onboarding`} element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+                  <Route path={`${dashPrefix}/questionnaire`} element={<ProtectedRoute><Questionnaire /></ProtectedRoute>} />
+                  <Route path={`${dashPrefix}/onboarding-wizard`} element={<ProtectedRoute><OnboardingWizard /></ProtectedRoute>} />
                   
                   <Route path={dashPrefix || '/'} element={<ProtectedAppShell />}>
                     <Route path={dashPrefix ? 'dashboard' : 'dashboard'} element={<Dashboard />} />
