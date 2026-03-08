@@ -9,7 +9,8 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
 import logoBranca from "@/assets/modoGESTOR_branca.png";
-import { trackEvent } from "@/utils/metaTracking";
+import { trackCompleteRegistration, getTrackingData } from "@/lib/tracking";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
