@@ -152,12 +152,45 @@ export function BookingDetailsModal({
   const isRecurring = booking.is_recurring;
   const isCompleted = booking.status === "completed";
   const isCancelled = booking.status === "cancelled";
+  const isNoShow = booking.status === "no_show";
   const isBenefitBooking = !!booking.customer_package_id || !!booking.customer_subscription_id;
   const comandaClosed = comandaStatus === "closed";
 
   const handleRefresh = () => {
     loadData();
     setBalanceKey(prev => prev + 1);
+  };
+
+  const retryRefund = async (paymentId: string) => {
+    setRetryingRefund(true);
+    try {
+      await supabase.from("payments").update({
+        refund_status: "pending",
+        status: "refund_pending",
+      }).eq("id", paymentId);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const resp = await fetch(`${supabaseUrl}/functions/v1/mp-refund-payment`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ payment_id: paymentId, tenant_id: tenantId }),
+      });
+      const data = await resp.json();
+      if (data.success) {
+        toast({ title: "Reembolso processado!" });
+      } else {
+        toast({ title: "Reembolso falhou novamente", variant: "destructive" });
+      }
+      handleRefresh();
+    } catch {
+      toast({ title: "Erro ao tentar reembolso", variant: "destructive" });
+    } finally {
+      setRetryingRefund(false);
+    }
   };
 
   return (
