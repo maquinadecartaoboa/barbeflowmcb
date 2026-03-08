@@ -2399,9 +2399,9 @@ END:VCALENDAR`;
 
       {/* Legal footer */}
       <div className="text-center py-4 text-[10px] text-zinc-700">
-        <a href="/termos-agendamento" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors">Termos</a>
+        <a href={getPublicUrl("/termos-agendamento")} target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors">Termos</a>
         <span className="mx-1">·</span>
-        <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors">Privacidade</a>
+        <a href={getPublicUrl("/privacidade")} target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors">Privacidade</a>
       </div>
     </div>
   );
