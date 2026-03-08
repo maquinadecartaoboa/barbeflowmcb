@@ -61,7 +61,7 @@ const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminTenants = lazy(() => import("./pages/admin/AdminTenants"));
 const AdminTenantDetail = lazy(() => import("./pages/admin/AdminTenantDetail"));
-const AdminTracking = lazy(() => import("./pages/admin/AdminTracking"));
+
 
 // Lazy-loaded components
 const AuthWatcher = lazy(() => import("./components/AuthWatcher"));
