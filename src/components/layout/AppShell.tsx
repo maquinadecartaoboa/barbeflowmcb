@@ -74,6 +74,7 @@ import {
   CalendarDays,
   AlertTriangle,
   Trophy,
+  Rocket,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { format } from "date-fns";
@@ -140,6 +141,7 @@ const baseNavigationItems: NavItem[] = [
     ]
   },
   { title: "Relatórios", url: "/app/reports", icon: BarChart3 },
+  { title: "Alta Performance", url: "/app/alta-performance", icon: Rocket },
   { 
     title: "Configurações", 
     url: "/app/settings", 
@@ -148,7 +150,6 @@ const baseNavigationItems: NavItem[] = [
       { title: "Geral", url: "/app/settings?tab=general", icon: Settings },
       { title: "Aparência", url: "/app/settings?tab=appearance", icon: Palette },
       { title: "Agendamento", url: "/app/settings?tab=scheduling", icon: CalendarCheck },
-      { title: "Fidelidade", url: "/app/settings?tab=loyalty", icon: Trophy },
       { title: "Notificações", url: "/app/settings?tab=notifications", icon: MessageCircle },
       { title: "Pagamentos", url: "/app/settings?tab=payments", icon: CreditCard },
       { title: "Assinatura", url: "/app/settings?tab=billing", icon: Crown },

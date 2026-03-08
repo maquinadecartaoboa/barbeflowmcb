@@ -49,6 +49,7 @@ const Settings = lazy(() => import("./pages/Settings"));
 const Products = lazy(() => import("./pages/Products"));
 const RecurringClients = lazy(() => import("./pages/RecurringClients"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
+const HighPerformance = lazy(() => import("./pages/HighPerformance"));
 
 // Lazy-loaded components
 const AuthWatcher = lazy(() => import("./components/AuthWatcher"));
@@ -152,6 +153,7 @@ const App = () => {
                     <Route path="caixa" element={<CashRegister />} />
                     <Route path="products" element={<Products />} />
                     <Route path="reports" element={<Reports />} />
+                    <Route path="alta-performance" element={<HighPerformance />} />
                     <Route path="settings" element={<Settings />} />
                   </Route>
                 </>

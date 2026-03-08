@@ -1,5 +1,5 @@
 import mpIcon from "@/assets/mercadopago-icon.jpg";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useWhatsAppStatus } from "@/hooks/useWhatsAppStatus";
 import { CustomerImportExport } from "@/components/CustomerImportExport";
@@ -15,10 +15,8 @@ import { NewTenantModal } from "@/components/modals/NewTenantModal";
 import { NoTenantState } from "@/components/NoTenantState";
 import { AvailabilityBlocksManager } from "@/components/AvailabilityBlocksManager";
 import { supabase } from "@/integrations/supabase/client";
-import { OnlineDiscountSettings } from "@/components/settings/OnlineDiscountSettings";
 
-import { OwnerWeeklySummarySettings } from "@/components/settings/OwnerWeeklySummarySettings";
-import { LoyaltySettingsTab } from "@/components/settings/LoyaltySettingsTab";
+
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -155,7 +153,7 @@ export default function Settings() {
   const [mpLoading, setMpLoading] = useState(true);
   const [mpConnecting, setMpConnecting] = useState(false);
   const [mpDisconnecting, setMpDisconnecting] = useState(false);
-  const discountSettingsRef = useRef<{ online_discount_percent: number; show_cancellation_forfeit: boolean; cancellation_forfeit_hours: number; no_show_forfeit_percent: number } | null>(null);
+  
 
   const tenantForm = useForm<TenantFormData>({
     resolver: zodResolver(tenantSchema),
@@ -545,7 +543,7 @@ export default function Settings() {
             cycle_reminder_days: cycleReminderDays,
             weekly_summary_enabled,
             recurring_reminder_enabled,
-            ...(discountSettingsRef.current || {}),
+            
           }
         })
         .eq('id', currentTenant.id);
@@ -1158,10 +1156,7 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
-        {/* Loyalty Card - Standalone Tab */}
-        <TabsContent value="loyalty">
-          <LoyaltySettingsTab />
-        </TabsContent>
+        {/* Loyalty moved to Alta Performance */}
 
         {/* Notifications Settings */}
         <TabsContent value="notifications">
@@ -1226,8 +1221,7 @@ export default function Settings() {
               </Form>
             </CardContent>
           </Card>
-
-          <OwnerWeeklySummarySettings currentTenant={currentTenant} />
+          {/* Owner Weekly Summary moved to Alta Performance */}
         </TabsContent>
 
         {/* Payments Settings */}
@@ -1405,14 +1399,7 @@ export default function Settings() {
                     />
                   )}
 
-                  {settingsForm.watch("allow_online_payment") && (
-                    <>
-                      <OnlineDiscountSettings 
-                        currentTenant={currentTenant}
-                        onChange={(vals) => { discountSettingsRef.current = vals; }}
-                      />
-                    </>
-                  )}
+                  {/* Online Discount & No-Show settings moved to Alta Performance */}
 
                   {!mpConnected && (
                     <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-4">
