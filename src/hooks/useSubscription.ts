@@ -21,12 +21,13 @@ const SHARED_FEATURES = [
   "Pacotes e assinaturas",
   "Pagamentos online",
   "Relatórios",
-  "IA para melhoria de imagens",
-  "Order bump de produtos",
   "Proteção contra cancelamentos",
   "Caixa e controle financeiro diário",
   "Comissões automáticas por profissional",
   "App instalável no celular (PWA)",
+  "Desconto Inteligente (pagamento online)",
+  "Resumo Semanal por WhatsApp",
+  "Proteção Anti-Falta (no-show)",
 ];
 
 export const PLANS = {
@@ -70,6 +71,7 @@ export const PLANS = {
       "Foto Profissional (IA de imagem)",
       "Texto que Vende (IA de texto)",
       "Vitrine Inteligente (order bump)",
+      "Cartão Fidelidade Digital (incluso)",
       "Profissionais ilimitados sem custo adicional",
       "Taxa de transação reduzida (1,5%)",
     ],
