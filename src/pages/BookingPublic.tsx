@@ -1786,6 +1786,7 @@ END:VCALENDAR`;
           const onlineDiscountPercent = tenantSettings.online_discount_percent || 0;
           const showCancellationForfeit = tenantSettings.show_cancellation_forfeit || false;
           const cancellationForfeitHours = tenantSettings.cancellation_forfeit_hours || 24;
+          const noShowForfeitPercent = tenantSettings.no_show_forfeit_percent ?? 30;
           const hasDiscount = onlineDiscountPercent > 0;
 
           const originalPriceCents = selectedServiceData?.price_cents || 0;
