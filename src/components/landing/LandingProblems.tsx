@@ -1,80 +1,72 @@
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
-import { MessageSquare, UserX, BarChart3, RefreshCw } from "lucide-react";
+import { MessageSquare, UserX, FileQuestion, UserMinus } from "lucide-react";
 
 const dores = [
   {
     icon: MessageSquare,
-    title: "Passa o dia no WhatsApp",
-    desc: '"Tem horário?" "Que horas?" "Qual preço?" — enquanto poderia estar atendendo.',
-    accent: "from-blue-500/10 to-blue-600/5",
-    iconColor: "text-blue-400",
+    title: "O dia todo no WhatsApp",
+    desc: '"Tem horário amanhã?" "Que horas?" "Qual preço?" — você responde 50 vezes por dia enquanto poderia estar atendendo.',
+    span: "sm:col-span-7",
   },
   {
     icon: UserX,
     title: "Cliente marca e não aparece",
-    desc: "Cadeira vazia = dinheiro perdido. E você nem pode cobrar.",
-    accent: "from-red-500/10 to-red-600/5",
-    iconColor: "text-red-400",
+    desc: "Cadeira vazia, horário perdido, dinheiro que não volta. E você não tem como cobrar.",
+    span: "sm:col-span-5",
   },
   {
-    icon: BarChart3,
-    title: "Não sabe quanto fatura",
-    desc: "Comissão no chute, controle no papel. No fim do mês a conta não fecha.",
-    accent: "from-amber-500/10 to-amber-600/5",
-    iconColor: "text-amber-400",
+    icon: FileQuestion,
+    title: "Controle financeiro no escuro",
+    desc: "Não sabe quanto cada barbeiro faturou, comissão no chute, e no fim do mês a conta não fecha.",
+    span: "sm:col-span-5",
   },
   {
-    icon: RefreshCw,
+    icon: UserMinus,
     title: "Perde cliente sem perceber",
-    desc: "Aquele que vinha todo mês sumiu. E você nem notou.",
-    accent: "from-violet-500/10 to-violet-600/5",
-    iconColor: "text-violet-400",
+    desc: "Aquele que vinha todo mês sumiu. Você não tem como saber quem parou de voltar — até que é tarde demais.",
+    span: "sm:col-span-7",
   },
 ];
 
 export default function LandingProblems() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-60px" });
+  const inView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
     <section className="py-24 sm:py-32 px-5 sm:px-8 relative" ref={ref}>
       <div className="max-w-[1100px] mx-auto">
-        {/* Section header */}
+        {/* Heading */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5 }}
-          className="text-center mb-16"
+          className="mb-14 sm:mb-16 max-w-2xl"
         >
-          <span className="text-[#d4a843] text-xs font-semibold tracking-[0.2em] uppercase mb-4 block">
-            O problema
-          </span>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight max-w-xl mx-auto">
-            Se isso é sua rotina, você precisa do modoGESTOR.
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight">
+            <span className="text-white">Se alguma dessas situações é a sua rotina,</span>
+            <br />
+            <span className="text-zinc-400">a gente precisa conversar.</span>
           </h2>
         </motion.div>
 
-        {/* Cards */}
-        <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+        {/* Asymmetric grid: 12-col base */}
+        <div className="grid sm:grid-cols-12 gap-3 sm:gap-4">
           {dores.map((d, i) => {
             const Icon = d.icon;
             return (
               <motion.div
                 key={d.title}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 24 }}
                 animate={inView ? { opacity: 1, y: 0 } : {}}
-                transition={{ duration: 0.5, delay: 0.1 + i * 0.08 }}
-                className="group relative rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-7 hover:border-white/[0.1] transition-all duration-500 hover:bg-white/[0.03] overflow-hidden"
+                transition={{ duration: 0.5, delay: 0.12 + i * 0.1 }}
+                className={`${d.span} group relative rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-8 hover:border-white/[0.12] transition-all duration-300 overflow-hidden`}
               >
-                {/* Accent gradient */}
-                <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl ${d.accent} rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
-
                 <div className="relative">
-                  <div className={`w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-4 ${d.iconColor}`}>
+                  <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-5 text-zinc-400">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="text-[15px] font-semibold text-white mb-2">{d.title}</h3>
+                  <h3 className="text-lg font-semibold text-white mb-2">{d.title}</h3>
                   <p className="text-sm text-zinc-500 leading-relaxed">{d.desc}</p>
                 </div>
               </motion.div>

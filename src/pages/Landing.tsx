@@ -9,6 +9,7 @@ import LandingProblems from "@/components/landing/LandingProblems";
 import LandingSolutions from "@/components/landing/LandingSolutions";
 import LandingHowItWorks from "@/components/landing/LandingHowItWorks";
 import LandingDifferentials from "@/components/landing/LandingDifferentials";
+import LandingMidCTA from "@/components/landing/LandingMidCTA";
 import LandingTestimonials from "@/components/landing/LandingTestimonials";
 import LandingComparison from "@/components/landing/LandingComparison";
 import LandingPricing from "@/components/landing/LandingPricing";
@@ -51,6 +52,7 @@ const Landing = () => {
 
       <LandingHowItWorks />
       <LandingDifferentials />
+      <LandingMidCTA />
 
       <div className="h-px bg-gradient-to-r from-transparent via-white/[0.04] to-transparent" />
 
