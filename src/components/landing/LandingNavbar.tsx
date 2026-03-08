@@ -25,7 +25,7 @@ export default function LandingNavbar() {
     >
       <div className="max-w-[1200px] mx-auto px-5 sm:px-8 flex items-center justify-between h-16">
         <a href="/" className="shrink-0">
-          <img src={logoBranca} alt="modoGESTOR" className="h-[20px] opacity-90" />
+          <img src={logoBranca} alt="modoGESTOR" className="h-[28px] sm:h-[32px]" />
         </a>
 
         <div className="flex items-center gap-2 sm:gap-3">
