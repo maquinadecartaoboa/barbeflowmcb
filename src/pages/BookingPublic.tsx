@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { isCustomDomain } from "@/lib/hostname";
+import { isCustomDomain, getPublicUrl } from "@/lib/hostname";
 import { useTenantBranding } from "@/hooks/useTenantBranding";
 import { optimizedImageUrl } from "@/lib/imageOptimizer";
 import { useToast } from "@/hooks/use-toast";
