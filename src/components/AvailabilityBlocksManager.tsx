@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -36,22 +36,23 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { 
-  Plus, 
-  Calendar, 
+import {
+  Plus,
+  Calendar,
   CalendarDays,
-  Clock, 
-  Trash2, 
+  Clock,
+  Trash2,
   Loader2,
   CalendarOff,
-  Ban,
-  X
+  Lock,
+  X,
 } from "lucide-react";
-import { parseISO, isBefore, startOfDay } from "date-fns";
+import { parseISO, isBefore, startOfDay, format } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { ptBR } from "date-fns/locale";
 
 type BlockMode = "dates" | "weekdays";
+type RepeatMode = "dates" | "weekdays" | "everyday";
 
 const WEEKDAY_LABELS = [
   { value: "0", short: "Dom", full: "Domingo" },
@@ -80,8 +81,98 @@ interface Staff {
   name: string;
 }
 
+interface BlockPattern {
+  key: string;
+  startTime: string;
+  endTime: string;
+  staffId: string | null;
+  staffName: string;
+  reason: string | null;
+  dates: string[];
+  blockIds: string[];
+  isAllDay: boolean;
+  lastDate: string;
+}
+
 interface AvailabilityBlocksManagerProps {
   tenantId: string;
+}
+
+/* ── Helper: detect weekday pattern ── */
+function detectWeekdays(dates: string[]): string {
+  const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+  for (const d of dates) {
+    const dow = new Date(d + "T12:00:00").getDay();
+    dayCounts[dow]++;
+  }
+
+  const activeDays = dayCounts
+    .map((count, i) => ({ day: i, count }))
+    .filter((d) => d.count > 0);
+
+  const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+  const hasWeekdays = [1, 2, 3, 4, 5].every((d) => dayCounts[d] > 0);
+  const onlyWeekdays = hasWeekdays && !dayCounts[0] && !dayCounts[6];
+  const onlySunday = dayCounts[0] > 0 && activeDays.length === 1;
+  const onlySaturday = dayCounts[6] > 0 && activeDays.length === 1;
+  const everyday = activeDays.length === 7;
+
+  if (everyday) return "Todos os dias";
+  if (onlyWeekdays) return "Seg a Sex";
+  if (onlySunday) return "Domingos";
+  if (onlySaturday) return "Sábados";
+
+  return activeDays.map((d) => dayNames[d.day]).join(", ");
+}
+
+/* ── Group blocks into patterns ── */
+function groupBlocksIntoPatterns(blocks: Block[], staff: Staff[]): { recurring: BlockPattern[]; single: BlockPattern[] } {
+  const patterns = new Map<string, BlockPattern>();
+  const getStaffName = (staffId: string | null) => {
+    if (!staffId) return "Todos os profissionais";
+    return staff.find((s) => s.id === staffId)?.name || "Profissional";
+  };
+
+  for (const block of blocks) {
+    const start = parseISO(block.starts_at);
+    const end = parseISO(block.ends_at);
+
+    const startTime = formatInTimeZone(start, TIMEZONE, "HH:mm");
+    const endTime = formatInTimeZone(end, TIMEZONE, "HH:mm");
+    const dateStr = formatInTimeZone(start, TIMEZONE, "yyyy-MM-dd");
+
+    const durationHours = (end.getTime() - start.getTime()) / 3600000;
+    const isAllDay = durationHours >= 20;
+
+    const key = `${startTime}-${endTime}-${block.staff_id || "all"}-${block.reason || ""}`;
+
+    if (!patterns.has(key)) {
+      patterns.set(key, {
+        key,
+        startTime,
+        endTime,
+        staffId: block.staff_id,
+        staffName: getStaffName(block.staff_id),
+        reason: block.reason,
+        dates: [],
+        blockIds: [],
+        isAllDay,
+        lastDate: dateStr,
+      });
+    }
+
+    const p = patterns.get(key)!;
+    p.dates.push(dateStr);
+    p.blockIds.push(block.id);
+    if (dateStr > p.lastDate) p.lastDate = dateStr;
+  }
+
+  const all = [...patterns.values()];
+  const recurring = all.filter((p) => p.dates.length > 3).sort((a, b) => b.dates.length - a.dates.length);
+  const single = all.filter((p) => p.dates.length <= 3);
+
+  return { recurring, single };
 }
 
 export function AvailabilityBlocksManager({ tenantId }: AvailabilityBlocksManagerProps) {
@@ -89,48 +180,21 @@ export function AvailabilityBlocksManager({ tenantId }: AvailabilityBlocksManage
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  
+
   // Form state
-  const [mode, setMode] = useState<BlockMode>("dates");
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>("weekdays");
   const [dates, setDates] = useState<string[]>([]);
   const [dateInput, setDateInput] = useState("");
   const [selectedWeekdays, setSelectedWeekdays] = useState<string[]>([]);
-  const [weeksAhead, setWeeksAhead] = useState("4");
-  const [isFullDay, setIsFullDay] = useState(true);
-  const [startTime, setStartTime] = useState("09:00");
-  const [endTime, setEndTime] = useState("18:00");
+  const [duration, setDuration] = useState("26"); // weeks
+  const [isFullDay, setIsFullDay] = useState(false);
+  const [startTime, setStartTime] = useState("08:00");
+  const [endTime, setEndTime] = useState("09:00");
   const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const [reason, setReason] = useState("");
-
-  const addDate = () => {
-    if (dateInput && !dates.includes(dateInput)) {
-      setDates(prev => [...prev, dateInput].sort());
-      setDateInput("");
-    }
-  };
-
-  const removeDate = (d: string) => setDates(prev => prev.filter(x => x !== d));
-
-  const formatDateBR = (d: string) => {
-    const [y, m, day] = d.split("-");
-    return `${day}/${m}/${y}`;
-  };
-
-  const generateWeekdayDates = (): string[] => {
-    const weeks = parseInt(weeksAhead) || 4;
-    const result: string[] = [];
-    const today = new Date();
-    for (let i = 0; i < weeks * 7; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      if (selectedWeekdays.includes(d.getDay().toString())) {
-        result.push(d.toISOString().split("T")[0]);
-      }
-    }
-    return result;
-  };
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -139,79 +203,93 @@ export function AvailabilityBlocksManager({ tenantId }: AvailabilityBlocksManage
   const loadData = async () => {
     try {
       setLoading(true);
-      
       const [blocksResult, staffResult] = await Promise.all([
         supabase
-          .from('blocks')
-          .select('*')
-          .eq('tenant_id', tenantId)
-          .order('starts_at', { ascending: true }),
+          .from("blocks")
+          .select("*")
+          .eq("tenant_id", tenantId)
+          .gte("starts_at", new Date().toISOString())
+          .order("starts_at", { ascending: true }),
         supabase
-          .from('staff')
-          .select('id, name')
-          .eq('tenant_id', tenantId)
-          .eq('active', true)
-          .order('name')
+          .from("staff")
+          .select("id, name")
+          .eq("tenant_id", tenantId)
+          .eq("active", true)
+          .order("name"),
       ]);
 
       if (blocksResult.error) throw blocksResult.error;
       if (staffResult.error) throw staffResult.error;
 
-      // Filter out past blocks
-      const today = startOfDay(new Date());
-      const futureBlocks = (blocksResult.data || []).filter(block => {
-        const blockDate = parseISO(block.starts_at);
-        return !isBefore(blockDate, today);
-      });
-
-      setBlocks(futureBlocks);
+      setBlocks(blocksResult.data || []);
       setStaff(staffResult.data || []);
     } catch (error) {
-      console.error('Error loading blocks:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar bloqueios",
-        variant: "destructive",
-      });
+      console.error("Error loading blocks:", error);
+      toast({ title: "Erro", description: "Erro ao carregar bloqueios", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
+  const { recurring, single } = useMemo(() => groupBlocksIntoPatterns(blocks, staff), [blocks, staff]);
+
+  /* ── Create block ── */
+  const addDate = () => {
+    if (dateInput && !dates.includes(dateInput)) {
+      setDates((prev) => [...prev, dateInput].sort());
+      setDateInput("");
+    }
+  };
+
+  const removeDate = (d: string) => setDates((prev) => prev.filter((x) => x !== d));
+
+  const generateDates = (): string[] => {
+    const weeks = parseInt(duration) || 26;
+    const result: string[] = [];
+    const today = new Date();
+
+    for (let i = 0; i < weeks * 7; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      const dow = d.getDay().toString();
+
+      if (repeatMode === "everyday") {
+        result.push(d.toISOString().split("T")[0]);
+      } else if (repeatMode === "weekdays" && selectedWeekdays.includes(dow)) {
+        result.push(d.toISOString().split("T")[0]);
+      }
+    }
+    return result;
+  };
+
+  const totalBlocks = repeatMode === "dates" ? dates.length : generateDates().length;
+
   const resetForm = () => {
-    setMode("dates");
+    setRepeatMode("weekdays");
     setDates([]);
     setDateInput("");
     setSelectedWeekdays([]);
-    setWeeksAhead("4");
-    setIsFullDay(true);
-    setStartTime("09:00");
-    setEndTime("18:00");
+    setDuration("26");
+    setIsFullDay(false);
+    setStartTime("08:00");
+    setEndTime("09:00");
     setSelectedStaff("all");
     setReason("");
   };
 
-  const totalBlocks = mode === "dates" ? dates.length : generateWeekdayDates().length;
-
   const handleCreateBlock = async () => {
-    const targetDates = mode === "dates" ? dates : generateWeekdayDates();
-
+    const targetDates = repeatMode === "dates" ? dates : generateDates();
     if (targetDates.length === 0) {
-      toast({
-        title: "Erro",
-        description: "Selecione ao menos uma data ou dia da semana",
-        variant: "destructive",
-      });
+      toast({ title: "Selecione ao menos uma data ou dia da semana", variant: "destructive" });
       return;
     }
 
     try {
       setSaving(true);
-
       const sTime = isFullDay ? "00:00" : startTime;
       const eTime = isFullDay ? "23:59" : endTime;
 
-      const rows = targetDates.map(date => ({
+      const rows = targetDates.map((date) => ({
         tenant_id: tenantId,
         staff_id: selectedStaff === "all" ? null : selectedStaff,
         starts_at: `${date}T${sTime}:00-03:00`,
@@ -219,79 +297,64 @@ export function AvailabilityBlocksManager({ tenantId }: AvailabilityBlocksManage
         reason: reason || null,
       }));
 
-      const { error } = await supabase.from('blocks').insert(rows);
-      if (error) throw error;
+      // Insert in batches of 500
+      for (let i = 0; i < rows.length; i += 500) {
+        const batch = rows.slice(i, i + 500);
+        const { error } = await supabase.from("blocks").insert(batch);
+        if (error) throw error;
+      }
 
-      toast({
-        title: "Bloqueio criado",
-        description: `${targetDates.length} dia(s) bloqueado(s) com sucesso.`,
-      });
-
+      toast({ title: "Bloqueio criado", description: `${targetDates.length} dia(s) bloqueado(s)` });
       resetForm();
       setDialogOpen(false);
       loadData();
     } catch (error: any) {
-      console.error('Error creating block:', error);
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao criar bloqueio",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: error.message || "Erro ao criar bloqueio", variant: "destructive" });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDeleteBlock = async (blockId: string) => {
+  /* ── Delete pattern (bulk) ── */
+  const handleDeletePattern = async (pattern: BlockPattern) => {
     try {
-      const { error } = await supabase
-        .from('blocks')
-        .delete()
-        .eq('id', blockId);
+      setDeleting(pattern.key);
+      // Delete in batches of 500
+      for (let i = 0; i < pattern.blockIds.length; i += 500) {
+        const batch = pattern.blockIds.slice(i, i + 500);
+        const { error } = await supabase.from("blocks").delete().in("id", batch);
+        if (error) throw error;
+      }
 
-      if (error) throw error;
-
-      toast({
-        title: "Bloqueio removido",
-        description: "O bloqueio foi removido com sucesso.",
-      });
-
+      toast({ title: `${pattern.dates.length} bloqueios removidos` });
       loadData();
     } catch (error: any) {
-      console.error('Error deleting block:', error);
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao remover bloqueio",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: error.message || "Erro ao excluir", variant: "destructive" });
+    } finally {
+      setDeleting(null);
     }
   };
 
-  const formatBlockDateTime = (startsAt: string, endsAt: string) => {
-    const start = parseISO(startsAt);
-    const end = parseISO(endsAt);
-    
-    const startH = formatInTimeZone(start, TIMEZONE, "HH");
-    const startM = formatInTimeZone(start, TIMEZONE, "mm");
-    const endH = formatInTimeZone(end, TIMEZONE, "HH");
-    const endM = formatInTimeZone(end, TIMEZONE, "mm");
-    
-    const isFullDay = startH === "00" && startM === "00" && endH === "23" && endM === "59";
-    
-    const dateStr = formatInTimeZone(start, TIMEZONE, "EEEE, d 'de' MMMM", { locale: ptBR });
-    
-    if (isFullDay) {
-      return { date: dateStr, time: "Dia inteiro", isFullDay: true };
+  /* ── Delete single block ── */
+  const handleDeleteSingle = async (blockId: string) => {
+    try {
+      const { error } = await supabase.from("blocks").delete().eq("id", blockId);
+      if (error) throw error;
+      toast({ title: "Bloqueio removido" });
+      loadData();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message || "Erro ao remover", variant: "destructive" });
     }
-    
-    const timeStr = `${startH}:${startM} - ${endH}:${endM}`;
-    return { date: dateStr, time: timeStr, isFullDay: false };
   };
 
-  const getStaffName = (staffId: string | null) => {
-    if (!staffId) return "Todos os profissionais";
-    const staffMember = staff.find(s => s.id === staffId);
-    return staffMember?.name || "Profissional";
+  const formatDateBR = (d: string) => {
+    const [y, m, day] = d.split("-");
+    return `${day}/${m}/${y}`;
+  };
+
+  const formatLastDateBR = (d: string) => {
+    const [y, m, day] = d.split("-");
+    return `${day}/${m}/${y}`;
   };
 
   if (loading) {
@@ -304,16 +367,14 @@ export function AvailabilityBlocksManager({ tenantId }: AvailabilityBlocksManage
 
   return (
     <div className="space-y-6">
-      {/* Header with Add Button */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-medium">Bloqueios de Agenda</h3>
-          <p className="text-sm text-muted-foreground">
-            Feche dias inteiros ou horários específicos
-          </p>
+          <p className="text-sm text-muted-foreground">Gerencie os horários bloqueados do seu estabelecimento</p>
         </div>
-        
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+
+        <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -322,48 +383,99 @@ export function AvailabilityBlocksManager({ tenantId }: AvailabilityBlocksManage
           </DialogTrigger>
           <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Criar Bloqueio</DialogTitle>
-              <DialogDescription>
-                Bloqueie um ou mais períodos para impedir agendamentos
-              </DialogDescription>
+              <DialogTitle>Novo Bloqueio</DialogTitle>
+              <DialogDescription>Bloqueie horários para impedir agendamentos</DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4 py-2">
-              {/* Mode selector */}
+              {/* Type: full day or specific time */}
+              <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium">Dia inteiro</Label>
+                  <p className="text-xs text-muted-foreground">Bloquear o dia completo</p>
+                </div>
+                <Switch checked={isFullDay} onCheckedChange={setIsFullDay} />
+              </div>
+
+              {/* Time */}
+              {!isFullDay && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Início</Label>
+                    <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Fim</Label>
+                    <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                  </div>
+                </div>
+              )}
+
+              {/* Staff */}
+              <div className="space-y-1.5">
+                <Label className="text-sm">Profissional</Label>
+                <Select value={selectedStaff} onValueChange={setSelectedStaff}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os profissionais</SelectItem>
+                    {staff.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Repetition */}
               <div>
-                <Label className="mb-2 block">Tipo de bloqueio</Label>
-                <div className="grid grid-cols-2 gap-2">
+                <Label className="text-sm mb-2 block">Repetição</Label>
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
-                    onClick={() => setMode("dates")}
-                    className={`flex items-center gap-2 p-3 rounded-lg border text-sm font-medium transition-all ${
-                      mode === "dates"
+                    onClick={() => setRepeatMode("dates")}
+                    className={`p-2.5 rounded-lg border text-xs font-medium transition-all text-center ${
+                      repeatMode === "dates"
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-border bg-card text-muted-foreground hover:border-primary/50"
                     }`}
                   >
-                    <Calendar className="h-4 w-4" />
-                    Datas específicas
+                    <Calendar className="h-4 w-4 mx-auto mb-1" />
+                    Data específica
                   </button>
                   <button
                     type="button"
-                    onClick={() => setMode("weekdays")}
-                    className={`flex items-center gap-2 p-3 rounded-lg border text-sm font-medium transition-all ${
-                      mode === "weekdays"
+                    onClick={() => setRepeatMode("weekdays")}
+                    className={`p-2.5 rounded-lg border text-xs font-medium transition-all text-center ${
+                      repeatMode === "weekdays"
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-border bg-card text-muted-foreground hover:border-primary/50"
                     }`}
                   >
-                    <CalendarDays className="h-4 w-4" />
+                    <CalendarDays className="h-4 w-4 mx-auto mb-1" />
                     Dias da semana
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRepeatMode("everyday")}
+                    className={`p-2.5 rounded-lg border text-xs font-medium transition-all text-center ${
+                      repeatMode === "everyday"
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                    }`}
+                  >
+                    <CalendarOff className="h-4 w-4 mx-auto mb-1" />
+                    Todos os dias
                   </button>
                 </div>
               </div>
 
               {/* Dates mode */}
-              {mode === "dates" && (
+              {repeatMode === "dates" && (
                 <div className="space-y-2">
-                  <Label>Datas</Label>
+                  <Label className="text-sm">Datas</Label>
                   <div className="flex gap-2">
                     <Input
                       type="date"
@@ -371,7 +483,12 @@ export function AvailabilityBlocksManager({ tenantId }: AvailabilityBlocksManage
                       onChange={(e) => setDateInput(e.target.value)}
                       min={formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd")}
                       className="flex-1"
-                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addDate(); }}}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addDate();
+                        }
+                      }}
                     />
                     <Button type="button" variant="outline" size="sm" onClick={addDate} disabled={!dateInput}>
                       Adicionar
@@ -379,7 +496,7 @@ export function AvailabilityBlocksManager({ tenantId }: AvailabilityBlocksManage
                   </div>
                   {dates.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
-                      {dates.map(d => (
+                      {dates.map((d) => (
                         <Badge key={d} variant="secondary" className="gap-1 pr-1">
                           {formatDateBR(d)}
                           <button onClick={() => removeDate(d)} className="hover:text-destructive transition-colors">
@@ -393,17 +510,17 @@ export function AvailabilityBlocksManager({ tenantId }: AvailabilityBlocksManage
               )}
 
               {/* Weekdays mode */}
-              {mode === "weekdays" && (
+              {repeatMode === "weekdays" && (
                 <div className="space-y-3">
                   <div>
-                    <Label className="mb-2 block">Dias da semana</Label>
+                    <Label className="text-sm mb-2 block">Dias da semana</Label>
                     <ToggleGroup
                       type="multiple"
                       value={selectedWeekdays}
                       onValueChange={setSelectedWeekdays}
                       className="flex flex-wrap gap-1"
                     >
-                      {WEEKDAY_LABELS.map(w => (
+                      {WEEKDAY_LABELS.map((w) => (
                         <ToggleGroupItem
                           key={w.value}
                           value={w.value}
@@ -414,79 +531,36 @@ export function AvailabilityBlocksManager({ tenantId }: AvailabilityBlocksManage
                       ))}
                     </ToggleGroup>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Repetir por quantas semanas?</Label>
-                    <Select value={weeksAhead} onValueChange={setWeeksAhead}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">1 semana</SelectItem>
-                        <SelectItem value="2">2 semanas</SelectItem>
-                        <SelectItem value="4">4 semanas</SelectItem>
-                        <SelectItem value="8">8 semanas</SelectItem>
-                        <SelectItem value="12">12 semanas</SelectItem>
-                        <SelectItem value="52">Sempre</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {selectedWeekdays.length > 0 && (
+                </div>
+              )}
+
+              {/* Duration (for weekdays and everyday) */}
+              {(repeatMode === "weekdays" || repeatMode === "everyday") && (
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Até quando</Label>
+                  <Select value={duration} onValueChange={setDuration}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="13">3 meses</SelectItem>
+                      <SelectItem value="26">6 meses</SelectItem>
+                      <SelectItem value="52">12 meses</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {(repeatMode === "weekdays" ? selectedWeekdays.length > 0 : true) && (
                     <p className="text-xs text-muted-foreground">
-                      {weeksAhead === "52" ? "Bloqueio permanente" : `${generateWeekdayDates().length} dia(s) serão bloqueados`}: {selectedWeekdays.map(w => WEEKDAY_LABELS[parseInt(w)].full).join(", ")}
+                      {generateDates().length} dia(s) serão bloqueados
                     </p>
                   )}
                 </div>
               )}
 
-              {/* Full Day Toggle */}
-              <div className="flex items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <Label className="text-base">Dia inteiro</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Bloquear o dia completo
-                  </p>
-                </div>
-                <Switch
-                  checked={isFullDay}
-                  onCheckedChange={setIsFullDay}
-                />
-              </div>
-
-              {/* Time Selection */}
-              {!isFullDay && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Início</Label>
-                    <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Fim</Label>
-                    <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-                  </div>
-                </div>
-              )}
-
-              {/* Staff Selection */}
-              <div className="space-y-2">
-                <Label>Profissional</Label>
-                <Select value={selectedStaff} onValueChange={setSelectedStaff}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o profissional" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os profissionais</SelectItem>
-                    {staff.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
               {/* Reason */}
-              <div className="space-y-2">
-                <Label>Motivo (opcional)</Label>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Motivo (opcional)</Label>
                 <Textarea
-                  placeholder="Ex: Feriado, viagem, manutenção..."
+                  placeholder="Ex: Intervalo, folga, férias..."
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   className="resize-none"
@@ -506,7 +580,7 @@ export function AvailabilityBlocksManager({ tenantId }: AvailabilityBlocksManage
                     Criando...
                   </>
                 ) : (
-                  `Criar Bloqueio${weeksAhead === "52" ? "" : totalBlocks > 1 ? ` (${totalBlocks} dias)` : ""}`
+                  `Criar bloqueio${totalBlocks > 1 ? ` (${totalBlocks} dias)` : ""}`
                 )}
               </Button>
             </DialogFooter>
@@ -514,7 +588,7 @@ export function AvailabilityBlocksManager({ tenantId }: AvailabilityBlocksManage
         </Dialog>
       </div>
 
-      {/* Blocks List */}
+      {/* Empty state */}
       {blocks.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
@@ -526,156 +600,153 @@ export function AvailabilityBlocksManager({ tenantId }: AvailabilityBlocksManage
           </CardContent>
         </Card>
       ) : (
-        <BlocksList
-          blocks={blocks}
-          staff={staff}
-          formatBlockDateTime={formatBlockDateTime}
-          getStaffName={getStaffName}
-          onDelete={handleDeleteBlock}
-        />
-      )}
-    </div>
-  );
-}
-
-/* ── Compact grouped list ── */
-
-const INITIAL_VISIBLE = 5;
-
-function BlocksList({
-  blocks,
-  staff,
-  formatBlockDateTime,
-  getStaffName,
-  onDelete,
-}: {
-  blocks: Block[];
-  staff: Staff[];
-  formatBlockDateTime: (s: string, e: string) => { date: string; time: string; isFullDay: boolean };
-  getStaffName: (id: string | null) => string;
-  onDelete: (id: string) => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-
-  // Group blocks by month
-  const grouped = blocks.reduce<Record<string, Block[]>>((acc, block) => {
-    const key = formatInTimeZone(parseISO(block.starts_at), TIMEZONE, "yyyy-MM");
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(block);
-    return acc;
-  }, {});
-
-  const monthKeys = Object.keys(grouped).sort();
-  const totalCount = blocks.length;
-
-  // Flatten for limiting
-  const allOrdered = monthKeys.flatMap(k => grouped[k]);
-  const visibleBlocks = expanded ? allOrdered : allOrdered.slice(0, INITIAL_VISIBLE);
-  const hasMore = totalCount > INITIAL_VISIBLE;
-
-  // Rebuild grouped from visible
-  const visibleGrouped = visibleBlocks.reduce<Record<string, Block[]>>((acc, block) => {
-    const key = formatInTimeZone(parseISO(block.starts_at), TIMEZONE, "yyyy-MM");
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(block);
-    return acc;
-  }, {});
-
-  const visibleMonthKeys = Object.keys(visibleGrouped).sort();
-
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        {totalCount} bloqueio{totalCount !== 1 ? "s" : ""} ativo{totalCount !== 1 ? "s" : ""}
-      </p>
-
-      {visibleMonthKeys.map(monthKey => {
-        const monthLabel = formatInTimeZone(
-          parseISO(`${monthKey}-01T12:00:00Z`),
-          TIMEZONE,
-          "MMMM 'de' yyyy",
-          { locale: ptBR }
-        );
-
-        return (
-          <Card key={monthKey}>
-            <CardHeader className="pb-2 pt-4 px-4">
-              <CardTitle className="text-sm font-semibold capitalize text-muted-foreground">
-                {monthLabel} ({visibleGrouped[monthKey].length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-3 pt-0">
-              <div className="divide-y divide-border">
-                {visibleGrouped[monthKey].map(block => {
-                  const { date, time, isFullDay: fd } = formatBlockDateTime(block.starts_at, block.ends_at);
-                  return (
-                    <div key={block.id} className="flex items-center justify-between py-2.5 gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-8 h-8 rounded-md flex-shrink-0 flex items-center justify-center ${
-                          fd ? "bg-destructive/10" : "bg-amber-500/10"
-                        }`}>
-                          {fd ? (
-                            <Ban className="h-4 w-4 text-destructive" />
-                          ) : (
-                            <Clock className="h-4 w-4 text-amber-500" />
-                          )}
+        <div className="space-y-6">
+          {/* Recurring patterns */}
+          {recurring.length > 0 && (
+            <div className="space-y-3">
+              {recurring.map((pattern) => (
+                <Card key={pattern.key} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Lock className="h-4 w-4 text-primary" />
                         </div>
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-medium capitalize truncate">{date}</span>
-                            <Badge variant={fd ? "destructive" : "secondary"} className="text-[10px] px-1.5 py-0">
-                              {time}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {getStaffName(block.staff_id)}
-                            {block.reason && ` · ${block.reason}`}
+                          <p className="text-sm font-semibold text-foreground">
+                            {pattern.reason || (pattern.isAllDay ? "Dia bloqueado" : `${pattern.startTime} — ${pattern.endTime}`)}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {pattern.isAllDay ? "Dia inteiro" : `${pattern.startTime} — ${pattern.endTime}`}
+                            {" · "}
+                            {detectWeekdays(pattern.dates)}
+                            {" · "}
+                            {pattern.staffName}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {pattern.dates.length} dias bloqueados · até {formatLastDateBR(pattern.lastDate)}
                           </p>
                         </div>
                       </div>
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:text-destructive">
-                            <Trash2 className="h-3.5 w-3.5" />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                            disabled={deleting === pattern.key}
+                          >
+                            {deleting === pattern.key ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Remover bloqueio?</AlertDialogTitle>
+                            <AlertDialogTitle>Excluir bloqueio</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Essa ação não pode ser desfeita. O período ficará disponível novamente para agendamentos.
+                              Remover {pattern.dates.length} bloqueios de{" "}
+                              {pattern.isAllDay ? "dia inteiro" : `${pattern.startTime} às ${pattern.endTime}`}?
+                              Essa ação não pode ser desfeita.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => onDelete(block.id)}
+                              onClick={() => handleDeletePattern(pattern)}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
-                              Remover
+                              Excluir todos
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
-      {hasMore && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={() => setExpanded(prev => !prev)}
-        >
-          {expanded ? "Mostrar menos" : `Ver todos os ${totalCount} bloqueios`}
-        </Button>
+          {/* Single blocks */}
+          {single.length > 0 && (
+            <div className="space-y-3">
+              {recurring.length > 0 && (
+                <h4 className="text-sm font-medium text-muted-foreground">
+                  Bloqueios avulsos ({single.reduce((acc, p) => acc + p.dates.length, 0)})
+                </h4>
+              )}
+              {single.map((pattern) =>
+                pattern.dates.map((dateStr, idx) => {
+                  const blockId = pattern.blockIds[idx];
+                  const dateObj = new Date(dateStr + "T12:00:00");
+                  const dayLabel = formatInTimeZone(
+                    dateObj,
+                    TIMEZONE,
+                    "EEEE, dd/MM",
+                    { locale: ptBR }
+                  );
+
+                  return (
+                    <Card key={blockId} className="overflow-hidden">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                              <Lock className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground capitalize">
+                                {dayLabel}
+                                {" · "}
+                                {pattern.isAllDay ? "Dia inteiro" : `${pattern.startTime} — ${pattern.endTime}`}
+                                {" · "}
+                                {pattern.staffName}
+                              </p>
+                              {pattern.reason && (
+                                <p className="text-xs text-muted-foreground">
+                                  Motivo: {pattern.reason}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive flex-shrink-0">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Remover bloqueio?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  O período ficará disponível novamente para agendamentos.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteSingle(blockId)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Remover
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
