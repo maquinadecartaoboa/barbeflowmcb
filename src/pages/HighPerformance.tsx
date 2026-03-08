@@ -736,6 +736,60 @@ export default function HighPerformance() {
           </div>
         </DrawerContent>
       </Drawer>
+
+      {/* Loyalty Add-on Dialog */}
+      <Drawer open={loyaltyAddonDialog} onOpenChange={setLoyaltyAddonDialog}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Ativar Cartão Fidelidade</DrawerTitle>
+            <DrawerDescription>
+              O Cartão Fidelidade custa R$ 19,90/mês adicionais ao seu plano atual.
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="p-4 space-y-5">
+            <p className="text-sm text-muted-foreground">
+              Para ativar, entre em contato pelo WhatsApp ou e-mail e nós configuramos para você.
+            </p>
+
+            <div className="rounded-xl border p-4 space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                <MessageCircle className="h-4 w-4 text-emerald-500" />
+                <span className="text-foreground font-medium">WhatsApp:</span>
+                <span className="text-muted-foreground">(75) 99205-0743</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-foreground font-medium ml-6">E-mail:</span>
+                <span className="text-muted-foreground">contato@modogestor.com.br</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Ou faça upgrade para o plano Ilimitado e tenha o Cartão Fidelidade incluso!
+            </p>
+
+            <div className="flex flex-col gap-2">
+              <Button
+                className="w-full"
+                onClick={() => window.open("https://wa.me/5575992050743?text=Olá! Gostaria de ativar o Cartão Fidelidade no meu plano.", "_blank")}
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Falar no WhatsApp
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setLoyaltyAddonDialog(false);
+                  window.location.href = "/app/settings?tab=billing";
+                }}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Ver plano Ilimitado
+              </Button>
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
