@@ -75,6 +75,7 @@ import {
   AlertTriangle,
   Trophy,
   Rocket,
+  Shield,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { format } from "date-fns";
@@ -87,6 +88,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import logoBranca from "@/assets/modoGESTOR_branca.png";
 import { TermsAcceptanceModal } from "@/components/TermsAcceptanceModal";
 import { getPublicUrl } from "@/lib/hostname";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 
 interface NavItem {
   title: string;
@@ -264,6 +266,7 @@ function AppSidebar() {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const waConnected = useWhatsAppStatus();
+  const { isAdmin } = useAdminAuth({ redirect: false });
 
   return (
     <Sidebar className="border-r border-border/30 bg-background/80 backdrop-blur-xl">
@@ -344,6 +347,15 @@ function AppSidebar() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
+            {isAdmin && (
+              <>
+                <DropdownMenuItem onClick={() => window.location.href = '/admin'}>
+                  <Shield className="h-4 w-4 mr-2" />
+                  Painel Admin
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem>
               <User className="h-4 w-4 mr-2" />
               Perfil
