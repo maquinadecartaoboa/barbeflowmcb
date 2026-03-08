@@ -88,6 +88,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import logoBranca from "@/assets/modoGESTOR_branca.png";
 import { TermsAcceptanceModal } from "@/components/TermsAcceptanceModal";
 import { getPublicUrl } from "@/lib/hostname";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 
 interface NavItem {
   title: string;
