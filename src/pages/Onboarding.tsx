@@ -9,8 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Check, Loader2, Star, Infinity, Trophy, UserPlus } from "lucide-react";
 import logoBranca from "@/assets/modoGESTOR_branca.png";
-import { trackEvent } from "@/utils/metaTracking";
-import { getFbp, getPersistedFbc } from "@/utils/metaTracking";
+import { trackViewContent, trackInitiateCheckout } from "@/lib/tracking";
 
 type PlanKey = "profissional" | "ilimitado";
 
@@ -27,28 +26,7 @@ export default function Onboarding() {
   const [addExtraPro, setAddExtraPro] = useState(false);
 
   useEffect(() => {
-    const saveMeta = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: ut } = await supabase.from('users_tenant').select('tenant_id').eq('user_id', user.id).limit(1);
-      if (ut && ut.length > 0) {
-        const fbp = getFbp();
-        const fbc = getPersistedFbc();
-        if (fbp || fbc) {
-          await supabase.from('tenants').update({
-            meta_fbp: fbp,
-            meta_fbc: fbc,
-          }).eq('id', ut[0].tenant_id);
-        }
-      }
-    };
-    saveMeta();
-    trackEvent('ViewContent', {
-      content_name: 'Onboarding Planos',
-      content_category: 'pricing',
-      content_ids: ['profissional', 'ilimitado'],
-      content_type: 'product',
-    }, {}, { pixelOnly: true });
+    trackViewContent('Onboarding Planos');
   }, []);
 
   // Reset addons when switching to ilimitado
@@ -84,12 +62,7 @@ export default function Onboarding() {
       });
       if (error) throw error;
       if (data?.url) {
-        await trackEvent('AddPaymentInfo', {
-          content_category: 'subscription',
-          content_name: selectedPlan,
-          value: 50.00,
-          currency: 'BRL',
-        }, { email: user?.email || undefined });
+        trackInitiateCheckout(selectedPlan, totalMonthly / 100, { email: user?.email || undefined });
         window.location.href = data.url;
       }
     } catch (err: any) {

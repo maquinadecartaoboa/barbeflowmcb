@@ -64,8 +64,9 @@ const AppShell = lazy(() => import("./components/layout/AppShell"));
 import { ScrollToTop } from "./components/ScrollToTop";
 import { CookieBanner } from "./components/CookieBanner";
 import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { checkConsentOnLoad } from "@/utils/consent";
-import { persistFbclid } from "@/utils/metaTracking";
+import { initTracking, trackPageView } from "@/lib/tracking";
 
 const queryClient = new QueryClient();
 
@@ -95,10 +96,19 @@ const ProtectedAppShell = () => (
   </ProtectedRoute>
 );
 
+// SPA route tracker component — must be inside BrowserRouter
+const RouteTracker = () => {
+  const location = useLocation();
+  useEffect(() => {
+    trackPageView(location.pathname);
+  }, [location.pathname]);
+  return null;
+};
+
 const App = () => {
   useEffect(() => {
     checkConsentOnLoad();
-    persistFbclid();
+    initTracking();
   }, []);
 
   return (
@@ -109,6 +119,7 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <ScrollToTop />
+          <RouteTracker />
           <Suspense fallback={null}>
             <AuthWatcher />
           </Suspense>

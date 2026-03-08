@@ -6,7 +6,7 @@ import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { getDashboardUrl, getPublicUrl } from "@/lib/hostname";
 import { useRef, useState, useEffect } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { trackEvent } from "@/utils/metaTracking";
+import { trackViewContent } from "@/lib/tracking";
 import { useAuth } from "@/hooks/useAuth";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import dashboardMockup from "@/assets/dashboard-mockup.png";
@@ -34,12 +34,7 @@ const Landing = () => {
   const pricingInView = useInView(pricingRef, { once: true });
   useEffect(() => {
     if (pricingInView) {
-      trackEvent('ViewContent', {
-        content_name: 'Planos modoGESTOR',
-        content_category: 'pricing',
-        content_ids: ['essencial', 'profissional'],
-        content_type: 'product',
-      }, {}, { pixelOnly: true });
+      trackViewContent('Planos modoGESTOR');
     }
   }, [pricingInView]);
 
