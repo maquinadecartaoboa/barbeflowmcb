@@ -1240,6 +1240,7 @@ export type Database = {
           discount_cents: number
           expires_at: string | null
           external_id: string | null
+          forfeit_percent: number
           id: string
           payment_method: string | null
           pix_expires_at: string | null
@@ -1247,6 +1248,9 @@ export type Database = {
           pix_qr_code_base64: string | null
           pix_ticket_url: string | null
           provider: string
+          refund_cents: number
+          refund_external_id: string | null
+          refund_status: string | null
           retry_count: number
           status: string
           tenant_id: string
@@ -1262,6 +1266,7 @@ export type Database = {
           discount_cents?: number
           expires_at?: string | null
           external_id?: string | null
+          forfeit_percent?: number
           id?: string
           payment_method?: string | null
           pix_expires_at?: string | null
@@ -1269,6 +1274,9 @@ export type Database = {
           pix_qr_code_base64?: string | null
           pix_ticket_url?: string | null
           provider?: string
+          refund_cents?: number
+          refund_external_id?: string | null
+          refund_status?: string | null
           retry_count?: number
           status: string
           tenant_id: string
@@ -1284,6 +1292,7 @@ export type Database = {
           discount_cents?: number
           expires_at?: string | null
           external_id?: string | null
+          forfeit_percent?: number
           id?: string
           payment_method?: string | null
           pix_expires_at?: string | null
@@ -1291,6 +1300,9 @@ export type Database = {
           pix_qr_code_base64?: string | null
           pix_ticket_url?: string | null
           provider?: string
+          refund_cents?: number
+          refund_external_id?: string | null
+          refund_status?: string | null
           retry_count?: number
           status?: string
           tenant_id?: string
@@ -3184,12 +3196,15 @@ export type Database = {
           amount_cents: number
           booking_id: string
           discount_cents: number
+          forfeit_percent: number
           id: string
           payment_method: string
           pix_expires_at: string
           pix_qr_code: string
           pix_qr_code_base64: string
           pix_ticket_url: string
+          refund_cents: number
+          refund_status: string
           status: string
         }[]
       }
@@ -3207,7 +3222,11 @@ export type Database = {
       }
       is_tenant_admin: { Args: { tenant_uuid: string }; Returns: boolean }
       mark_booking_no_show: {
-        Args: { p_booking_id: string; p_tenant_id: string }
+        Args: {
+          p_booking_id: string
+          p_forfeit_override?: number
+          p_tenant_id: string
+        }
         Returns: Json
       }
       merge_customers: {
