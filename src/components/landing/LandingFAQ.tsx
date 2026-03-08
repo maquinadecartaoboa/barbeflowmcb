@@ -9,8 +9,8 @@ import {
 
 const faqs = [
   {
-    q: "Preciso de cartão para testar?",
-    a: "Não. Os 14 dias de teste são 100% gratuitos, sem cartão de crédito.",
+    q: "Preciso pagar para testar?",
+    a: "Não. Os 14 dias de teste são 100% gratuitos — você só começa a pagar se decidir continuar após o período de teste.",
   },
   {
     q: "Meus clientes precisam baixar algum app?",
