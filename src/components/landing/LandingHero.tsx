@@ -36,18 +36,7 @@ export default function LandingHero() {
       {/* Content */}
       <div className="relative z-10 max-w-[1200px] mx-auto px-5 sm:px-8 pt-28 sm:pt-36 pb-12 w-full">
         <div className="flex flex-col items-center text-center">
-          {/* Badge */}
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="mb-8"
-          >
-            <span className="inline-flex items-center gap-2 border border-[#d4a843]/15 text-[#d4a843] text-xs font-medium px-4 py-1.5 rounded-full bg-[#d4a843]/[0.04] tracking-wide">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#d4a843] animate-pulse" />
-              Para barbearias modernas
-            </span>
-          </motion.div>
+          {/* Heading */}
 
           {/* Heading with typewriter */}
           <motion.h1
