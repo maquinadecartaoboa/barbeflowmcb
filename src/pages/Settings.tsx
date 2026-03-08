@@ -543,7 +543,7 @@ export default function Settings() {
             cycle_reminder_days: cycleReminderDays,
             weekly_summary_enabled,
             recurring_reminder_enabled,
-            ...(discountSettingsRef.current || {}),
+            
           }
         })
         .eq('id', currentTenant.id);
