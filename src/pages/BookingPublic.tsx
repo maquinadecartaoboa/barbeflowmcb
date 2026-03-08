@@ -1852,11 +1852,7 @@ END:VCALENDAR`;
                 <div className="absolute top-0 right-0 bg-emerald-500 text-zinc-900 text-[10px] font-bold px-3 py-0.5 rounded-bl-lg uppercase tracking-wider">
                   Recomendado
                 </div>
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
-                    <CreditCard className="h-5 w-5 text-emerald-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 px-1">
                     <h3 className="font-semibold text-white mb-1">Pagar agora e garantir sua vaga</h3>
                      
                      {/* Price display */}
@@ -1882,18 +1878,17 @@ END:VCALENDAR`;
                          Sinal de {prepaymentPercentage}%{hasDiscount ? ` com ${onlineDiscountPercent}% de desconto` : ''}
                        </p>
                      )}
-                  </div>
                 </div>
               </button>
 
-              {/* Cancellation forfeit disclaimer */}
+              {/* Cancellation forfeit disclaimer — subtle text */}
               {showCancellationForfeit && (
-                <p className="text-xs text-zinc-500 mt-2 px-2">
+                <p className="text-xs text-zinc-500 px-2">
                   {noShowForfeitPercent >= 100
                     ? `Ao confirmar, caso não compareça ou cancele com menos de ${cancellationForfeitHours}h de antecedência, o valor pago não será reembolsado.`
                     : noShowForfeitPercent <= 0
                     ? `Ao confirmar, caso não compareça ou cancele com menos de ${cancellationForfeitHours}h de antecedência, entre em contato para reagendar.`
-                    : `Ao confirmar, caso não compareça ou cancele com menos de ${cancellationForfeitHours}h de antecedência, ${noShowForfeitPercent}% do valor pago será retido e o restante será reembolsado.`}
+                    : `Ao confirmar, caso não compareça ou cancele com menos de ${cancellationForfeitHours}h de antecedência, ${noShowForfeitPercent}% do valor será retido e o restante reembolsado.`}
                 </p>
               )}
 
@@ -1903,17 +1898,12 @@ END:VCALENDAR`;
                   onClick={() => handlePaymentMethodSelect('on_site')}
                   className="w-full p-4 bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 rounded-xl text-left transition-all duration-200 hover:bg-zinc-900 group"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-zinc-800 border border-zinc-700 rounded-xl flex items-center justify-center shrink-0">
-                      <Banknote className="h-5 w-5 text-zinc-400" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-medium text-zinc-300 group-hover:text-white transition-colors">Pagar no local</h3>
-                       <p className="text-zinc-500 text-sm">
-                         R$ {(originalPriceCents / 100).toFixed(2)} {hasDiscount ? '(valor cheio)' : ''}
-                       </p>
-                       <p className="text-zinc-600 text-xs mt-1">Pagamento no momento do atendimento</p>
-                    </div>
+                  <div className="flex-1 px-1">
+                    <h3 className="font-medium text-zinc-300 group-hover:text-white transition-colors">Pagar no local</h3>
+                    <p className="text-zinc-500 text-sm">
+                      R$ {(originalPriceCents / 100).toFixed(2)} {hasDiscount ? '(valor cheio)' : ''}
+                    </p>
+                    <p className="text-zinc-600 text-xs mt-1">Pagamento no momento do atendimento</p>
                   </div>
                 </button>
               )}
@@ -1922,8 +1912,8 @@ END:VCALENDAR`;
                 <div className="p-3 bg-zinc-800/50 border border-zinc-700/30 rounded-xl">
                   <p className="text-zinc-400 text-xs text-center">
                     {forcedOnlinePayment 
-                      ? '🔒 Para sua segurança, o pagamento antecipado é necessário neste agendamento.'
-                      : `🔒 Este estabelecimento solicita pagamento antecipado${prepaymentPercentage > 0 && prepaymentPercentage < 100 ? ` de ${prepaymentPercentage}%` : ''} para confirmar o agendamento.`
+                      ? 'Para sua segurança, o pagamento antecipado é necessário neste agendamento.'
+                      : `Este estabelecimento solicita pagamento antecipado${prepaymentPercentage > 0 && prepaymentPercentage < 100 ? ` de ${prepaymentPercentage}%` : ''} para confirmar o agendamento.`
                     }
                   </p>
                 </div>
@@ -2222,53 +2212,94 @@ END:VCALENDAR`;
               <p className="text-zinc-500 text-sm">Finalize seu agendamento</p>
             </div>
             
-            {/* Booking Summary */}
-            <div className="p-4 bg-zinc-900/30 border border-zinc-800/50 rounded-xl mb-6">
-              <div className="flex items-start gap-3 mb-3">
-                <div className="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
-                  {selectedServiceData?.photo_url ? (
-                    <img src={selectedServiceData.photo_url} alt={selectedServiceData.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
-                  ) : (
-                    <Scissors className="h-4 w-4 text-zinc-400" />
-                  )}
+            {/* Booking Summary with discount */}
+            {(() => {
+              const tenantSettings = (tenant?.settings || {}) as Record<string, any>;
+              const discPct = tenantSettings.online_discount_percent || 0;
+              const svcCents = createdBooking.service?.price_cents || 0;
+              const discCents = discPct > 0 ? Math.round(svcCents * discPct / 100) : 0;
+              const finalSvcCents = svcCents - discCents;
+              const bumpCents = orderBumpItems.reduce((s: number, p: OrderBumpProduct) => s + p.sale_price_cents, 0);
+              
+              return (
+              <div className="p-4 bg-zinc-900/30 border border-zinc-800/50 rounded-xl mb-6">
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+                    {selectedServiceData?.photo_url ? (
+                      <img src={selectedServiceData.photo_url} alt={selectedServiceData.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                    ) : (
+                      <Scissors className="h-4 w-4 text-zinc-400" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{createdBooking.service?.name}</p>
+                    <p className="text-zinc-500 text-xs">
+                      {createdBooking.staff?.name || 'Qualquer profissional'}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {discCents > 0 ? (
+                      <>
+                        <span className="text-sm text-zinc-500 line-through mr-2">
+                          R$ {(svcCents / 100).toFixed(2)}
+                        </span>
+                        <span className="text-emerald-400 font-bold">
+                          R$ {(finalSvcCents / 100).toFixed(2)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-emerald-400 font-bold">
+                        R$ {(svcCents / 100).toFixed(2)}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{createdBooking.service?.name}</p>
-                  <p className="text-zinc-500 text-xs">
-                    {createdBooking.staff?.name || 'Qualquer profissional'}
+                {discCents > 0 && (
+                  <p className="text-xs text-emerald-400 text-right mb-3">
+                    {discPct}% de desconto no pagamento online
                   </p>
-                </div>
-              </div>
-              <div className="flex items-center justify-between pt-3 border-t border-zinc-800">
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-zinc-500" />
-                  <span className="text-zinc-400">{formatDateForDisplay(selectedDate)}</span>
-                  <span className="text-zinc-600">•</span>
-                  <Clock className="h-4 w-4 text-zinc-500" />
-                  <span className="text-zinc-400">{selectedTime}</span>
-                </div>
-              </div>
-              {/* Order bump items in payment summary */}
-              {orderBumpItems.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-zinc-800 space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-zinc-500">Serviço</span>
-                    <span className="text-zinc-300">R$ {((createdBooking.service?.price_cents || 0) / 100).toFixed(2)}</span>
+                )}
+                <div className="flex items-center justify-between pt-3 border-t border-zinc-800">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 text-zinc-500" />
+                    <span className="text-zinc-400">{formatDateForDisplay(selectedDate)}</span>
+                    <span className="text-zinc-600">•</span>
+                    <Clock className="h-4 w-4 text-zinc-500" />
+                    <span className="text-zinc-400">{selectedTime}</span>
                   </div>
-                  {orderBumpItems.map((item) => (
-                    <div key={item.product_id} className="flex items-center justify-between text-sm">
-                      <span className="text-zinc-500 truncate mr-2">{item.name}</span>
-                      <span className="text-zinc-300 whitespace-nowrap">R$ {(item.sale_price_cents / 100).toFixed(2)}</span>
+                </div>
+                {/* Order bump items in payment summary */}
+                {orderBumpItems.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-zinc-500">Serviço</span>
+                      <span className="text-zinc-300">
+                        {discCents > 0 ? (
+                          <>
+                            <span className="line-through text-zinc-600 mr-1">R$ {(svcCents / 100).toFixed(2)}</span>
+                            R$ {(finalSvcCents / 100).toFixed(2)}
+                          </>
+                        ) : (
+                          <>R$ {(svcCents / 100).toFixed(2)}</>
+                        )}
+                      </span>
                     </div>
-                  ))}
-                  <div className="h-px bg-zinc-800" />
-                  <div className="flex items-center justify-between text-sm font-semibold">
-                    <span className="text-zinc-300">Total</span>
-                    <span className="text-emerald-400">R$ {(((createdBooking.service?.price_cents || 0) + orderBumpItems.reduce((s: number, p: OrderBumpProduct) => s + p.sale_price_cents, 0)) / 100).toFixed(2)}</span>
+                    {orderBumpItems.map((item) => (
+                      <div key={item.product_id} className="flex items-center justify-between text-sm">
+                        <span className="text-zinc-500 truncate mr-2">{item.name}</span>
+                        <span className="text-zinc-300 whitespace-nowrap">R$ {(item.sale_price_cents / 100).toFixed(2)}</span>
+                      </div>
+                    ))}
+                    <div className="h-px bg-zinc-800" />
+                    <div className="flex items-center justify-between text-sm font-semibold">
+                      <span className="text-zinc-300">Total</span>
+                      <span className="text-emerald-400">R$ {((finalSvcCents + bumpCents) / 100).toFixed(2)}</span>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+              );
+            })()}
 
             {/* MercadoPago Checkout */}
             <MercadoPagoCheckout
