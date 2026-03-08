@@ -277,7 +277,7 @@ export function BookingDetailsModal({
           <CustomerBalanceAlert key={balanceKey} customerId={booking.customer_id} tenantId={tenantId} />
 
           {/* ═══════════════ SEÇÃO 2: ITENS DA COMANDA ═══════════════ */}
-          {!isRecurring && !isCancelled && (
+          {!isRecurring && !isCancelled && !isNoShow && (
             <>
               <Separator />
               <ComandaItemsSection
