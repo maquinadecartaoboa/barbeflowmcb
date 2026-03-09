@@ -1,66 +1,91 @@
 
+# Order Bump — Recomendacoes de Produtos no Agendamento Publico
 
-## Plano: Corrigir bug de frequência quinzenal em agendamentos recorrentes
+## Conceito
+Quando o cliente seleciona um servico e chega na etapa de dados pessoais (step 5), o sistema exibe uma secao de "Adicione ao seu atendimento" com produtos recomendados que o dono configurou para aquele servico. O cliente marca os que deseja e eles sao salvos como `booking_items` do tipo `product` apos a criacao do booking.
 
-### O problema
+---
 
-O cálculo que determina se um agendamento recorrente (quinzenal, trissemanal, mensal) deve aparecer numa determinada data usa `Math.round` para converter milissegundos em dias. Quando a data de referência (`targetLocal`) inclui um componente de hora (ex: 15:00), a diferença em dias fica com decimal (ex: 13.5) e o `Math.round` arredonda para cima (14), fazendo o sistema pensar que estamos na semana correta quando não estamos.
+## Arquitetura
 
-Foi exatamente isso que aconteceu com o Pedro Vizinho: o sistema criou um agendamento quinzenal na semana errada, disparou lembrete via WhatsApp, e o barbeiro teve que cancelar manualmente.
-
-### A correção
-
-Substituir `Math.round` por `Math.floor` e normalizar ambas as datas para meia-noite (`T00:00:00`) antes de calcular a diferença. Isso garante que a divisão por dias sempre resulte em um número inteiro, eliminando o arredondamento incorreto.
-
-### Arquivos afetados (4 no total)
-
-1. **`supabase/functions/process-recurring-bookings/index.ts`** (linha 69-70)
-   - `targetLocal` carrega hora do dia — trocar por `new Date(targetDate + 'T00:00:00')`
-   - `Math.round` → `Math.floor`
-
-2. **`src/hooks/useBookingsByDate.ts`** (linha 90)
-   - Já usa `T00:00:00` em ambas datas, mas ainda tem `Math.round` → trocar por `Math.floor`
-
-3. **`supabase/functions/get-available-slots/index.ts`** (linha 270)
-   - Já normaliza, mas tem `Math.round` → `Math.floor`
-
-4. **`supabase/functions/send-recurring-weekly-summaries/index.ts`** (linhas 136-141)
-   - `targetDate` é calculado via `new Date(now)` com `setDate()`, carregando hora — normalizar para meia-noite
-   - `Math.round` → `Math.floor`
-
-### Mudança exata em cada arquivo
+### 1. Nova tabela: `service_order_bumps`
+Relaciona servicos a produtos recomendados, com ordem de exibicao.
 
 ```text
-// ANTES (todos os 4 arquivos):
-const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+service_order_bumps
+- id            uuid PK
+- tenant_id     uuid NOT NULL
+- service_id    uuid NOT NULL (FK services)
+- product_id    uuid NOT NULL (FK products)
+- sort_order    integer DEFAULT 0
+- active        boolean DEFAULT true
+- created_at    timestamptz DEFAULT now()
 
-// DEPOIS:
-const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+UNIQUE(service_id, product_id)
+RLS: tenant scope (user_belongs_to_tenant)
 ```
 
-Adicionalmente no `process-recurring-bookings` (linha 69):
+### 2. Tela de configuracao (Admin)
+No arquivo `src/pages/Services.tsx`, dentro do dialog de editar servico, adicionar uma nova secao "Order Bump" que permite:
+- Buscar e vincular produtos ativos ao servico
+- Reordenar e remover produtos vinculados
+- Toggle ativo/inativo por vinculo
+
+### 3. Fluxo publico (BookingPublic.tsx)
+- Apos o cliente selecionar o servico (step 1), buscar os order bumps ativos: `service_order_bumps` JOIN `products` WHERE `service_id` = selecionado
+- Na step 5 (dados pessoais), exibir uma secao visual **antes** do botao de confirmar:
+  - Titulo: "Aproveite e adicione"
+  - Cards de produto com foto, nome, preco e checkbox
+  - Total atualizado dinamicamente (servico + produtos selecionados)
+- Os produtos selecionados sao enviados no body do `create-booking` como `order_bump_items`
+
+### 4. Backend (create-booking Edge Function)
+- Aceitar campo opcional `order_bump_items: Array<{product_id, quantity}>` no request
+- Apos criar o booking, inserir os itens na tabela `booking_items` com:
+  - `type: 'product'`
+  - `ref_id: product_id`
+  - `paid_status: 'unpaid'` (serao cobrados na comanda ou junto ao pagamento online)
+  - `staff_id: booking.staff_id`
+  - `purchase_price_cents` do produto (para calculo de margem)
+
+---
+
+## Detalhes tecnicos
+
+### Arquivos modificados/criados
+
+| Arquivo | Alteracao |
+|---|---|
+| **Migration SQL** | Criar tabela `service_order_bumps` com RLS |
+| `src/pages/Services.tsx` | Secao de configuracao de order bumps no dialog de edicao |
+| `src/pages/BookingPublic.tsx` | Buscar bumps ao selecionar servico, exibir na step 5, enviar no submit |
+| `supabase/functions/create-booking/index.ts` | Aceitar `order_bump_items`, inserir em `booking_items` apos criacao |
+
+### Fluxo do cliente (visual)
+
 ```text
-// ANTES:
-const diffMs = targetLocal.getTime() - slotStart.getTime();
-
-// DEPOIS:
-const targetMidnight = new Date(targetDate + 'T00:00:00');
-const diffMs = targetMidnight.getTime() - slotStart.getTime();
+Step 1: Seleciona servico
+  -> Sistema busca order bumps do servico
+Step 2: Seleciona profissional
+Step 3: Seleciona data/hora
+Step 4: Forma de pagamento (se aplicavel)
+Step 5: Dados pessoais + SECAO ORDER BUMP
+  -> Cards com checkbox, foto, nome, preco
+  -> "Total: R$ X (servico) + R$ Y (produtos)"
+Step 6: Confirmacao
 ```
 
-E no `send-recurring-weekly-summaries` (linhas 136-140):
-```text
-// ANTES:
-const targetDate = new Date(now);
-targetDate.setDate(now.getDate() + diff);
+### Secao de Order Bump (UI publica)
+- Estilo consistente com o restante do BookingPublic (zinc-900, border-zinc-800)
+- Cada produto: card horizontal com imagem 48x48, nome, preco e checkbox
+- Animacao de entrada suave
+- Resumo do total atualizado abaixo
 
-// DEPOIS:
-const targetDate = new Date(now);
-targetDate.setDate(now.getDate() + diff);
-targetDate.setHours(0, 0, 0, 0);
-```
+### Secao de configuracao (Admin)
+- Dentro do dialog de edicao de servico, nova aba/secao "Order Bumps"
+- Lista de produtos vinculados com botao de remover
+- Combobox para buscar e adicionar novos produtos
+- Reutilizar padrao visual do `ExtraItemsSection` (Command + Popover)
 
-### Resultado
-
-Após a correção, o cálculo de semanas será determinístico independente da hora do dia em que o cron roda, eliminando o cenário onde agendamentos quinzenais/trissemanais são criados na semana errada e disparam notificações indevidas.
-
+### Integracao com Comanda
+Os itens de order bump aparecerao automaticamente na comanda (`BookingDetailsModal`) pois ja serao `booking_items` do tipo `product`. O fluxo de pagamento local e fechamento funciona sem alteracoes.

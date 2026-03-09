@@ -66,8 +66,9 @@ Deno.serve(async (req) => {
         const interval = frequencyToInterval(rc.frequency || 'weekly');
         if (interval > 1) {
           const slotStart = new Date(rc.start_date + 'T00:00:00');
-          const diffMs = targetLocal.getTime() - slotStart.getTime();
-          const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+          const targetMidnight = new Date(targetDate + 'T00:00:00');
+          const diffMs = targetMidnight.getTime() - slotStart.getTime();
+          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
           const diffWeeks = Math.floor(diffDays / 7);
 
           if (diffWeeks % interval !== 0) {
