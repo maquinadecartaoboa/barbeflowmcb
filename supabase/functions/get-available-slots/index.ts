@@ -267,7 +267,7 @@ serve(async (req) => {
         if (interval === 1) return true;
         const slotStart = new Date(r.start_date + 'T00:00:00');
         const targetDate = new Date(date + 'T00:00:00');
-        const diffDays = Math.round((targetDate.getTime() - slotStart.getTime()) / (1000 * 60 * 60 * 24));
+        const diffDays = Math.floor((targetDate.getTime() - slotStart.getTime()) / (1000 * 60 * 60 * 24));
         const diffWeeks = Math.floor(diffDays / 7);
         return diffWeeks % interval === 0;
       }) || []);

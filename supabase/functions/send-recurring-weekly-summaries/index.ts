@@ -135,10 +135,11 @@ serve(async (req) => {
         const diff = e.weekday - currentDay;
         const targetDate = new Date(now);
         targetDate.setDate(now.getDate() + diff);
+        targetDate.setHours(0, 0, 0, 0);
 
         const slotStart = new Date(e.start_date + 'T00:00:00');
         const diffMs = targetDate.getTime() - slotStart.getTime();
-        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
         const diffWeeks = Math.floor(diffDays / 7);
         return diffWeeks % interval === 0;
       });

@@ -87,7 +87,7 @@ function isRecurringSlotActiveOnDate(rc: RecurringSlot, dateStr: string): boolea
   const slotStart = new Date(rc.start_date + 'T00:00:00');
   const targetDate = new Date(dateStr + 'T00:00:00');
   const diffMs = targetDate.getTime() - slotStart.getTime();
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   const diffWeeks = Math.floor(diffDays / 7);
 
   return diffWeeks % interval === 0;
