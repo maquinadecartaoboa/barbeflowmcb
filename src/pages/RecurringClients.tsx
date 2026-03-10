@@ -246,7 +246,7 @@ export default function RecurringClients() {
       setRecords(enrichedRecords);
       setStaff(staffRes.data || []);
       setServices(svcRes.data || []);
-      setCustomers(custRes.data as Customer[] || []);
+      // customers are now searched server-side via RPC, no bulk load needed
     } catch (err: any) {
       console.error(err);
       toast({ title: "Erro", description: "Erro ao carregar clientes fixos", variant: "destructive" });
