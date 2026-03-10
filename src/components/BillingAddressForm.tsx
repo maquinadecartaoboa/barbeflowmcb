@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, MapPin } from "lucide-react";
@@ -32,6 +32,7 @@ const UF_LIST = [
 export function BillingAddressForm({ value, onChange }: BillingAddressFormProps) {
   const [cepLoading, setCepLoading] = useState(false);
   const [cepError, setCepError] = useState(false);
+  const numberInputRef = useRef<HTMLInputElement>(null);
 
   const formatCep = (raw: string): string => {
     const digits = raw.replace(/\D/g, "").slice(0, 8);
@@ -61,6 +62,7 @@ export function BillingAddressForm({ value, onChange }: BillingAddressFormProps)
           city: data.localidade || "",
           federal_unit: data.uf || "",
         });
+        setTimeout(() => numberInputRef.current?.focus(), 100);
       }
     } catch {
       setCepError(true);
@@ -107,6 +109,7 @@ export function BillingAddressForm({ value, onChange }: BillingAddressFormProps)
         <div className="space-y-1.5">
           <Label className="text-xs">Número *</Label>
           <Input
+            ref={numberInputRef}
             placeholder="123"
             value={value.street_number}
             onChange={(e) => update({ street_number: e.target.value })}
