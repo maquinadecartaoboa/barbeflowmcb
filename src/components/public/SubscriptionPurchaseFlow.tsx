@@ -5,9 +5,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Repeat, Loader2, ChevronLeft, Check, User, X } from "lucide-react";
+import { Repeat, Loader2, ChevronLeft, Check, User, X, ChevronRight, Pencil } from "lucide-react";
 import { SubscriptionCardPayment } from "@/components/subscriptions/SubscriptionCardPayment";
-import { BillingAddressForm, isBillingAddressComplete, type BillingAddress } from "@/components/BillingAddressForm";
+import { BillingAddressForm, isBillingAddressComplete, formatCep, type BillingAddress } from "@/components/BillingAddressForm";
 
 interface SubscriptionPurchaseFlowProps {
   tenant: any;
