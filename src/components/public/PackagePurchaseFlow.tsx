@@ -54,7 +54,7 @@ const isValidCpf = (value: string): boolean => {
 
 export function PackagePurchaseFlow({ tenant, pkg, onSuccess, onCancel, onScheduleNow }: PackagePurchaseFlowProps) {
   const { toast } = useToast();
-  const [step, setStep] = useState<'phone' | 'data' | 'success'>('phone');
+  const [step, setStep] = useState<'phone' | 'data' | 'address' | 'success'>('phone');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [phoneInput, setPhoneInput] = useState('');
@@ -66,6 +66,10 @@ export function PackagePurchaseFlow({ tenant, pkg, onSuccess, onCancel, onSchedu
   const [showPayment, setShowPayment] = useState(false);
   const [customerPackageId, setCustomerPackageId] = useState<string | null>(null);
   const [paymentRecordId, setPaymentRecordId] = useState<string | null>(null);
+  const [billingAddress, setBillingAddress] = useState<BillingAddress>({
+    zip_code: '', street_name: '', street_number: '',
+    neighborhood: '', city: '', federal_unit: '',
+  });
 
   const handlePhoneLookup = async () => {
     const digits = phoneInput.replace(/\D/g, '');
