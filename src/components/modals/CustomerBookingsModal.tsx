@@ -328,6 +328,57 @@ export function CustomerBookingsModal({
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           Cancelando...
                         </>
+            ) : (
+              <>
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {bookings.map((booking) => (
+                  <div
+                    key={booking.id}
+                    className="p-4 bg-muted/50 border border-border rounded-xl"
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Scissors className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium text-foreground truncate">
+                            {booking.service?.name || 'Serviço'}
+                          </span>
+                        </div>
+                        {booking.staff?.name && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <User className="h-3 w-3" />
+                            {booking.staff.name}
+                          </div>
+                        )}
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
+                        {getStatusLabel(booking.status)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
+                        {formatBookingDate(booking.starts_at)}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" />
+                        {formatBookingTime(booking.starts_at)}
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setConfirmCancelId(booking.id)}
+                      disabled={cancellingId === booking.id || booking.status === 'cancelled'}
+                      className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                    >
+                      {cancellingId === booking.id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Cancelando...
+                        </>
                       ) : (
                         <>
                           <X className="h-4 w-4 mr-2" />
@@ -358,6 +409,7 @@ export function CustomerBookingsModal({
                   />
                 </div>
               )}
+              </>
             )}
           </div>
         )}
