@@ -10,12 +10,13 @@ import { ComandaItemsSection, type BookingItem } from "@/components/modals/Coman
 import { ComandaPaymentSection } from "@/components/modals/ComandaPaymentSection";
 import { ComandaCloseSection } from "@/components/modals/ComandaCloseSection";
 import { NoShowDialog } from "@/components/modals/NoShowDialog";
+import { UnifiedComandaModal } from "@/components/modals/UnifiedComandaModal";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   User, Phone, Scissors, Clock, Users, Edit,
-  CheckCircle, XCircle, MessageCircle, AlertTriangle, RefreshCw, Loader2,
+  CheckCircle, XCircle, MessageCircle, AlertTriangle, RefreshCw, Loader2, ClipboardList,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
@@ -55,6 +56,8 @@ export function BookingDetailsModal({
   const [showNoShowDialog, setShowNoShowDialog] = useState(false);
   const [paymentInfo, setPaymentInfo] = useState<any>(null);
   const [retryingRefund, setRetryingRefund] = useState(false);
+  const [relatedBookings, setRelatedBookings] = useState<any[]>([]);
+  const [showUnifiedModal, setShowUnifiedModal] = useState(false);
   const paymentSectionRef = useRef<HTMLDivElement>(null);
   const closeSectionRef = useRef<HTMLDivElement>(null);
 
@@ -113,6 +116,25 @@ export function BookingDetailsModal({
     setComandaStatus(statusRes.data?.comanda_status || "open");
     setPaymentInfo(payRes.data || null);
   }, [booking?.id, open, tenantId]);
+
+  // Load related bookings for unified comanda
+  useEffect(() => {
+    if (!booking || !open) {
+      setRelatedBookings([]);
+      return;
+    }
+    const checkRelated = async () => {
+      try {
+        const { data } = await supabase.rpc("get_related_bookings", {
+          p_booking_id: booking.id,
+        });
+        setRelatedBookings(data && data.length > 1 ? (data as any[]) : []);
+      } catch {
+        setRelatedBookings([]);
+      }
+    };
+    checkRelated();
+  }, [booking?.id, open]);
 
   useEffect(() => {
     if (!booking || !open) {
@@ -276,6 +298,28 @@ export function BookingDetailsModal({
           {/* Balance alert */}
           <CustomerBalanceAlert key={balanceKey} customerId={booking.customer_id} tenantId={tenantId} />
 
+          {/* ═══════════════ BANNER COMANDA UNIFICADA ═══════════════ */}
+          {relatedBookings.length > 1 && !isCompleted && !isCancelled && !isNoShow && (
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4 text-amber-500" />
+                  <span className="text-sm text-amber-600 dark:text-amber-400">
+                    {booking.customer?.name} tem mais {relatedBookings.length - 1} serviço{relatedBookings.length > 2 ? "s" : ""} hoje
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-xs text-amber-600 dark:text-amber-400 hover:text-amber-500 h-7"
+                  onClick={() => setShowUnifiedModal(true)}
+                >
+                  Ver comanda unificada →
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* ═══════════════ SEÇÃO 2: ITENS DA COMANDA ═══════════════ */}
           {!isRecurring && !isCancelled && !isNoShow && (
             <>
@@ -434,6 +478,20 @@ export function BookingDetailsModal({
             handleRefresh();
             if (onStatusChange) onStatusChange(booking.id, "no_show", booking);
           }}
+        />
+
+        {/* Unified Comanda Modal */}
+        <UnifiedComandaModal
+          open={showUnifiedModal}
+          onOpenChange={setShowUnifiedModal}
+          customerName={booking.customer?.name || ""}
+          bookings={relatedBookings}
+          onConcluded={() => {
+            handleRefresh();
+            onOpenChange(false);
+            if (onStatusChange) onStatusChange(booking.id, "completed", booking);
+          }}
+          onStatusChange={onStatusChange}
         />
       </DialogContent>
     </Dialog>
