@@ -56,6 +56,8 @@ export function BookingDetailsModal({
   const [showNoShowDialog, setShowNoShowDialog] = useState(false);
   const [paymentInfo, setPaymentInfo] = useState<any>(null);
   const [retryingRefund, setRetryingRefund] = useState(false);
+  const [relatedBookings, setRelatedBookings] = useState<any[]>([]);
+  const [showUnifiedModal, setShowUnifiedModal] = useState(false);
   const paymentSectionRef = useRef<HTMLDivElement>(null);
   const closeSectionRef = useRef<HTMLDivElement>(null);
 
