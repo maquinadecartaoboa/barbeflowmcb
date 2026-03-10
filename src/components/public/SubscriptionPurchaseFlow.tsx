@@ -65,7 +65,8 @@ export function SubscriptionPurchaseFlow({ tenant, plans }: SubscriptionPurchase
   const [cpf, setCpf] = useState('');
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [customerFound, setCustomerFound] = useState(false);
-
+  const [checkoutSubStep, setCheckoutSubStep] = useState<'address' | 'card'>('address');
+  const cardSectionRef = useRef<HTMLDivElement>(null);
   // Billing address for checkout
   const [billingAddress, setBillingAddress] = useState<BillingAddress>({
     zip_code: '', street_name: '', street_number: '',
