@@ -28,6 +28,8 @@ export interface SubscriptionCardPaymentProps {
   addressNeighborhood?: string;
   addressCity?: string;
   addressState?: string;
+  hideSummary?: boolean;
+  hideBack?: boolean;
   onSuccess: (subscriptionId?: string) => void;
   onBack: () => void;
 }
