@@ -77,6 +77,7 @@ export function SubscriptionCardPayment({
 }: SubscriptionCardPaymentProps) {
   const [status, setStatus] = useState<Status>('loading');
   const [errorMessage, setErrorMessage] = useState('');
+  const [paymentError, setPaymentError] = useState<PaymentError | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileKey, setTurnstileKey] = useState(0);
   const brickControllerRef = useRef<any>(null);
