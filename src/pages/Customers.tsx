@@ -144,6 +144,11 @@ export default function Customers() {
       const to = from + PAGE_SIZE - 1;
 
       // Build query with server-side search
+      // Normalize search to strip accents for better matching
+      const normalizedSearch = debouncedSearch
+        ? debouncedSearch.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        : '';
+
       let query = supabase
         .from('customers')
         .select('*', { count: 'exact' })
@@ -151,8 +156,8 @@ export default function Customers() {
         .order('created_at', { ascending: false })
         .range(from, to);
 
-      if (debouncedSearch) {
-        query = query.or(`name.ilike.%${debouncedSearch}%,phone.ilike.%${debouncedSearch}%,email.ilike.%${debouncedSearch}%`);
+      if (normalizedSearch) {
+        query = query.or(`name.ilike.%${normalizedSearch}%,phone.ilike.%${normalizedSearch}%,email.ilike.%${normalizedSearch}%`);
       }
 
       if (genderFilter) {

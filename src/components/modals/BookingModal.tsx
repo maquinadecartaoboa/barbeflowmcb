@@ -466,7 +466,7 @@ export function BookingModal() {
     }
   };
 
-  // Customer search with debounce
+  // Customer search with debounce — server-side via RPC
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const searchCustomers = useCallback((name: string) => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
@@ -478,18 +478,30 @@ export function BookingModal() {
     searchTimeoutRef.current = setTimeout(async () => {
       setSearchingCustomers(true);
       try {
-        // Strip accents so "Vânia" matches "VANIA" etc.
-        const normalized = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        const { data, error } = await supabase
-          .from('customers')
-          .select('id, name, phone, email')
-          .eq('tenant_id', currentTenant.id)
-          .or(`name.ilike.%${normalized}%,name.ilike.%${name}%,phone.ilike.%${normalized}%`)
-          .order('name')
-          .limit(10);
-        if (error) throw error;
-        
-        const customers: CustomerSuggestion[] = data || [];
+        const { data: rpcData, error: rpcError } = await supabase.rpc('search_customers_quick', {
+          p_tenant_id: currentTenant.id,
+          p_query: name,
+          p_limit: 10,
+        });
+        if (rpcError) throw rpcError;
+
+        // RPC returns id, name, phone — we need to fetch email for the selected customers
+        const ids = (rpcData || []).map((c: any) => c.id);
+        let emailMap = new Map<string, string | null>();
+        if (ids.length > 0) {
+          const { data: emailData } = await supabase
+            .from('customers')
+            .select('id, email')
+            .in('id', ids);
+          (emailData || []).forEach((e: any) => emailMap.set(e.id, e.email));
+        }
+
+        const customers: CustomerSuggestion[] = (rpcData || []).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          phone: c.phone,
+          email: emailMap.get(c.id) || null,
+        }));
         
         // Enrich with benefit info
         if (customers.length > 0) {
