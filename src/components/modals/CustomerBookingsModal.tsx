@@ -335,9 +335,29 @@ export function CustomerBookingsModal({
                         </>
                       )}
                     </Button>
+                    {tenantPhone && (
+                      <WhatsAppContactButton
+                        tenantPhone={tenantPhone}
+                        tenantName={tenantName}
+                        variant="compact"
+                        label="Falar sobre este horário"
+                        message={`Olá! Tenho um agendamento de ${booking.service?.name || 'serviço'} no dia ${formatBookingDate(booking.starts_at)} às ${formatBookingTime(booking.starts_at)} e gostaria de falar sobre ele.`}
+                        className="justify-center mt-2"
+                      />
+                    )}
                   </div>
                 ))}
               </div>
+              {tenantPhone && (
+                <div className="mt-4 pt-4 border-t border-border text-center space-y-2">
+                  <p className="text-xs text-muted-foreground">Precisa de ajuda?</p>
+                  <WhatsAppContactButton
+                    tenantPhone={tenantPhone}
+                    tenantName={tenantName}
+                    message={`Olá! Preciso de ajuda com meus agendamentos na ${tenantName}.`}
+                  />
+                </div>
+              )}
             )}
           </div>
         )}
