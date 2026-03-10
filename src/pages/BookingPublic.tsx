@@ -2404,6 +2404,7 @@ END:VCALENDAR`;
           onOpenChange={setShowCustomerBookings}
           tenantId={tenant.id}
           tenantName={tenant.name}
+          tenantPhone={tenant.phone || undefined}
         />
       )}
 
