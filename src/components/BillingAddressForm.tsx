@@ -34,7 +34,7 @@ export function BillingAddressForm({ value, onChange }: BillingAddressFormProps)
   const [cepError, setCepError] = useState(false);
   const numberInputRef = useRef<HTMLInputElement>(null);
 
-  const formatCep = (raw: string): string => {
+export const formatCep = (raw: string): string => {
     const digits = raw.replace(/\D/g, "").slice(0, 8);
     if (digits.length > 5) return digits.slice(0, 5) + "-" + digits.slice(5);
     return digits;
