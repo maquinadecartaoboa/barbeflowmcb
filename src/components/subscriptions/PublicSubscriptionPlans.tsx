@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Check, CreditCard, Loader2, ChevronLeft, Repeat, XCircle, Calendar } from "lucide-react";
+import { Check, CreditCard, Loader2, ChevronLeft, Repeat, XCircle, Calendar, ChevronRight, Pencil } from "lucide-react";
 import { SubscriptionCardPayment, type SubscriptionCardPaymentProps } from "./SubscriptionCardPayment";
+import { BillingAddressForm, isBillingAddressComplete, formatCep, type BillingAddress } from "@/components/BillingAddressForm";
 
 interface PublicSubscriptionPlansProps {
   tenant: any;
