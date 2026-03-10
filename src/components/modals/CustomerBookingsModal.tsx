@@ -78,7 +78,8 @@ export function CustomerBookingsModal({
   open, 
   onOpenChange, 
   tenantId,
-  tenantName 
+  tenantName,
+  tenantPhone
 }: CustomerBookingsModalProps) {
   const { toast } = useToast();
   const [phone, setPhone] = useState('');
