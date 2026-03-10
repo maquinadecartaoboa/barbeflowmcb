@@ -104,7 +104,7 @@ export function SubscriptionPurchaseFlow({ tenant, plans }: SubscriptionPurchase
 
   const handleResetPhone = () => {
     setPhoneInput(''); setPhone(''); setName(''); setEmail(''); setCpf('');
-    setCustomerFound(false); setFormStep('phone');
+    setCustomerFound(false); setFormStep('phone'); setCheckoutSubStep('address');
     setBillingAddress({ zip_code: '', street_name: '', street_number: '', neighborhood: '', city: '', federal_unit: '' });
   };
 
