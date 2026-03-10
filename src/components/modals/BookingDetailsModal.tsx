@@ -298,6 +298,28 @@ export function BookingDetailsModal({
           {/* Balance alert */}
           <CustomerBalanceAlert key={balanceKey} customerId={booking.customer_id} tenantId={tenantId} />
 
+          {/* ═══════════════ BANNER COMANDA UNIFICADA ═══════════════ */}
+          {relatedBookings.length > 1 && !isCompleted && !isCancelled && !isNoShow && (
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4 text-amber-500" />
+                  <span className="text-sm text-amber-600 dark:text-amber-400">
+                    {booking.customer?.name} tem mais {relatedBookings.length - 1} serviço{relatedBookings.length > 2 ? "s" : ""} hoje
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-xs text-amber-600 dark:text-amber-400 hover:text-amber-500 h-7"
+                  onClick={() => setShowUnifiedModal(true)}
+                >
+                  Ver comanda unificada →
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* ═══════════════ SEÇÃO 2: ITENS DA COMANDA ═══════════════ */}
           {!isRecurring && !isCancelled && !isNoShow && (
             <>
