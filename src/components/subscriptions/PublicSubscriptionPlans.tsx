@@ -30,6 +30,12 @@ export function PublicSubscriptionPlans({ tenant, plans, onBack, initialPlanId, 
   const [customerFound, setCustomerFound] = useState(false);
   const [subscriptionSuccess, setSubscriptionSuccess] = useState(false);
   const [createdSubscriptionId, setCreatedSubscriptionId] = useState<string | null>(null);
+  const [checkoutSubStep, setCheckoutSubStep] = useState<'address' | 'card'>('address');
+  const cardSectionRef = useRef<HTMLDivElement>(null);
+  const [billingAddress, setBillingAddress] = useState<BillingAddress>({
+    zip_code: '', street_name: '', street_number: '',
+    neighborhood: '', city: '', federal_unit: '',
+  });
 
   useEffect(() => {
     if (initialPlanId && plans.length > 0 && !selectedPlan) {
