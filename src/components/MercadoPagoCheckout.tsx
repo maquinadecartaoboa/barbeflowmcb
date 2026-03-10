@@ -767,12 +767,25 @@ export const MercadoPagoCheckout = ({
                 <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">2</div>
                 <h3 className="text-sm font-semibold uppercase tracking-wide">Dados do Cartão</h3>
               </div>
+            </div>
+          ) : (
+            <div className="space-y-2 opacity-40 pointer-events-none select-none">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground text-xs font-bold flex items-center justify-center">2</div>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Dados do Cartão</h3>
+              </div>
+              <p className="text-xs text-muted-foreground">🔒 Preencha o endereço acima para liberar o pagamento.</p>
+            </div>
+          )}
 
-              <div
-                id="cardPaymentBrick_container"
-                className="mp-checkout-container"
-              />
+          {/* Brick container — always in DOM, visibility controlled */}
+          <div
+            id="cardPaymentBrick_container"
+            className={`mp-checkout-container ${checkoutStep !== 'card' ? 'h-0 overflow-hidden opacity-0 pointer-events-none' : 'mt-4'}`}
+          />
 
+          {checkoutStep === 'card' && (
+            <>
               {/* Turnstile */}
               <TurnstileWidget
                 key={turnstileKey}
@@ -791,17 +804,7 @@ export const MercadoPagoCheckout = ({
               />
 
               <Button onClick={goBackToMethodSelect} variant="ghost" className="w-full">Voltar e escolher outra forma de pagamento</Button>
-            </div>
-          ) : (
-            <div className="space-y-2 opacity-40 pointer-events-none select-none">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground text-xs font-bold flex items-center justify-center">2</div>
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Dados do Cartão</h3>
-              </div>
-              <p className="text-xs text-muted-foreground">🔒 Preencha o endereço acima para liberar o pagamento.</p>
-              {/* Hidden brick container so it can initialize */}
-              <div id="cardPaymentBrick_container" className="mp-checkout-container hidden" />
-            </div>
+            </>
           )}
         </div>
 
