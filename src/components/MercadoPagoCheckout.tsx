@@ -75,6 +75,7 @@ export const MercadoPagoCheckout = ({
   const isPackagePayment = !!customerPackageId && !bookingId;
   const [status, setStatus] = useState<PaymentStatus>('idle');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
+  const [checkoutStep, setCheckoutStep] = useState<'address' | 'card'>('address');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [pixData, setPixData] = useState<{ qr_code: string; qr_code_base64: string } | null>(null);
   const [copied, setCopied] = useState(false);
