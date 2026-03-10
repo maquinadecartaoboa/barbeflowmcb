@@ -91,7 +91,7 @@ export const MercadoPagoCheckout = ({
   const publicKeyRef = useRef<string | null>(null);
   const isMountedRef = useRef(true);
   const containerRef = useRef<HTMLDivElement>(null);
-  // Ref to always have latest turnstile token in Brick callback
+  const cardSectionRef = useRef<HTMLDivElement>(null);
   const turnstileTokenRef = useRef<string | null>(null);
   turnstileTokenRef.current = turnstileToken;
   // Ref for billing address in Brick callback
