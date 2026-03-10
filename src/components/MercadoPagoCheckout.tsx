@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Loader2, CreditCard, AlertCircle, Check, QrCode, Copy, CheckCircle2, Lock, Shield } from 'lucide-react';
+import { Loader2, CreditCard, AlertCircle, Check, QrCode, Copy, CheckCircle2, Lock, Shield, ChevronRight, Pencil } from 'lucide-react';
+import { formatCep } from '@/components/BillingAddressForm';
 import { toast } from '@/hooks/use-toast';
 import { TurnstileWidget } from '@/components/TurnstileWidget';
 import { BillingAddressForm, isBillingAddressComplete, type BillingAddress } from '@/components/BillingAddressForm';
@@ -75,6 +76,7 @@ export const MercadoPagoCheckout = ({
   const isPackagePayment = !!customerPackageId && !bookingId;
   const [status, setStatus] = useState<PaymentStatus>('idle');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
+  const [checkoutStep, setCheckoutStep] = useState<'address' | 'card'>('address');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [pixData, setPixData] = useState<{ qr_code: string; qr_code_base64: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -90,7 +92,7 @@ export const MercadoPagoCheckout = ({
   const publicKeyRef = useRef<string | null>(null);
   const isMountedRef = useRef(true);
   const containerRef = useRef<HTMLDivElement>(null);
-  // Ref to always have latest turnstile token in Brick callback
+  const cardSectionRef = useRef<HTMLDivElement>(null);
   const turnstileTokenRef = useRef<string | null>(null);
   turnstileTokenRef.current = turnstileToken;
   // Ref for billing address in Brick callback
@@ -465,6 +467,7 @@ export const MercadoPagoCheckout = ({
     setPixData(null);
     setTurnstileToken(null);
     setTurnstileKey(k => k + 1);
+    setCheckoutStep('address');
     if (brickControllerRef.current) { try { brickControllerRef.current.unmount(); } catch (e) {} }
     setStatus('method-select');
   };
@@ -474,6 +477,7 @@ export const MercadoPagoCheckout = ({
     setPixData(null);
     setTurnstileToken(null);
     setTurnstileKey(k => k + 1);
+    setCheckoutStep('address');
     if (brickControllerRef.current) { try { brickControllerRef.current.unmount(); } catch (e) {} }
     setStatus('method-select');
   };
@@ -659,6 +663,15 @@ export const MercadoPagoCheckout = ({
 
   // Card form state
   if (status === 'card-form' || status === 'ready' || (status === 'processing' && paymentMethod === 'card')) {
+    const addressComplete = isBillingAddressComplete(billingAddress);
+
+    const handleContinueToCard = () => {
+      setCheckoutStep('card');
+      setTimeout(() => {
+        cardSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    };
+
     return (
       <div className="space-y-4">
         {/* Payment info with discount */}
@@ -676,6 +689,19 @@ export const MercadoPagoCheckout = ({
           ) : (
             <span className="font-semibold text-primary">R$ {amount.toFixed(2)}</span>
           )}
+        </div>
+
+        {/* Mini stepper */}
+        <div className="flex items-center gap-3">
+          <div className={`flex items-center gap-1.5 ${checkoutStep === 'address' ? 'text-primary' : 'text-emerald-500'}`}>
+            <div className={`w-2 h-2 rounded-full ${checkoutStep === 'address' ? 'bg-primary' : 'bg-emerald-500'}`} />
+            <span className="text-xs font-medium">Endereço</span>
+          </div>
+          <div className={`flex-1 h-px ${checkoutStep === 'card' ? 'bg-emerald-500' : 'bg-border'}`} />
+          <div className={`flex items-center gap-1.5 ${checkoutStep === 'card' ? 'text-primary' : 'text-muted-foreground/50'}`}>
+            <div className={`w-2 h-2 rounded-full ${checkoutStep === 'card' ? 'bg-primary' : 'bg-border'}`} />
+            <span className="text-xs font-medium">Pagamento</span>
+          </div>
         </div>
 
         {/* Error message */}
@@ -696,43 +722,93 @@ export const MercadoPagoCheckout = ({
         )}
 
         {/* Step 1: Billing Address */}
-        <div className="space-y-1">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Etapa 1 — Endereço de cobrança</p>
-          <p className="text-xs text-muted-foreground">Informe o endereço vinculado ao seu cartão de crédito.</p>
-        </div>
-        <BillingAddressForm value={billingAddress} onChange={setBillingAddress} />
+        {checkoutStep === 'address' ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">1</div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide">Endereço de Cobrança</h3>
+            </div>
+            <p className="text-xs text-muted-foreground">Informe o endereço vinculado ao seu cartão de crédito.</p>
+            <BillingAddressForm value={billingAddress} onChange={setBillingAddress} />
+            <Button
+              onClick={handleContinueToCard}
+              disabled={!addressComplete}
+              className="w-full h-12 rounded-xl font-medium gap-2"
+            >
+              Continuar para pagamento <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">
+                <Check className="h-3.5 w-3.5" />
+              </div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Endereço de Cobrança</h3>
+            </div>
+            <div className="bg-secondary/50 border border-border rounded-lg p-3 flex justify-between items-center">
+              <div className="text-sm">
+                <p className="text-foreground">{billingAddress.street_name}, {billingAddress.street_number}</p>
+                <p className="text-muted-foreground text-xs">{billingAddress.neighborhood} · {billingAddress.city}/{billingAddress.federal_unit} · {formatCep(billingAddress.zip_code)}</p>
+              </div>
+              <button
+                onClick={() => setCheckoutStep('address')}
+                className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
+              >
+                <Pencil className="h-3 w-3" /> Editar
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Step 2: Card data */}
-        <div className="space-y-1 pt-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Etapa 2 — Dados do cartão</p>
-          {!isBillingAddressComplete(billingAddress) && (
-            <p className="text-xs text-amber-500">Preencha o endereço acima para liberar o formulário do cartão.</p>
+        <div ref={cardSectionRef}>
+          {checkoutStep === 'card' ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">2</div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide">Dados do Cartão</h3>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2 opacity-40 pointer-events-none select-none">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground text-xs font-bold flex items-center justify-center">2</div>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Dados do Cartão</h3>
+              </div>
+              <p className="text-xs text-muted-foreground">🔒 Preencha o endereço acima para liberar o pagamento.</p>
+            </div>
+          )}
+
+          {/* Brick container — always in DOM, visibility controlled */}
+          <div
+            id="cardPaymentBrick_container"
+            className={`mp-checkout-container ${checkoutStep !== 'card' ? 'h-0 overflow-hidden opacity-0 pointer-events-none' : 'mt-4'}`}
+          />
+
+          {checkoutStep === 'card' && (
+            <>
+              {/* Turnstile */}
+              <TurnstileWidget
+                key={turnstileKey}
+                onVerify={(token) => {
+                  console.log('[TURNSTILE] Token received');
+                  setTurnstileToken(token);
+                }}
+                onExpire={() => {
+                  console.log('[TURNSTILE] Token expired');
+                  setTurnstileToken(null);
+                }}
+                onError={() => {
+                  console.log('[TURNSTILE] Error');
+                  setTurnstileToken(null);
+                }}
+              />
+
+              <Button onClick={goBackToMethodSelect} variant="ghost" className="w-full">Voltar e escolher outra forma de pagamento</Button>
+            </>
           )}
         </div>
-
-        <div
-          id="cardPaymentBrick_container"
-          className={`mp-checkout-container transition-opacity ${!isBillingAddressComplete(billingAddress) ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}
-        />
-
-        {/* Turnstile - always present, key for reset */}
-        <TurnstileWidget
-          key={turnstileKey}
-          onVerify={(token) => {
-            console.log('[TURNSTILE] Token received');
-            setTurnstileToken(token);
-          }}
-          onExpire={() => {
-            console.log('[TURNSTILE] Token expired');
-            setTurnstileToken(null);
-          }}
-          onError={() => {
-            console.log('[TURNSTILE] Error');
-            setTurnstileToken(null);
-          }}
-        />
-
-        <Button onClick={goBackToMethodSelect} variant="ghost" className="w-full">Voltar e escolher outra forma de pagamento</Button>
 
         {/* Processing overlay */}
         {status === 'processing' && (
