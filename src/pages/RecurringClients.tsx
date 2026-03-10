@@ -83,10 +83,14 @@ interface DetectedBenefit {
   validUntil?: string;
 }
 
-function CustomerSearchSelect({ customers, value, onChange }: { customers: Customer[]; value: string; onChange: (id: string) => void }) {
+function CustomerSearchSelect({ tenantId, value, onChange }: { tenantId: string; value: string; onChange: (id: string) => void }) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
+  const [results, setResults] = useState<Customer[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedDisplay, setSelectedDisplay] = useState<{ name: string; phone: string } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -96,37 +100,57 @@ function CustomerSearchSelect({ customers, value, onChange }: { customers: Custo
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const filtered = customers.filter((c) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return c.name.toLowerCase().includes(q) || c.phone.includes(q);
-  }).slice(0, 30);
+  // Load selected customer display name on mount
+  useEffect(() => {
+    if (value && !selectedDisplay) {
+      supabase.from('customers').select('name, phone').eq('id', value).single().then(({ data }) => {
+        if (data) setSelectedDisplay({ name: data.name, phone: data.phone });
+      });
+    }
+  }, [value]);
 
-  const selected = customers.find((c) => c.id === value);
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (search.length < 2) { setResults([]); return; }
+    timerRef.current = setTimeout(async () => {
+      setSearching(true);
+      const { data } = await supabase.rpc('search_customers_quick', {
+        p_tenant_id: tenantId,
+        p_query: search,
+        p_limit: 15,
+      });
+      setResults((data as Customer[]) || []);
+      setSearching(false);
+    }, 300);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [search, tenantId]);
 
   return (
     <div className="space-y-2" ref={ref}>
       <Label>Cliente</Label>
-      <Input
-        placeholder="Buscar por nome ou telefone..."
-        value={search}
-        onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
-        onFocus={() => setOpen(true)}
-      />
-      {value && selected && !open && (
-        <p className="text-xs text-muted-foreground">Selecionado: {selected.name} — {selected.phone}</p>
+      <div className="relative">
+        <Input
+          placeholder="Buscar por nome ou telefone (mín. 2 letras)..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
+          onFocus={() => { if (search.length >= 2) setOpen(true); }}
+        />
+        {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+      </div>
+      {value && selectedDisplay && !open && (
+        <p className="text-xs text-muted-foreground">Selecionado: {selectedDisplay.name} — {selectedDisplay.phone}</p>
       )}
-      {open && (
+      {open && search.length >= 2 && (
         <div className="max-h-48 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md">
-          {filtered.length === 0 ? (
+          {results.length === 0 && !searching ? (
             <p className="p-3 text-sm text-muted-foreground">Nenhum cliente encontrado</p>
           ) : (
-            filtered.map((c) => (
+            results.map((c) => (
               <button
                 key={c.id}
                 type="button"
                 className={`w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors ${c.id === value ? "bg-accent text-accent-foreground" : ""}`}
-                onClick={() => { onChange(c.id); setSearch(c.name); setOpen(false); }}
+                onClick={() => { onChange(c.id); setSearch(c.name); setSelectedDisplay({ name: c.name, phone: c.phone }); setOpen(false); }}
               >
                 {c.name} — {c.phone}
               </button>
