@@ -348,6 +348,8 @@ export function SubscriptionPurchaseFlow({ tenant, plans }: SubscriptionPurchase
                     addressNeighborhood={billingAddress.neighborhood}
                     addressCity={billingAddress.city}
                     addressState={billingAddress.federal_unit}
+                    hideSummary
+                    hideBack
                     onSuccess={handlePaymentSuccess}
                     onBack={() => setFormStep('data')}
                   />
