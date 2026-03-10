@@ -40,6 +40,7 @@ interface CustomerBookingsModalProps {
   onOpenChange: (open: boolean) => void;
   tenantId: string;
   tenantName: string;
+  tenantPhone?: string;
 }
 
 interface Booking {
