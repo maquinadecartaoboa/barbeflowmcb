@@ -283,6 +283,7 @@ export function SubscriptionCardPayment({
 
   const retry = () => {
     setErrorMessage('');
+    setPaymentError(null);
     setTurnstileToken(null);
     setTurnstileKey(k => k + 1);
     if (brickControllerRef.current) {
