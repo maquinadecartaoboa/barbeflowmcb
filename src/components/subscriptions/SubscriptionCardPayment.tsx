@@ -321,24 +321,26 @@ export function SubscriptionCardPayment({
   return (
     <div className="space-y-5">
       {/* Plan summary header */}
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-muted/30 p-4">
-        <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -translate-y-8 translate-x-8" />
-        <div className="flex items-center justify-between relative">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <CreditCard className="h-5 w-5 text-primary" />
+      {!hideSummary && (
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-muted/30 p-4">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -translate-y-8 translate-x-8" />
+          <div className="flex items-center justify-between relative">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <CreditCard className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">{planName}</h3>
+                <p className="text-xs text-muted-foreground">Assinatura mensal</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-sm">{planName}</h3>
-              <p className="text-xs text-muted-foreground">Assinatura mensal</p>
+            <div className="text-right">
+              <span className="text-xl font-bold">R$ {priceFormatted}</span>
+              <span className="text-xs text-muted-foreground block">/mês</span>
             </div>
-          </div>
-          <div className="text-right">
-            <span className="text-xl font-bold">R$ {priceFormatted}</span>
-            <span className="text-xs text-muted-foreground block">/mês</span>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Processing overlay */}
       {status === 'processing' && (
