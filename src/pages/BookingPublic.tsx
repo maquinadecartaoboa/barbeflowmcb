@@ -151,6 +151,8 @@ const BookingPublic = () => {
   
   // Availability settings
   const [maxAdvanceDays, setMaxAdvanceDays] = useState<number>(0);
+  const [maxAdvanceDaysSubscriber, setMaxAdvanceDaysSubscriber] = useState<number>(0);
+  const [isSubscriber, setIsSubscriber] = useState(false);
   const [blockedDates, setBlockedDates] = useState<Set<string>>(new Set());
   
   // Customer bookings modal
