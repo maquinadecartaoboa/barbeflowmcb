@@ -6,7 +6,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Lock, Loader2, CheckCircle2, Banknote, Smartphone, CreditCard } from "lucide-react";
+import { Lock, Loader2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CurrencyInput } from "@/components/ui/currency-input";
@@ -21,19 +21,12 @@ interface Props {
   onClose: () => void;
 }
 
-const TIP_METHODS = [
-  { value: "cash", label: "Dinheiro", icon: Banknote },
-  { value: "pix", label: "PIX", icon: Smartphone },
-  { value: "credit_card", label: "Cartão", icon: CreditCard },
-] as const;
-
 const QUICK_TIPS = [500, 1000, 2000]; // cents
 
 export function ComandaCloseSection({ bookingId, tenantId, items, comandaClosed, commissionBasis, onClose }: Props) {
   const [closing, setClosing] = useState(false);
   const [acceptDebt, setAcceptDebt] = useState(false);
   const [tipValue, setTipValue] = useState("");
-  const [tipMethod, setTipMethod] = useState("cash");
 
   const hasUnpaid = items.some(i => i.paid_status === "unpaid");
   const allSettled = !hasUnpaid;
@@ -60,7 +53,7 @@ export function ComandaCloseSection({ bookingId, tenantId, items, comandaClosed,
 
       if (tipCents > 0) {
         rpcParams.p_tip_cents = tipCents;
-        rpcParams.p_tip_payment_method = tipMethod;
+        rpcParams.p_tip_payment_method = "cash";
       }
 
       const { data, error } = await supabase.rpc("close_comanda_with_commissions", rpcParams);
@@ -215,30 +208,6 @@ export function ComandaCloseSection({ bookingId, tenantId, items, comandaClosed,
           ))}
         </div>
 
-        {/* Payment method for tip */}
-        {tipCents > 0 && (
-          <div className="space-y-1.5">
-            <span className="text-[11px] text-muted-foreground">Método da gorjeta:</span>
-            <div className="flex gap-1.5">
-              {TIP_METHODS.map(m => {
-                const Icon = m.icon;
-                return (
-                  <Button
-                    key={m.value}
-                    type="button"
-                    variant={tipMethod === m.value ? "default" : "outline"}
-                    size="sm"
-                    className="flex-1 h-8 text-xs gap-1"
-                    onClick={() => setTipMethod(m.value)}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {m.label}
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
 
       <AlertDialog>
