@@ -16,6 +16,7 @@ import { NoTenantState } from "@/components/NoTenantState";
 import { AvailabilityBlocksManager } from "@/components/AvailabilityBlocksManager";
 import LegalSettingsSection from "@/components/settings/LegalSettingsSection";
 import { supabase } from "@/integrations/supabase/client";
+import { WhatsAppMessagesSection } from "@/components/settings/WhatsAppMessagesSection";
 
 
 import { useToast } from "@/hooks/use-toast";
@@ -1559,6 +1560,12 @@ export default function Settings() {
         {/* WhatsApp Tab */}
         <TabsContent value="whatsapp">
           <WhatsAppConfigEmbed />
+          {currentTenant && (
+            <WhatsAppMessagesSection
+              tenantName={currentTenant.name}
+              tenantSlug={currentTenant.slug}
+            />
+          )}
         </TabsContent>
 
         {/* Custom Domain Tab — hidden until feature is finalized */}
