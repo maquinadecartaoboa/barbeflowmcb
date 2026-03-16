@@ -558,7 +558,11 @@ const BookingPublic = () => {
         });
       });
       const todayStr = new Date().toISOString().split('T')[0];
-      (benefitsData.subscriptions || []).forEach((sub: any) => {
+      const subs = benefitsData.subscriptions || [];
+      const hasActiveSub = subs.length > 0;
+      setIsSubscriber(hasActiveSub);
+
+      subs.forEach((sub: any) => {
         const allowedStaffIds = (sub.plan_staff || []).map((ps: any) => ps.staff_id);
         
         // First, map services from usage records (active period)
