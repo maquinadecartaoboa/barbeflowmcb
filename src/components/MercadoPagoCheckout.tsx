@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Loader2, CreditCard, AlertCircle, Check, QrCode, Copy, CheckCircle2, Lock, Shield, ChevronRight, Pencil } from 'lucide-react';
+import { Loader2, CreditCard, AlertCircle, Check, QrCode, Copy, CheckCircle2, Lock, Shield, ChevronRight, Pencil, Tag } from 'lucide-react';
 import { formatCep } from '@/components/BillingAddressForm';
 import { toast } from '@/hooks/use-toast';
 import { TurnstileWidget } from '@/components/TurnstileWidget';
@@ -644,6 +644,12 @@ export const MercadoPagoCheckout = ({
         </div>
         <div className="text-center">
           <p className="text-sm font-medium mb-4">Escaneie o QR Code ou copie o código PIX:</p>
+          {onlineDiscountPercent > 0 && (
+            <div className="mb-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+              <Tag className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="text-xs text-emerald-400 font-medium">Desconto de {onlineDiscountPercent}% aplicado no pagamento online</span>
+            </div>
+          )}
           {pixData.qr_code_base64 && (
             <div className="inline-block p-4 bg-white rounded-xl mb-4">
               <img src={`data:image/png;base64,${pixData.qr_code_base64}`} alt="QR Code PIX" className="w-48 h-48" />

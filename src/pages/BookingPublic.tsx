@@ -20,6 +20,7 @@ import { Calendar as CalendarRac } from "@/components/ui/calendar-rac";
 import { MercadoPagoCheckout } from "@/components/MercadoPagoCheckout";
 import { CustomerBookingsModal } from "@/components/modals/CustomerBookingsModal";
 import { Badge } from "@/components/ui/badge";
+import { getOnlineDiscount, hasAnyOnlineDiscount, hasPerMethodDiscount } from "@/utils/onlineDiscount";
 import { 
   Calendar, 
   Clock, 
@@ -41,7 +42,8 @@ import {
   Search,
   X,
   Filter,
-  ChevronDown
+  ChevronDown,
+  Tag
 } from "lucide-react";
 import { PublicSubscriptionPlans } from "@/components/subscriptions/PublicSubscriptionPlans";
 import { MyPackagesSection } from "@/components/public/MyPackagesSection";
@@ -1096,7 +1098,23 @@ END:VCALENDAR`;
               <div className="flex items-center justify-between">
                 <span className="text-zinc-500 text-sm">Valor</span>
                 <span className="font-semibold text-emerald-400">
-                  {(packageCoveredService || subscriptionCoveredService) ? 'Incluso no plano/pacote' : `R$ ${((createdBooking?.service?.price_cents || 0) / 100).toFixed(2)}`}
+                  {(packageCoveredService || subscriptionCoveredService) 
+                    ? 'Incluso no plano/pacote' 
+                    : (() => {
+                        const svcCents = createdBooking?.service?.price_cents || 0;
+                        const tenantSettings = (tenant?.settings || {}) as Record<string, any>;
+                        const disc = paymentMethod === 'online' ? getOnlineDiscount(tenantSettings, svcCents) : null;
+                        if (disc && disc.discountCents > 0) {
+                          return (
+                            <span className="flex items-center gap-2">
+                              <span className="text-zinc-500 line-through text-xs">R$ {(svcCents / 100).toFixed(2)}</span>
+                              <span>R$ {(disc.final / 100).toFixed(2)}</span>
+                            </span>
+                          );
+                        }
+                        return `R$ ${(svcCents / 100).toFixed(2)}`;
+                      })()
+                  }
                 </span>
               </div>
             </div>
@@ -1443,15 +1461,29 @@ END:VCALENDAR`;
                                 <h3 className="font-medium text-sm leading-tight group-hover:text-white transition-colors">
                                   {service.name}
                                 </h3>
-                                {benefit ? (
+                              {benefit ? (
                                   <span className="font-semibold text-amber-400 whitespace-nowrap text-xs bg-amber-400/10 px-2 py-0.5 rounded-md">
                                     Incluso
                                   </span>
-                                ) : (
-                                  <span className="font-semibold text-emerald-400 whitespace-nowrap text-sm">
-                                    R$ {(service.price_cents / 100).toFixed(2)}
-                                  </span>
-                                )}
+                                ) : (() => {
+                                  const tenantSettings = (tenant?.settings || {}) as Record<string, any>;
+                                  const hasDisc = hasAnyOnlineDiscount(tenantSettings);
+                                  const disc = hasDisc ? getOnlineDiscount(tenantSettings, service.price_cents) : null;
+                                  return hasDisc && disc && disc.discountCents > 0 ? (
+                                    <div className="text-right">
+                                      <span className="text-zinc-500 line-through text-xs mr-1">
+                                        R$ {(service.price_cents / 100).toFixed(2)}
+                                      </span>
+                                      <span className="font-semibold text-emerald-400 whitespace-nowrap text-sm">
+                                        R$ {(disc.final / 100).toFixed(2)}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="font-semibold text-emerald-400 whitespace-nowrap text-sm">
+                                      R$ {(service.price_cents / 100).toFixed(2)}
+                                    </span>
+                                  );
+                                })()}
                               </div>
                               {service.description && (
                                 <p className="text-zinc-500 text-xs leading-relaxed line-clamp-2 mb-1.5">
@@ -1463,7 +1495,7 @@ END:VCALENDAR`;
                                   <Clock className="h-3 w-3" />
                                   {service.duration_minutes}min
                                 </span>
-                                {benefit && (
+                                {benefit ? (
                                   <span className={`text-[11px] px-1.5 py-0.5 rounded-md ${
                                     benefit.type === 'package'
                                       ? 'bg-emerald-500/10 text-emerald-400'
@@ -1475,6 +1507,11 @@ END:VCALENDAR`;
                                         ? 'Assinatura ✓'
                                         : `Assinatura (${benefit.used}/${benefit.limit})`
                                     }
+                                  </span>
+                                ) : hasAnyOnlineDiscount((tenant?.settings || {}) as Record<string, any>) && (
+                                  <span className="text-[11px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 flex items-center gap-0.5">
+                                    <Tag className="h-2.5 w-2.5" />
+                                    Desc. online
                                   </span>
                                 )}
                               </div>
@@ -1807,10 +1844,13 @@ END:VCALENDAR`;
         {step === 4 && allowOnlinePayment && (() => {
           const tenantSettings = (tenant?.settings || {}) as Record<string, any>;
           const onlineDiscountPercent = tenantSettings.online_discount_percent || 0;
+          const pixDiscountPercent = parseFloat(tenantSettings.pix_discount_percent) || 0;
+          const cardDiscountPercent = parseFloat(tenantSettings.card_discount_percent) || 0;
           const showCancellationForfeit = tenantSettings.show_cancellation_forfeit || false;
           const cancellationForfeitHours = tenantSettings.cancellation_forfeit_hours || 24;
           const noShowForfeitPercent = tenantSettings.no_show_forfeit_percent ?? 30;
-          const hasDiscount = onlineDiscountPercent > 0;
+          const hasDiscount = onlineDiscountPercent > 0 || pixDiscountPercent > 0 || cardDiscountPercent > 0;
+          const showPerMethod = hasPerMethodDiscount(tenantSettings);
 
           const originalPriceCents = selectedServiceData?.price_cents || 0;
           let baseForPayment = originalPriceCents;
@@ -1818,8 +1858,14 @@ END:VCALENDAR`;
           if (isPrepayPartial) {
             baseForPayment = Math.round(originalPriceCents * prepaymentPercentage / 100);
           }
-          const discountCents = hasDiscount ? Math.round(baseForPayment * onlineDiscountPercent / 100) : 0;
-          const onlinePriceCents = baseForPayment - discountCents;
+          
+          // General discount (used when no per-method distinction)
+          const generalDisc = getOnlineDiscount(tenantSettings, baseForPayment);
+          const pixDisc = getOnlineDiscount(tenantSettings, baseForPayment, 'pix');
+          const cardDisc = getOnlineDiscount(tenantSettings, baseForPayment, 'card');
+          // Use best discount for display on the main button
+          const bestDisc = pixDisc.discountCents >= cardDisc.discountCents ? pixDisc : cardDisc;
+          const displayDisc = hasDiscount ? bestDisc : generalDisc;
 
           return (
           <div className="animate-in fade-in duration-300">
@@ -1883,7 +1929,7 @@ END:VCALENDAR`;
                        {hasDiscount ? (
                          <>
                            <span className="text-zinc-500 line-through text-sm">R$ {(baseForPayment / 100).toFixed(2)}</span>
-                           <span className="text-emerald-400 font-bold text-xl">R$ {(onlinePriceCents / 100).toFixed(2)}</span>
+                           <span className="text-emerald-400 font-bold text-xl">R$ {(displayDisc.final / 100).toFixed(2)}</span>
                          </>
                        ) : (
                          <span className="text-white font-bold text-xl">R$ {(baseForPayment / 100).toFixed(2)}</span>
@@ -1891,14 +1937,23 @@ END:VCALENDAR`;
                      </div>
 
                      {hasDiscount && (
-                       <p className="text-emerald-400 text-xs">
-                         Economize R$ {(discountCents / 100).toFixed(2)} ({onlineDiscountPercent}% de desconto)
-                       </p>
+                       <div className="space-y-1">
+                         <p className="text-emerald-400 text-xs flex items-center gap-1">
+                           <Tag className="h-3 w-3" />
+                           Economize R$ {(displayDisc.discountCents / 100).toFixed(2)} ({displayDisc.discountPercent}% de desconto)
+                         </p>
+                         {showPerMethod && (
+                           <div className="flex gap-3 text-[11px] mt-1">
+                             <span className="text-emerald-400/80">PIX: R$ {(pixDisc.final / 100).toFixed(2)} ({pixDisc.discountPercent}% desc.)</span>
+                             <span className="text-emerald-400/80">Cartão: R$ {(cardDisc.final / 100).toFixed(2)} ({cardDisc.discountPercent}% desc.)</span>
+                           </div>
+                         )}
+                       </div>
                      )}
 
                      {isPrepayPartial && (
                        <p className="text-zinc-500 text-xs mt-1">
-                         Sinal de {prepaymentPercentage}%{hasDiscount ? ` com ${onlineDiscountPercent}% de desconto` : ''}
+                         Sinal de {prepaymentPercentage}%{hasDiscount ? ` com desconto` : ''}
                        </p>
                      )}
                 </div>
@@ -1996,7 +2051,7 @@ END:VCALENDAR`;
                   }
                   const priceCents = selectedServiceData?.price_cents || 0;
                   const tenantSettings = (tenant?.settings || {}) as Record<string, any>;
-                  const step5DiscPct = paymentMethod === 'online' ? (tenantSettings.online_discount_percent || 0) : 0;
+                  const step5DiscPct = paymentMethod === 'online' ? (getOnlineDiscount(tenantSettings, priceCents).discountPercent) : 0;
                   const step5DiscCents = step5DiscPct > 0 ? Math.round(priceCents * step5DiscPct / 100) : 0;
                   const step5FinalCents = priceCents - step5DiscCents;
                   if (step5DiscCents > 0) {
@@ -2192,23 +2247,37 @@ END:VCALENDAR`;
               )}
 
               {/* Total order value when order bump items are selected */}
-              {orderBumpItems.length > 0 && !subscriptionCoveredService && !packageCoveredService && (
+              {orderBumpItems.length > 0 && !subscriptionCoveredService && !packageCoveredService && (() => {
+                const tenantSettings = (tenant?.settings || {}) as Record<string, any>;
+                const svcCents = selectedServiceData?.price_cents || 0;
+                const orderDiscPct = paymentMethod === 'online' ? getOnlineDiscount(tenantSettings, svcCents).discountPercent : 0;
+                const orderDiscCents = orderDiscPct > 0 ? Math.round(svcCents * orderDiscPct / 100) : 0;
+                const bumpTotal = orderBumpItems.reduce((s, p) => s + p.sale_price_cents, 0);
+                const totalCents = svcCents - orderDiscCents + bumpTotal;
+                return (
                 <div className="p-4 bg-zinc-900/30 border border-zinc-800/50 rounded-xl space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-zinc-500">Serviço</span>
-                    <span className="text-zinc-300">R$ {((selectedServiceData?.price_cents || 0) / 100).toFixed(2)}</span>
+                    <span className="text-zinc-300">R$ {(svcCents / 100).toFixed(2)}</span>
                   </div>
+                  {orderDiscCents > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-emerald-400 flex items-center gap-1"><Tag className="h-3 w-3" />Desconto online ({orderDiscPct}%)</span>
+                      <span className="text-emerald-400">-R$ {(orderDiscCents / 100).toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-zinc-500">Produtos ({orderBumpItems.length})</span>
-                    <span className="text-zinc-300">R$ {(orderBumpItems.reduce((s, p) => s + p.sale_price_cents, 0) / 100).toFixed(2)}</span>
+                    <span className="text-zinc-300">R$ {(bumpTotal / 100).toFixed(2)}</span>
                   </div>
                   <div className="h-px bg-zinc-800" />
                   <div className="flex items-center justify-between text-sm font-semibold">
                     <span className="text-zinc-300">Total</span>
-                    <span className="text-emerald-400">R$ {(((selectedServiceData?.price_cents || 0) + orderBumpItems.reduce((s, p) => s + p.sale_price_cents, 0)) / 100).toFixed(2)}</span>
+                    <span className="text-emerald-400">R$ {(totalCents / 100).toFixed(2)}</span>
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               <div className="pt-4 space-y-3">
                 <Button 
@@ -2264,10 +2333,11 @@ END:VCALENDAR`;
             {/* Booking Summary with discount */}
             {(() => {
               const tenantSettings = (tenant?.settings || {}) as Record<string, any>;
-              const discPct = tenantSettings.online_discount_percent || 0;
               const svcCents = createdBooking.service?.price_cents || 0;
-              const discCents = discPct > 0 ? Math.round(svcCents * discPct / 100) : 0;
-              const finalSvcCents = svcCents - discCents;
+              const disc = getOnlineDiscount(tenantSettings, svcCents);
+              const discCents = disc.discountCents;
+              const discPct = disc.discountPercent;
+              const finalSvcCents = disc.final;
               const bumpCents = orderBumpItems.reduce((s: number, p: OrderBumpProduct) => s + p.sale_price_cents, 0);
               
               return (
@@ -2304,7 +2374,8 @@ END:VCALENDAR`;
                   </div>
                 </div>
                 {discCents > 0 && (
-                  <p className="text-xs text-emerald-400 text-right mb-3">
+                  <p className="text-xs text-emerald-400 text-right mb-3 flex items-center justify-end gap-1">
+                    <Tag className="h-3 w-3" />
                     {discPct}% de desconto no pagamento online
                   </p>
                 )}
@@ -2333,6 +2404,12 @@ END:VCALENDAR`;
                         )}
                       </span>
                     </div>
+                    {discCents > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-emerald-400 flex items-center gap-1"><Tag className="h-3 w-3" />Desconto ({discPct}%)</span>
+                        <span className="text-emerald-400">-R$ {(discCents / 100).toFixed(2)}</span>
+                      </div>
+                    )}
                     {orderBumpItems.map((item) => (
                       <div key={item.product_id} className="flex items-center justify-between text-sm">
                         <span className="text-zinc-500 truncate mr-2">{item.name}</span>
@@ -2360,12 +2437,11 @@ END:VCALENDAR`;
                      const svcCents = (createdBooking.service?.price_cents || 0);
                      const bumpCents = orderBumpItems.reduce((s: number, p: OrderBumpProduct) => s + p.sale_price_cents, 0);
                      const tenantSettings = (tenant?.settings || {}) as Record<string, any>;
-                     const discPct = tenantSettings.online_discount_percent || 0;
-                     const discCents = discPct > 0 ? Math.round(svcCents * discPct / 100) : 0;
-                     return (svcCents - discCents + bumpCents) / 100;
+                     const disc = getOnlineDiscount(tenantSettings, svcCents);
+                     return (disc.final + bumpCents) / 100;
                    })()
                }
-               onlineDiscountPercent={((tenant?.settings || {}) as Record<string, any>).online_discount_percent || 0}
+               onlineDiscountPercent={getOnlineDiscount((tenant?.settings || {}) as Record<string, any>, createdBooking.service?.price_cents || 0).discountPercent}
                originalAmountCents={selectedPackage ? selectedPackage.price_cents : ((createdBooking.service?.price_cents || 0) + orderBumpItems.reduce((s: number, p: OrderBumpProduct) => s + p.sale_price_cents, 0))}
               serviceName={selectedPackage 
                 ? selectedPackage.name 
