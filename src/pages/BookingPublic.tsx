@@ -1445,15 +1445,29 @@ END:VCALENDAR`;
                                 <h3 className="font-medium text-sm leading-tight group-hover:text-white transition-colors">
                                   {service.name}
                                 </h3>
-                                {benefit ? (
+                              {benefit ? (
                                   <span className="font-semibold text-amber-400 whitespace-nowrap text-xs bg-amber-400/10 px-2 py-0.5 rounded-md">
                                     Incluso
                                   </span>
-                                ) : (
-                                  <span className="font-semibold text-emerald-400 whitespace-nowrap text-sm">
-                                    R$ {(service.price_cents / 100).toFixed(2)}
-                                  </span>
-                                )}
+                                ) : (() => {
+                                  const tenantSettings = (tenant?.settings || {}) as Record<string, any>;
+                                  const hasDisc = hasAnyOnlineDiscount(tenantSettings);
+                                  const disc = hasDisc ? getOnlineDiscount(tenantSettings, service.price_cents) : null;
+                                  return hasDisc && disc && disc.discountCents > 0 ? (
+                                    <div className="text-right">
+                                      <span className="text-zinc-500 line-through text-xs mr-1">
+                                        R$ {(service.price_cents / 100).toFixed(2)}
+                                      </span>
+                                      <span className="font-semibold text-emerald-400 whitespace-nowrap text-sm">
+                                        R$ {(disc.final / 100).toFixed(2)}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="font-semibold text-emerald-400 whitespace-nowrap text-sm">
+                                      R$ {(service.price_cents / 100).toFixed(2)}
+                                    </span>
+                                  );
+                                })()}
                               </div>
                               {service.description && (
                                 <p className="text-zinc-500 text-xs leading-relaxed line-clamp-2 mb-1.5">
