@@ -1479,7 +1479,7 @@ END:VCALENDAR`;
                                   <Clock className="h-3 w-3" />
                                   {service.duration_minutes}min
                                 </span>
-                                {benefit && (
+                                {benefit ? (
                                   <span className={`text-[11px] px-1.5 py-0.5 rounded-md ${
                                     benefit.type === 'package'
                                       ? 'bg-emerald-500/10 text-emerald-400'
@@ -1491,6 +1491,11 @@ END:VCALENDAR`;
                                         ? 'Assinatura ✓'
                                         : `Assinatura (${benefit.used}/${benefit.limit})`
                                     }
+                                  </span>
+                                ) : hasAnyOnlineDiscount((tenant?.settings || {}) as Record<string, any>) && (
+                                  <span className="text-[11px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 flex items-center gap-0.5">
+                                    <Tag className="h-2.5 w-2.5" />
+                                    Desc. online
                                   </span>
                                 )}
                               </div>
