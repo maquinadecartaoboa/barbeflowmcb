@@ -668,7 +668,8 @@ export default function AppShell() {
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <ClearCacheButton />
                   <PushNotificationToggle tenantId={currentTenant?.id} />
                   <motion.div whileHover={{ scale: 1.04, transition: { type: "spring", stiffness: 300, damping: 20 } }} whileTap={{ scale: 0.94, transition: { duration: 0.08 } }}>
                     <Button 
