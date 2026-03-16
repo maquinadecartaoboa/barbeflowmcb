@@ -1913,7 +1913,7 @@ END:VCALENDAR`;
                        {hasDiscount ? (
                          <>
                            <span className="text-zinc-500 line-through text-sm">R$ {(baseForPayment / 100).toFixed(2)}</span>
-                           <span className="text-emerald-400 font-bold text-xl">R$ {(onlinePriceCents / 100).toFixed(2)}</span>
+                           <span className="text-emerald-400 font-bold text-xl">R$ {(displayDisc.final / 100).toFixed(2)}</span>
                          </>
                        ) : (
                          <span className="text-white font-bold text-xl">R$ {(baseForPayment / 100).toFixed(2)}</span>
@@ -1921,14 +1921,23 @@ END:VCALENDAR`;
                      </div>
 
                      {hasDiscount && (
-                       <p className="text-emerald-400 text-xs">
-                         Economize R$ {(discountCents / 100).toFixed(2)} ({onlineDiscountPercent}% de desconto)
-                       </p>
+                       <div className="space-y-1">
+                         <p className="text-emerald-400 text-xs flex items-center gap-1">
+                           <Tag className="h-3 w-3" />
+                           Economize R$ {(displayDisc.discountCents / 100).toFixed(2)} ({displayDisc.discountPercent}% de desconto)
+                         </p>
+                         {showPerMethod && (
+                           <div className="flex gap-3 text-[11px] mt-1">
+                             <span className="text-emerald-400/80">PIX: R$ {(pixDisc.final / 100).toFixed(2)} ({pixDisc.discountPercent}% desc.)</span>
+                             <span className="text-emerald-400/80">Cartão: R$ {(cardDisc.final / 100).toFixed(2)} ({cardDisc.discountPercent}% desc.)</span>
+                           </div>
+                         )}
+                       </div>
                      )}
 
                      {isPrepayPartial && (
                        <p className="text-zinc-500 text-xs mt-1">
-                         Sinal de {prepaymentPercentage}%{hasDiscount ? ` com ${onlineDiscountPercent}% de desconto` : ''}
+                         Sinal de {prepaymentPercentage}%{hasDiscount ? ` com desconto` : ''}
                        </p>
                      )}
                 </div>
