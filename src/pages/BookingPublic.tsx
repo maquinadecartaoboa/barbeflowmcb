@@ -1098,7 +1098,23 @@ END:VCALENDAR`;
               <div className="flex items-center justify-between">
                 <span className="text-zinc-500 text-sm">Valor</span>
                 <span className="font-semibold text-emerald-400">
-                  {(packageCoveredService || subscriptionCoveredService) ? 'Incluso no plano/pacote' : `R$ ${((createdBooking?.service?.price_cents || 0) / 100).toFixed(2)}`}
+                  {(packageCoveredService || subscriptionCoveredService) 
+                    ? 'Incluso no plano/pacote' 
+                    : (() => {
+                        const svcCents = createdBooking?.service?.price_cents || 0;
+                        const tenantSettings = (tenant?.settings || {}) as Record<string, any>;
+                        const disc = paymentMethod === 'online' ? getOnlineDiscount(tenantSettings, svcCents) : null;
+                        if (disc && disc.discountCents > 0) {
+                          return (
+                            <span className="flex items-center gap-2">
+                              <span className="text-zinc-500 line-through text-xs">R$ {(svcCents / 100).toFixed(2)}</span>
+                              <span>R$ {(disc.final / 100).toFixed(2)}</span>
+                            </span>
+                          );
+                        }
+                        return `R$ ${(svcCents / 100).toFixed(2)}`;
+                      })()
+                  }
                 </span>
               </div>
             </div>

@@ -644,6 +644,12 @@ export const MercadoPagoCheckout = ({
         </div>
         <div className="text-center">
           <p className="text-sm font-medium mb-4">Escaneie o QR Code ou copie o código PIX:</p>
+          {onlineDiscountPercent > 0 && (
+            <div className="mb-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+              <Tag className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="text-xs text-emerald-400 font-medium">Desconto de {onlineDiscountPercent}% aplicado no pagamento online</span>
+            </div>
+          )}
           {pixData.qr_code_base64 && (
             <div className="inline-block p-4 bg-white rounded-xl mb-4">
               <img src={`data:image/png;base64,${pixData.qr_code_base64}`} alt="QR Code PIX" className="w-48 h-48" />
