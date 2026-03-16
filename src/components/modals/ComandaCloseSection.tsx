@@ -23,7 +23,7 @@ interface Props {
 
 const QUICK_TIPS = [500, 1000, 2000]; // cents
 
-export function ComandaCloseSection({ bookingId, tenantId, items, comandaClosed, commissionBasis, paymentMethod, onClose }: Props) {
+export function ComandaCloseSection({ bookingId, tenantId, items, comandaClosed, commissionBasis, onClose }: Props) {
   const [closing, setClosing] = useState(false);
   const [acceptDebt, setAcceptDebt] = useState(false);
   const [tipValue, setTipValue] = useState("");
