@@ -349,6 +349,7 @@ export default function Settings() {
       extra_slot_duration: settings.extra_slot_duration ?? 5,
       cancellation_hours: settings.cancellation_hours ?? 2,
       max_advance_days: settings.max_advance_days ?? 30,
+      max_advance_days_subscriber: settings.max_advance_days_subscriber ?? 7,
       subscription_grace_hours: settings.subscription_grace_hours ?? 48,
       cycle_reminders_enabled: settings.cycle_reminders_enabled !== false,
       cycle_reminder_3d: reminderDays.includes(3),
