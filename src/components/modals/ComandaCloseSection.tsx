@@ -18,8 +18,6 @@ interface Props {
   items: BookingItem[];
   comandaClosed: boolean;
   commissionBasis?: string;
-  /** Predominant payment method from the comanda (e.g. "cash", "pix", "credit_card") */
-  paymentMethod?: string;
   onClose: () => void;
 }
 
