@@ -2333,10 +2333,11 @@ END:VCALENDAR`;
             {/* Booking Summary with discount */}
             {(() => {
               const tenantSettings = (tenant?.settings || {}) as Record<string, any>;
-              const discPct = tenantSettings.online_discount_percent || 0;
               const svcCents = createdBooking.service?.price_cents || 0;
-              const discCents = discPct > 0 ? Math.round(svcCents * discPct / 100) : 0;
-              const finalSvcCents = svcCents - discCents;
+              const disc = getOnlineDiscount(tenantSettings, svcCents);
+              const discCents = disc.discountCents;
+              const discPct = disc.discountPercent;
+              const finalSvcCents = disc.final;
               const bumpCents = orderBumpItems.reduce((s: number, p: OrderBumpProduct) => s + p.sale_price_cents, 0);
               
               return (
@@ -2373,7 +2374,8 @@ END:VCALENDAR`;
                   </div>
                 </div>
                 {discCents > 0 && (
-                  <p className="text-xs text-emerald-400 text-right mb-3">
+                  <p className="text-xs text-emerald-400 text-right mb-3 flex items-center justify-end gap-1">
+                    <Tag className="h-3 w-3" />
                     {discPct}% de desconto no pagamento online
                   </p>
                 )}
@@ -2402,6 +2404,12 @@ END:VCALENDAR`;
                         )}
                       </span>
                     </div>
+                    {discCents > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-emerald-400 flex items-center gap-1"><Tag className="h-3 w-3" />Desconto ({discPct}%)</span>
+                        <span className="text-emerald-400">-R$ {(discCents / 100).toFixed(2)}</span>
+                      </div>
+                    )}
                     {orderBumpItems.map((item) => (
                       <div key={item.product_id} className="flex items-center justify-between text-sm">
                         <span className="text-zinc-500 truncate mr-2">{item.name}</span>
@@ -2429,12 +2437,11 @@ END:VCALENDAR`;
                      const svcCents = (createdBooking.service?.price_cents || 0);
                      const bumpCents = orderBumpItems.reduce((s: number, p: OrderBumpProduct) => s + p.sale_price_cents, 0);
                      const tenantSettings = (tenant?.settings || {}) as Record<string, any>;
-                     const discPct = tenantSettings.online_discount_percent || 0;
-                     const discCents = discPct > 0 ? Math.round(svcCents * discPct / 100) : 0;
-                     return (svcCents - discCents + bumpCents) / 100;
+                     const disc = getOnlineDiscount(tenantSettings, svcCents);
+                     return (disc.final + bumpCents) / 100;
                    })()
                }
-               onlineDiscountPercent={((tenant?.settings || {}) as Record<string, any>).online_discount_percent || 0}
+               onlineDiscountPercent={getOnlineDiscount((tenant?.settings || {}) as Record<string, any>, createdBooking.service?.price_cents || 0).discountPercent}
                originalAmountCents={selectedPackage ? selectedPackage.price_cents : ((createdBooking.service?.price_cents || 0) + orderBumpItems.reduce((s: number, p: OrderBumpProduct) => s + p.sale_price_cents, 0))}
               serviceName={selectedPackage 
                 ? selectedPackage.name 
