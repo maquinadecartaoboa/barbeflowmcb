@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { DateRangeProvider } from "@/contexts/DateRangeContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AuthProvider } from "@/providers/AuthProvider";
+import { TenantProvider } from "@/providers/TenantProvider";
 import { isDashboardDomain, isPublicDomain, isPreviewOrLocal, isCustomDomain } from "@/lib/hostname";
 
 // Public page — loaded eagerly (main public page, must load instantly)
