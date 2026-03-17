@@ -79,7 +79,16 @@ import { useLocation } from "react-router-dom";
 import { checkConsentOnLoad } from "@/utils/consent";
 import { initTracking, trackPageView } from "@/lib/tracking";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 2 * 60 * 1000,       // 2 min default
+      refetchOnWindowFocus: false,      // Avoid bursts when switching tabs
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 8000),
+    },
+  },
+});
 
 const showPublic = isPublicDomain() || isPreviewOrLocal() || isCustomDomain();
 const showDashboard = isDashboardDomain() || isPreviewOrLocal();
