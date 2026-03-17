@@ -45,18 +45,13 @@ export function ComandaCloseSection({ bookingId, tenantId, items, comandaClosed,
   const handleClose = async () => {
     setClosing(true);
     try {
-      const rpcParams: any = {
+      const { data, error } = await supabase.rpc("close_comanda_with_commissions", {
         p_booking_id: bookingId,
         p_tenant_id: tenantId,
         p_commission_basis: commissionBasis || "theoretical",
-      };
-
-      if (tipCents > 0) {
-        rpcParams.p_tip_cents = tipCents;
-        rpcParams.p_tip_payment_method = "cash";
-      }
-
-      const { data, error } = await supabase.rpc("close_comanda_with_commissions", rpcParams);
+        p_tip_cents: tipCents > 0 ? tipCents : 0,
+        p_tip_payment_method: tipCents > 0 ? "cash" : "none",
+      });
 
       if (error) throw error;
 
