@@ -245,6 +245,7 @@ export type Database = {
       }
       bookings: {
         Row: {
+          cancellation_reason: string | null
           comanda_status: string
           created_at: string
           created_via: string | null
@@ -265,6 +266,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cancellation_reason?: string | null
           comanda_status?: string
           created_at?: string
           created_via?: string | null
@@ -285,6 +287,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cancellation_reason?: string | null
           comanda_status?: string
           created_at?: string
           created_via?: string | null
@@ -3246,6 +3249,29 @@ export type Database = {
       }
     }
     Views: {
+      staff_calendar_bookings: {
+        Row: {
+          booking_id: string | null
+          calendar_staff_id: string | null
+          comanda_status: string | null
+          created_at: string | null
+          created_via: string | null
+          customer_id: string | null
+          customer_package_id: string | null
+          customer_subscription_id: string | null
+          ends_at: string | null
+          notes: string | null
+          reminder_sent: boolean | null
+          service_id: string | null
+          staff_role: string | null
+          starts_at: string | null
+          status: string | null
+          tenant_id: string | null
+          tip_cents: number | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
       v_booking_received_amount: {
         Row: {
           booking_id: string | null
@@ -3536,6 +3562,29 @@ export type Database = {
           service_price_cents: number
           staff_id: string
           staff_name: string
+          starts_at: string
+          status: string
+        }[]
+      }
+      get_staff_bookings: {
+        Args: {
+          p_date_end: string
+          p_date_start: string
+          p_staff_id: string
+          p_tenant_id: string
+        }
+        Returns: {
+          booking_id: string
+          customer_name: string
+          customer_phone: string
+          ends_at: string
+          main_staff_name: string
+          notes: string
+          service_color: string
+          service_duration: number
+          service_name: string
+          service_price_cents: number
+          staff_role: string
           starts_at: string
           status: string
         }[]
