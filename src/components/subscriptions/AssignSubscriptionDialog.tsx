@@ -185,7 +185,7 @@ export function AssignSubscriptionDialog({ open, onOpenChange, onAssigned }: Ass
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Buscar cliente</Label>
-              <Input placeholder="Nome ou telefone (mín. 2 letras)" value={searchQuery} onChange={(e) => handleSearchChange(e.target.value)} />
+              <Input placeholder="Nome ou telefone (mín. 3 letras)" value={searchQuery} onChange={(e) => handleSearchChange(e.target.value)} />
               <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
                 <SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
                 <SelectContent>

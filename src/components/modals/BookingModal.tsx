@@ -549,7 +549,7 @@ export function BookingModal() {
       } finally {
         setSearchingCustomers(false);
       }
-    }, 300);
+    }, 800);
   }, [currentTenant]);
 
   const selectCustomer = (customer: CustomerSuggestion) => {
