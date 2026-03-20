@@ -111,7 +111,7 @@ function CustomerSearchSelect({ tenantId, value, onChange }: { tenantId: string;
 
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    if (search.length < 2) { setResults([]); return; }
+    if (search.length < 3) { setResults([]); return; }
     timerRef.current = setTimeout(async () => {
       setSearching(true);
       const { data } = await supabase.rpc('search_customers_quick', {
@@ -121,7 +121,7 @@ function CustomerSearchSelect({ tenantId, value, onChange }: { tenantId: string;
       });
       setResults((data as Customer[]) || []);
       setSearching(false);
-    }, 300);
+    }, 800);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [search, tenantId]);
 
