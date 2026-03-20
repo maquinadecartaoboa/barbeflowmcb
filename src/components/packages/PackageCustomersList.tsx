@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -79,6 +79,7 @@ export function PackageCustomersList() {
   const [assigning, setAssigning] = useState(false);
   const [customers, setCustomers] = useState<{id: string; name: string; phone: string}[]>([]);
   const [customerSearch, setCustomerSearch] = useState('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (currentTenant) loadData();
@@ -88,7 +89,7 @@ export function PackageCustomersList() {
     if (!currentTenant) return;
     try {
       setLoading(true);
-      const [cpRes, pkgRes, custRes] = await Promise.all([
+      const [cpRes, pkgRes] = await Promise.all([
         supabase
           .from('customer_packages')
           .select('*, customer:customers(name, phone, email), package:service_packages(name, price_cents)')
@@ -98,11 +99,6 @@ export function PackageCustomersList() {
           .from('service_packages')
           .select('id, name, active, price_cents')
           .eq('tenant_id', currentTenant.id),
-        supabase
-          .from('customers')
-          .select('id, name, phone')
-          .eq('tenant_id', currentTenant.id)
-          .order('name'),
       ]);
 
       const cps = cpRes.data || [];
@@ -121,7 +117,6 @@ export function PackageCustomersList() {
 
       setCustomerPackages(cps);
       setPackages(pkgRes.data || []);
-      setCustomers(custRes.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -513,19 +508,30 @@ export function PackageCustomersList() {
             <div className="space-y-2">
               <Label>Cliente *</Label>
               <Input
-                placeholder="Buscar por nome ou telefone..."
+                placeholder="Buscar por nome ou telefone (mín. 2 letras)..."
                 value={customerSearch}
-                onChange={(e) => setCustomerSearch(e.target.value)}
+                onChange={(e) => {
+                  setCustomerSearch(e.target.value);
+                  // Server-side search with debounce
+                  if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+                  const q = e.target.value;
+                  if (!q || q.length < 2 || !currentTenant) {
+                    setCustomers([]);
+                    return;
+                  }
+                  searchTimerRef.current = setTimeout(async () => {
+                    const { data } = await supabase.rpc('search_customers_quick', {
+                      p_tenant_id: currentTenant.id,
+                      p_query: q,
+                      p_limit: 10,
+                    });
+                    setCustomers(data || []);
+                  }, 400);
+                }}
               />
-              {customerSearch.length >= 2 && (
+              {customerSearch.length >= 2 && customers.length > 0 && (
                 <div className="max-h-40 overflow-y-auto border border-border rounded-lg divide-y divide-border">
-                  {customers
-                    .filter(c =>
-                      c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-                      c.phone.includes(customerSearch)
-                    )
-                    .slice(0, 10)
-                    .map(c => (
+                  {customers.map(c => (
                       <button
                         key={c.id}
                         className={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors ${assignCustomerId === c.id ? 'bg-primary/10 font-medium' : ''}`}

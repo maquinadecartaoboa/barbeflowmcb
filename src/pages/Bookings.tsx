@@ -211,6 +211,9 @@ export default function Bookings() {
         if (rpcError) throw rpcError;
         const res = result as any;
         if (!res?.success) throw new Error(res?.error || "Erro ao cancelar");
+
+        // Set cancellation_reason for WhatsApp notification suppression logic
+        await supabase.from("bookings").update({ cancellation_reason: "admin_request" }).eq("id", realId);
         
         // Show appropriate message based on session outcome
         if (res.session_outcome === 'refunded') {

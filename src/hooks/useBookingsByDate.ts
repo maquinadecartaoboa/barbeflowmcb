@@ -38,6 +38,10 @@ export interface BookingData {
   service: { name: string; color: string | null; duration_minutes: number; price_cents: number } | null;
   staff: { name: string; color: string | null } | null;
   customer: { name: string; phone: string } | null;
+  /** 'primary' (default) or 'secondary' — indicates if this booking is shown because the staff is a secondary provider */
+  staff_role?: 'primary' | 'secondary';
+  /** For secondary bookings, the name of the primary staff member */
+  main_staff_name?: string;
 }
 
 export interface BlockData {
@@ -114,7 +118,7 @@ export function useBookingsByDate(tenantId: string | undefined, date: Date) {
       const dayStart = `${dateStr}T00:00:00-03:00`;
       const dayEnd = `${dateStr}T23:59:59-03:00`;
 
-      const [staffRes, schedulesRes, bookingsRes, allBookingsRes, blocksRes, tenantRes, recurringRes] = await Promise.all([
+      const [staffRes, schedulesRes, bookingsRes, allBookingsRes, blocksRes, tenantRes, recurringRes, secondaryRes] = await Promise.all([
         supabase
           .from("staff")
           .select("id, name, photo_url, color, active")
@@ -159,14 +163,60 @@ export function useBookingsByDate(tenantId: string | undefined, date: Date) {
           .eq("weekday", weekday)
           .eq("active", true)
           .lte("start_date", dateStr),
+        // Fetch secondary staff bookings (bookings where a staff member is involved via booking_items)
+        supabase
+          .from("staff_calendar_bookings")
+          .select("*")
+          .eq("tenant_id", tenantId)
+          .eq("staff_role", "secondary")
+          .gte("starts_at", dayStart)
+          .lte("starts_at", dayEnd)
+          .neq("status", "cancelled"),
       ]);
 
+      const primaryBookings = (bookingsRes.data as any) || [];
       setStaff(staffRes.data || []);
       setSchedules(schedulesRes.data || []);
-      setBookings((bookingsRes.data as any) || []);
+      setBookings(primaryBookings);
       setAllDayBookings((allBookingsRes.data as any) || []);
       setBlocks(blocksRes.data || []);
       setRecurringSlots((recurringRes.data as any) || []);
+
+      // Process secondary bookings: fetch full booking data and create entries for secondary staff
+      const secondaryEntries = secondaryRes.data || [];
+      if (secondaryEntries.length > 0) {
+        const secondaryBookingIds = [...new Set(secondaryEntries.map((s: any) => s.booking_id).filter(Boolean))];
+        // Fetch full booking data for secondary bookings (some may already be in primaryBookings)
+        const missingIds = secondaryBookingIds.filter(id => !primaryBookings.some((b: any) => b.id === id));
+        
+        let fullSecondaryBookings: any[] = [];
+        if (missingIds.length > 0) {
+          const { data: extraBookings } = await supabase
+            .from("bookings")
+            .select("*, service:services(name, color, duration_minutes, price_cents), staff:staff(name, color), customer:customers(name, phone)")
+            .in("id", missingIds);
+          fullSecondaryBookings = extraBookings || [];
+        }
+
+        // Create secondary booking entries mapped to the secondary staff
+        const allBookingData = [...primaryBookings, ...fullSecondaryBookings];
+        const secondaryMapped: BookingData[] = [];
+
+        for (const entry of secondaryEntries) {
+          const original = allBookingData.find((b: any) => b.id === entry.booking_id);
+          if (!original) continue;
+
+          secondaryMapped.push({
+            ...original,
+            id: `secondary-${original.id}-${entry.calendar_staff_id}`,
+            staff_id: entry.calendar_staff_id,
+            staff_role: 'secondary' as const,
+            main_staff_name: original.staff?.name || null,
+          });
+        }
+
+        setBookings([...primaryBookings, ...secondaryMapped]);
+      }
 
       if (tenantRes.data?.settings) {
         const s = tenantRes.data.settings as any;

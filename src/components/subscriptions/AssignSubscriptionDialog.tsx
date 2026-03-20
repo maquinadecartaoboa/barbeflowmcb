@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +31,7 @@ export function AssignSubscriptionDialog({ open, onOpenChange, onAssigned }: Ass
   const [saving, setSaving] = useState(false);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (open && currentTenant) {
@@ -40,24 +41,34 @@ export function AssignSubscriptionDialog({ open, onOpenChange, onAssigned }: Ass
       setUseMp(true);
       setCheckoutUrl(null);
       setSearchQuery('');
+      setCustomers([]);
     }
   }, [open, currentTenant]);
 
   const loadData = async () => {
     if (!currentTenant) return;
-    const [custRes, plansRes] = await Promise.all([
-      supabase.from('customers').select('id, name, phone, email').eq('tenant_id', currentTenant.id).order('name'),
+    const [plansRes] = await Promise.all([
       supabase.from('subscription_plans').select('id, name, price_cents').eq('tenant_id', currentTenant.id).eq('active', true),
     ]);
-    setCustomers(custRes.data || []);
     setPlans(plansRes.data || []);
   };
 
-  const filteredCustomers = customers.filter(c => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return c.name.toLowerCase().includes(q) || c.phone.includes(q);
-  });
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (!value || value.length < 2 || !currentTenant) {
+      setCustomers([]);
+      return;
+    }
+    searchTimerRef.current = setTimeout(async () => {
+      const { data } = await supabase.rpc('search_customers_quick', {
+        p_tenant_id: currentTenant.id,
+        p_query: value,
+        p_limit: 10,
+      });
+      setCustomers(data || []);
+    }, 400);
+  };
 
   const handleAssign = async () => {
     if (!currentTenant || !selectedCustomer || !selectedPlan) return;
@@ -174,11 +185,11 @@ export function AssignSubscriptionDialog({ open, onOpenChange, onAssigned }: Ass
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Buscar cliente</Label>
-              <Input placeholder="Nome ou telefone" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              <Input placeholder="Nome ou telefone (mín. 2 letras)" value={searchQuery} onChange={(e) => handleSearchChange(e.target.value)} />
               <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
                 <SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
                 <SelectContent>
-                  {filteredCustomers.slice(0, 20).map(c => (
+                  {customers.slice(0, 20).map(c => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name} — {c.phone}
                     </SelectItem>
