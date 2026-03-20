@@ -507,19 +507,30 @@ export function PackageCustomersList() {
             <div className="space-y-2">
               <Label>Cliente *</Label>
               <Input
-                placeholder="Buscar por nome ou telefone..."
+                placeholder="Buscar por nome ou telefone (mín. 2 letras)..."
                 value={customerSearch}
-                onChange={(e) => setCustomerSearch(e.target.value)}
+                onChange={(e) => {
+                  setCustomerSearch(e.target.value);
+                  // Server-side search with debounce
+                  if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+                  const q = e.target.value;
+                  if (!q || q.length < 2 || !currentTenant) {
+                    setCustomers([]);
+                    return;
+                  }
+                  searchTimerRef.current = setTimeout(async () => {
+                    const { data } = await supabase.rpc('search_customers_quick', {
+                      p_tenant_id: currentTenant.id,
+                      p_query: q,
+                      p_limit: 10,
+                    });
+                    setCustomers(data || []);
+                  }, 400);
+                }}
               />
-              {customerSearch.length >= 2 && (
+              {customerSearch.length >= 2 && customers.length > 0 && (
                 <div className="max-h-40 overflow-y-auto border border-border rounded-lg divide-y divide-border">
-                  {customers
-                    .filter(c =>
-                      c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-                      c.phone.includes(customerSearch)
-                    )
-                    .slice(0, 10)
-                    .map(c => (
+                  {customers.map(c => (
                       <button
                         key={c.id}
                         className={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors ${assignCustomerId === c.id ? 'bg-primary/10 font-medium' : ''}`}
