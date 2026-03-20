@@ -71,6 +71,8 @@ const Dashboard = () => {
         if (rpcError) throw rpcError;
         const res = result as any;
         if (!res?.success) throw new Error(res?.error || "Erro ao cancelar");
+        // Set cancellation_reason for WhatsApp notification suppression logic
+        await supabase.from("bookings").update({ cancellation_reason: "admin_request" }).eq("id", bookingId);
       } else if (newStatus === "no_show") {
         const { data: result, error: rpcError } = await supabase.rpc("mark_booking_no_show", {
           p_booking_id: bookingId,

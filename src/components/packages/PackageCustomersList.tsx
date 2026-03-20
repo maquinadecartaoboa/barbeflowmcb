@@ -88,7 +88,7 @@ export function PackageCustomersList() {
     if (!currentTenant) return;
     try {
       setLoading(true);
-      const [cpRes, pkgRes, custRes] = await Promise.all([
+      const [cpRes, pkgRes] = await Promise.all([
         supabase
           .from('customer_packages')
           .select('*, customer:customers(name, phone, email), package:service_packages(name, price_cents)')
@@ -98,11 +98,6 @@ export function PackageCustomersList() {
           .from('service_packages')
           .select('id, name, active, price_cents')
           .eq('tenant_id', currentTenant.id),
-        supabase
-          .from('customers')
-          .select('id, name, phone')
-          .eq('tenant_id', currentTenant.id)
-          .order('name'),
       ]);
 
       const cps = cpRes.data || [];
