@@ -51,6 +51,8 @@ export interface BookingData {
   staff_role?: 'primary' | 'secondary';
   /** For secondary bookings, the name of the primary staff member */
   main_staff_name?: string;
+  /** The real booking ID (same as id for primary, original UUID for secondary) */
+  original_booking_id?: string;
   /** All booking_items for this booking (services, products, extras) */
   all_items?: BookingItemData[];
 }
