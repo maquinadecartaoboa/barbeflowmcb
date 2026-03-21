@@ -176,13 +176,30 @@ export function ScheduleGrid({
 
   const SLOT_HEIGHT = 48; // px per slot
 
+  // Helper: compute staff-specific duration from all_items
+  function getStaffDurationMinutes(booking: BookingData, staffId: string): number | null {
+    const items = booking.all_items || [];
+    const myItems = items.filter(i => i.staff_id === staffId);
+    if (myItems.length === 0) return null;
+    const totalDuration = myItems.reduce((sum, i) => sum + (i.duration_minutes || 0), 0);
+    return totalDuration > 0 ? totalDuration : null;
+  }
+
   // Helper: convert a booking's time to pixel position relative to grid start
-  function getBookingPosition(booking: BookingData): { top: number; height: number } {
+  function getBookingPosition(booking: BookingData, staffId?: string): { top: number; height: number } {
     const bStart = formatInTimeZone(new Date(booking.starts_at), TZ, "HH:mm");
-    const bEnd = formatInTimeZone(new Date(booking.ends_at), TZ, "HH:mm");
     const startMins = timeToMinutes(bStart);
-    const endMins = timeToMinutes(bEnd);
     const startOfDayMins = timeRange.startHour * 60;
+
+    // Calculate end time: use staff-specific duration if available
+    let endMins: number;
+    const myDuration = staffId ? getStaffDurationMinutes(booking, staffId) : null;
+    if (myDuration && myDuration > 0) {
+      endMins = startMins + myDuration;
+    } else {
+      const bEnd = formatInTimeZone(new Date(booking.ends_at), TZ, "HH:mm");
+      endMins = timeToMinutes(bEnd);
+    }
 
     const clampedStart = Math.max(startMins, startOfDayMins);
     const clampedEnd = Math.min(endMins, timeRange.endHour * 60);
