@@ -188,17 +188,18 @@ export function useBookingsByDate(tenantId: string | undefined, date: Date) {
       const primaryBookings = (bookingsRes.data as any) || [];
       setStaff(staffRes.data || []);
       setSchedules(schedulesRes.data || []);
-      setBookings(primaryBookings);
       setAllDayBookings((allBookingsRes.data as any) || []);
       setBlocks(blocksRes.data || []);
       setRecurringSlots((recurringRes.data as any) || []);
 
-      // Process secondary bookings: fetch full booking data and create entries for secondary staff
+      // Fetch booking_items for all bookings of the day to attach all_items
+      const allBookingIds = primaryBookings.map((b: any) => b.id);
+      
+      // Process secondary bookings
       const secondaryEntries = secondaryRes.data || [];
       if (secondaryEntries.length > 0) {
         const secondaryBookingIds = [...new Set(secondaryEntries.map((s: any) => s.booking_id).filter(Boolean))];
-        // Fetch full booking data for secondary bookings (some may already be in primaryBookings)
-        const missingIds = secondaryBookingIds.filter(id => !primaryBookings.some((b: any) => b.id === id));
+        const missingIds = secondaryBookingIds.filter((id: string) => !primaryBookings.some((b: any) => b.id === id));
         
         let fullSecondaryBookings: any[] = [];
         if (missingIds.length > 0) {
@@ -207,16 +208,18 @@ export function useBookingsByDate(tenantId: string | undefined, date: Date) {
             .select("*, service:services(name, color, duration_minutes, price_cents), staff:staff(name, color), customer:customers(name, phone)")
             .in("id", missingIds);
           fullSecondaryBookings = extraBookings || [];
+          // Add their IDs for items fetch
+          for (const eb of fullSecondaryBookings) {
+            if (!allBookingIds.includes(eb.id)) allBookingIds.push(eb.id);
+          }
         }
 
-        // Create secondary booking entries mapped to the secondary staff
-        const allBookingData = [...primaryBookings, ...fullSecondaryBookings];
-        const secondaryMapped: BookingData[] = [];
+        var allBookingData = [...primaryBookings, ...fullSecondaryBookings];
+        var secondaryMapped: BookingData[] = [];
 
         for (const entry of secondaryEntries) {
           const original = allBookingData.find((b: any) => b.id === entry.booking_id);
           if (!original) continue;
-
           secondaryMapped.push({
             ...original,
             id: `secondary-${original.id}-${entry.calendar_staff_id}`,
@@ -225,9 +228,46 @@ export function useBookingsByDate(tenantId: string | undefined, date: Date) {
             main_staff_name: original.staff?.name || null,
           });
         }
-
-        setBookings([...primaryBookings, ...secondaryMapped]);
       }
+
+      // Fetch booking_items with staff info for all bookings
+      let itemsByBookingId: Record<string, BookingItemData[]> = {};
+      if (allBookingIds.length > 0) {
+        const { data: itemsData } = await supabase
+          .from("booking_items")
+          .select("booking_id, title, type, staff_id, unit_price_cents, paid_status, staff:staff(name)")
+          .in("booking_id", allBookingIds)
+          .in("type", ["service", "extra_service"]);
+        
+        for (const item of (itemsData || [])) {
+          if (!itemsByBookingId[item.booking_id]) itemsByBookingId[item.booking_id] = [];
+          itemsByBookingId[item.booking_id].push({
+            title: item.title,
+            type: item.type,
+            staff_name: (item.staff as any)?.name || null,
+            staff_id: item.staff_id,
+            price_cents: item.unit_price_cents,
+            paid_status: item.paid_status,
+          });
+        }
+      }
+
+      // Attach all_items to primary bookings
+      const enrichedPrimary = primaryBookings.map((b: any) => ({
+        ...b,
+        all_items: itemsByBookingId[b.id] || [],
+      }));
+
+      // Attach all_items to secondary bookings
+      const enrichedSecondary = (secondaryMapped || []).map((b: BookingData) => {
+        const originalId = b.id.replace(/^secondary-/, '').replace(/-[^-]+$/, '');
+        return {
+          ...b,
+          all_items: itemsByBookingId[originalId] || [],
+        };
+      });
+
+      setBookings([...enrichedPrimary, ...enrichedSecondary]);
 
       if (tenantRes.data?.settings) {
         const s = tenantRes.data.settings as any;
