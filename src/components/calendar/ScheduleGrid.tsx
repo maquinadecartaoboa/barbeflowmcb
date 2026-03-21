@@ -210,8 +210,18 @@ export function ScheduleGrid({
   }
 
   // Detect overlapping bookings and assign columns (Google Calendar style)
-  function assignColumns(bookingList: BookingData[]): Map<string, { col: number; totalCols: number; hasOverlap: boolean }> {
+  function assignColumns(bookingList: BookingData[], staffId: string): Map<string, { col: number; totalCols: number; hasOverlap: boolean }> {
     const result = new Map<string, { col: number; totalCols: number; hasOverlap: boolean }>();
+
+    // Helper to get effective end minutes for a booking in this staff column
+    function getEffectiveEndMins(booking: BookingData): number {
+      const myDuration = getStaffDurationMinutes(booking, staffId);
+      if (myDuration && myDuration > 0) {
+        const bStart = timeToMinutes(formatInTimeZone(new Date(booking.starts_at), TZ, "HH:mm"));
+        return bStart + myDuration;
+      }
+      return timeToMinutes(formatInTimeZone(new Date(booking.ends_at), TZ, "HH:mm"));
+    }
 
     const sorted = [...bookingList].sort((a, b) => {
       const aStart = timeToMinutes(formatInTimeZone(new Date(a.starts_at), TZ, "HH:mm"));
@@ -225,7 +235,7 @@ export function ScheduleGrid({
 
     for (const booking of sorted) {
       const bStart = timeToMinutes(formatInTimeZone(new Date(booking.starts_at), TZ, "HH:mm"));
-      const bEnd = timeToMinutes(formatInTimeZone(new Date(booking.ends_at), TZ, "HH:mm"));
+      const bEnd = getEffectiveEndMins(booking);
 
       if (currentGroup.length === 0 || bStart < currentGroupEnd) {
         currentGroup.push(booking);
