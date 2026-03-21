@@ -334,7 +334,7 @@ export function ScheduleGrid({
 
         {/* Overlay: absolutely positioned booking cards */}
         {staffBookings.map((booking) => {
-          const { top, height } = getBookingPosition(booking);
+          const { top, height } = getBookingPosition(booking, member.id);
           const colInfo = columnAssignments.get(booking.id) || { col: 0, totalCols: 1, hasOverlap: false };
           const widthPercent = 100 / colInfo.totalCols;
           const leftPercent = colInfo.col * widthPercent;
