@@ -1,6 +1,6 @@
 import { formatInTimeZone } from "date-fns-tz";
 import { AlertTriangle } from "lucide-react";
-import type { BookingData } from "@/hooks/useBookingsByDate";
+import type { BookingData, BookingItemData } from "@/hooks/useBookingsByDate";
 
 const TZ = "America/Bahia";
 
@@ -18,12 +18,22 @@ interface BookingCardProps {
   isRecurring?: boolean;
   hasOverlap?: boolean;
   isSecondary?: boolean;
+  currentStaffId?: string;
 }
 
-export function BookingCard({ booking, onClick, isRecurring, hasOverlap, isSecondary }: BookingCardProps) {
+export function BookingCard({ booking, onClick, isRecurring, hasOverlap, isSecondary, currentStaffId }: BookingCardProps) {
   const startTime = formatInTimeZone(new Date(booking.starts_at), TZ, "HH:mm");
   const endTime = formatInTimeZone(new Date(booking.ends_at), TZ, "HH:mm");
   const style = statusStyles[booking.status] || statusStyles.confirmed;
+
+  // Filter items for this staff column, or show all if no currentStaffId
+  const allItems = booking.all_items || [];
+  const myItems = currentStaffId
+    ? allItems.filter(item => item.staff_id === currentStaffId)
+    : allItems;
+
+  // Fallback: if no items matched (e.g. items not loaded yet), show main service
+  const hasItems = myItems.length > 0;
 
   return (
     <button
@@ -58,10 +68,32 @@ export function BookingCard({ booking, onClick, isRecurring, hasOverlap, isSecon
           </span>
         )}
       </div>
-      <p className="text-[10px] text-muted-foreground truncate leading-tight">
-        {booking.service?.name}
-        {isSecondary && booking.main_staff_name && ` (c/ ${booking.main_staff_name})`}
-      </p>
+
+      {/* Show filtered service items for this staff column */}
+      {hasItems ? (
+        <div className="flex flex-col gap-0">
+          {myItems.map((item, i) => (
+            <p key={i} className="text-[10px] text-muted-foreground truncate leading-tight">
+              • {item.title}
+              {item.paid_status === 'covered' && (
+                <span className="text-[8px] text-emerald-500 ml-1">(assinatura)</span>
+              )}
+            </p>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[10px] text-muted-foreground truncate leading-tight">
+          {booking.service?.name}
+        </p>
+      )}
+
+      {/* If secondary, show main staff name */}
+      {isSecondary && booking.main_staff_name && (
+        <p className="text-[9px] text-muted-foreground/60 truncate leading-tight">
+          (Principal: {booking.main_staff_name})
+        </p>
+      )}
+
       <p className="text-[10px] text-muted-foreground/70 leading-tight">
         {startTime} - {endTime}
       </p>
