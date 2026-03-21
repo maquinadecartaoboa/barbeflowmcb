@@ -3574,7 +3574,9 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: {
+          all_items: Json
           booking_id: string
+          comanda_status: string
           customer_name: string
           customer_phone: string
           ends_at: string
