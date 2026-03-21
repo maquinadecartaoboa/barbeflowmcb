@@ -239,7 +239,7 @@ export function useBookingsByDate(tenantId: string | undefined, date: Date) {
       if (allBookingIds.length > 0) {
         const { data: itemsData } = await supabase
           .from("booking_items")
-          .select("booking_id, title, type, staff_id, unit_price_cents, paid_status, staff:staff(name)")
+          .select("booking_id, title, type, staff_id, ref_id, unit_price_cents, paid_status, staff:staff(name), service:services!booking_items_ref_id_fkey(duration_minutes)")
           .in("booking_id", allBookingIds)
           .in("type", ["service", "extra_service"]);
         
@@ -252,6 +252,7 @@ export function useBookingsByDate(tenantId: string | undefined, date: Date) {
             staff_id: item.staff_id,
             price_cents: item.unit_price_cents,
             paid_status: item.paid_status,
+            duration_minutes: (item.service as any)?.duration_minutes || null,
           });
         }
       }
