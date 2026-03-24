@@ -45,6 +45,7 @@ export interface BookingData {
   service_id: string;
   customer_package_id: string | null;
   customer_subscription_id: string | null;
+  has_conflict: boolean | null;
   service: { name: string; color: string | null; duration_minutes: number; price_cents: number } | null;
   staff: { name: string; color: string | null } | null;
   customer: { name: string; phone: string } | null;

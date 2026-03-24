@@ -284,6 +284,16 @@ export function BookingDetailsModal({
           transition={{ duration: 0.4, ease }}
           className="space-y-4 overflow-y-auto flex-1 min-h-0 pr-1"
         >
+          {/* Conflict alert banner */}
+          {booking.has_conflict && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30">
+              <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
+              <span className="text-sm font-medium text-red-500">
+                Conflito de horário — Este agendamento está no mesmo horário de outro cliente
+              </span>
+            </div>
+          )}
+
           {/* ═══════════════ SEÇÃO 1: DADOS DO BOOKING ═══════════════ */}
           <div className="p-3 rounded-xl bg-muted/50 border border-border space-y-2.5">
             <div className="flex items-center gap-3">
