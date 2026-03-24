@@ -45,6 +45,7 @@ export interface BookingData {
   service_id: string;
   customer_package_id: string | null;
   customer_subscription_id: string | null;
+  has_conflict: boolean | null;
   service: { name: string; color: string | null; duration_minutes: number; price_cents: number } | null;
   staff: { name: string; color: string | null } | null;
   customer: { name: string; phone: string } | null;
@@ -386,6 +387,7 @@ export function useBookingsByDate(tenantId: string | undefined, date: Date) {
         service_id: rc.service_id || "",
         customer_package_id: null,
         customer_subscription_id: null,
+        has_conflict: false,
         service: rc.service || { name: "Horário Fixo", color: null, duration_minutes: rc.duration_minutes, price_cents: 0 },
         staff: null,
         customer: rc.customer,

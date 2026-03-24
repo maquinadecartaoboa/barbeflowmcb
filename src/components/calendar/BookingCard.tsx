@@ -44,12 +44,14 @@ export function BookingCard({ booking, onClick, isRecurring, hasOverlap, isSecon
   return (
     <button
       onClick={onClick}
-      className={`w-full h-full rounded-lg px-2 py-1 text-left transition-all hover:brightness-110 cursor-pointer flex flex-col justify-center gap-0 overflow-hidden ${style} ${hasOverlap ? 'ring-1 ring-amber-500/50 ring-inset' : ''} ${isSecondary ? 'border-l-0 border-dashed border border-border opacity-80' : ''}`}
+      className={`w-full h-full rounded-lg px-2 py-1 text-left transition-all hover:brightness-110 cursor-pointer flex flex-col justify-center gap-0 overflow-hidden ${style} ${booking.has_conflict ? 'ring-2 ring-red-500/70 ring-inset' : hasOverlap ? 'ring-1 ring-amber-500/50 ring-inset' : ''} ${isSecondary ? 'border-l-0 border-dashed border border-border opacity-80' : ''}`}
     >
       <div className="flex items-center gap-1 min-w-0">
-        {hasOverlap && (
+        {booking.has_conflict ? (
+          <AlertTriangle className="h-3 w-3 text-red-500 shrink-0" />
+        ) : hasOverlap ? (
           <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
-        )}
+        ) : null}
         <p className="text-[11px] font-semibold text-foreground truncate leading-tight">
           {booking.customer?.name || "Cliente"}
         </p>

@@ -253,6 +253,7 @@ export type Database = {
           customer_package_id: string | null
           customer_subscription_id: string | null
           ends_at: string
+          has_conflict: boolean | null
           id: string
           notes: string | null
           reminder_sent: boolean | null
@@ -274,6 +275,7 @@ export type Database = {
           customer_package_id?: string | null
           customer_subscription_id?: string | null
           ends_at: string
+          has_conflict?: boolean | null
           id?: string
           notes?: string | null
           reminder_sent?: boolean | null
@@ -295,6 +297,7 @@ export type Database = {
           customer_package_id?: string | null
           customer_subscription_id?: string | null
           ends_at?: string
+          has_conflict?: boolean | null
           id?: string
           notes?: string | null
           reminder_sent?: boolean | null
@@ -3260,6 +3263,7 @@ export type Database = {
           customer_package_id: string | null
           customer_subscription_id: string | null
           ends_at: string | null
+          has_conflict: boolean | null
           notes: string | null
           reminder_sent: boolean | null
           service_id: string | null
@@ -3580,6 +3584,7 @@ export type Database = {
           customer_name: string
           customer_phone: string
           ends_at: string
+          has_conflict: boolean
           main_staff_name: string
           my_duration_minutes: number
           notes: string
