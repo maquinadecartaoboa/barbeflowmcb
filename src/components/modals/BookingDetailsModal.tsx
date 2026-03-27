@@ -15,6 +15,7 @@ import { ComandaPaymentSection } from "@/components/modals/ComandaPaymentSection
 import { ComandaCloseSection } from "@/components/modals/ComandaCloseSection";
 import { NoShowDialog } from "@/components/modals/NoShowDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -52,6 +53,7 @@ export function BookingDetailsModal({
   onEdit, onStatusChange, showActions = false, tenantSettings,
 }: Props) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [customerNotes, setCustomerNotes] = useState<string | null>(null);
   const [customerBalance, setCustomerBalance] = useState<number>(0);
   const [bookingItems, setBookingItems] = useState<BookingItem[]>([]);
@@ -226,6 +228,7 @@ export function BookingDetailsModal({
   const handleRefresh = () => {
     loadData();
     setBalanceKey(prev => prev + 1);
+    queryClient.invalidateQueries({ queryKey: ['staff-bookings'] });
   };
 
   const retryRefund = async (paymentId: string) => {
