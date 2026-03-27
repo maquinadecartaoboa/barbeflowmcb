@@ -36,6 +36,16 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Clock, Package, Repeat, AlertTriangle, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const bookingFormSchema = z.object({
   customer_name: z.string().min(1, "Nome é obrigatório"),
@@ -45,7 +55,7 @@ const bookingFormSchema = z.object({
   ),
   customer_email: z.string().email("Email inválido").optional().or(z.literal("")),
   service_id: z.string().min(1, "Serviço é obrigatório"),
-  staff_id: z.string().optional(),
+  staff_id: z.string().min(1, "Selecione um profissional"),
   date: z.string().min(1, "Data é obrigatória"),
   time: z.string().min(1, "Horário é obrigatório"),
   extra_slots: z.number().min(0).optional(),
@@ -113,6 +123,8 @@ export function BookingModal() {
   const [additionalServices, setAdditionalServices] = useState<AdditionalService[]>([]);
   const [staffServiceIds, setStaffServiceIds] = useState<string[] | null>(null);
   const classifiedSlotsRef = useRef<Array<AvailableSlot & { hasConflict: boolean }>>([]);
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
+  const [pendingSubmitData, setPendingSubmitData] = useState<BookingFormData | null>(null);
 
   const form = useForm<BookingFormData>({
     resolver: zodResolver(bookingFormSchema),
@@ -619,17 +631,24 @@ export function BookingModal() {
 
   const handleSubmit = async (data: BookingFormData) => {
     if (!currentTenant) return;
+
+    // Check for conflict and ask for confirmation before proceeding
+    const selectedSlot = classifiedSlotsRef.current?.find(s => s.time === data.time);
+    const hasConflict = selectedSlot?.hasConflict || false;
+
+    if (hasConflict && !pendingSubmitData) {
+      setPendingSubmitData(data);
+      setConflictDialogOpen(true);
+      return;
+    }
+
     try {
       setFormLoading(true);
 
       const startsAt = new Date(`${data.date}T${data.time}`);
       const { totalDuration } = getTotalDuration();
 
-      // Determine if this slot has a conflict (for admin overlap override)
-      const selectedSlot = classifiedSlotsRef.current?.find(s => s.time === data.time);
-      const hasConflict = selectedSlot?.hasConflict || false;
-
-      const mainStaffId = data.staff_id === "none" ? null : (data.staff_id || null);
+      const mainStaffId = data.staff_id || null;
 
       // 1. Create ONE booking with TOTAL duration
       const body: any = {
@@ -715,6 +734,7 @@ export function BookingModal() {
       form.reset();
       setSelectedCustomerId(null);
       setAdditionalServices([]);
+      setPendingSubmitData(null);
       closeBookingModal();
     } catch (error: any) {
       toast({
@@ -728,6 +748,7 @@ export function BookingModal() {
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={closeBookingModal}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -915,7 +936,6 @@ export function BookingModal() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="none">Qualquer profissional</SelectItem>
                         {staff.map((member) => (
                           <SelectItem key={member.id} value={member.id}>
                             {member.name}
@@ -1396,5 +1416,36 @@ export function BookingModal() {
         </Form>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={conflictDialogOpen} onOpenChange={setConflictDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            Conflito de Horário
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            Este horário já possui outro agendamento para o profissional selecionado. Deseja criar o agendamento mesmo assim? Ele será marcado como encaixe.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => { setPendingSubmitData(null); setConflictDialogOpen(false); }}>
+            Escolher Outro Horário
+          </AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-amber-600 hover:bg-amber-700"
+            onClick={() => {
+              setConflictDialogOpen(false);
+              if (pendingSubmitData) {
+                handleSubmit(pendingSubmitData);
+              }
+            }}
+          >
+            Agendar Mesmo Assim
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
