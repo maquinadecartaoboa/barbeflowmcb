@@ -289,9 +289,10 @@ export function ScheduleGrid({
           });
 
           if (slotType === "off" || slotType === "past") {
+            const isFullHour = timeToMinutes(slotTime) % 60 === 0;
             return (
               <div key={slotTime} style={{ height: `${SLOT_HEIGHT}px` }}
-                className="bg-muted/30 border-b border-border/20" />
+                className={`bg-muted/30 ${isFullHour ? 'border-b border-border/50' : 'border-b border-border/15'}`} />
             );
           }
 
@@ -325,11 +326,12 @@ export function ScheduleGrid({
             );
           }
 
+          const isFullHourFree = timeToMinutes(slotTime) % 60 === 0;
           return (
             <div
               key={slotTime}
               style={{ height: `${SLOT_HEIGHT}px` }}
-              className="group/slot border-b border-border/20 hover:bg-primary/5 cursor-pointer transition-colors relative"
+              className={`group/slot hover:bg-primary/5 cursor-pointer transition-colors relative ${isFullHourFree ? 'border-b border-border/50' : 'border-b border-border/15'}`}
               onClick={() => handleSlotClick(member.id, slotTime)}
             >
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/slot:opacity-100 transition-opacity pointer-events-none">
@@ -491,23 +493,30 @@ export function ScheduleGrid({
       <ScrollArea className="w-full">
         <div className="min-w-max">
           {/* Header */}
-          <div className="flex border-b border-border/50 bg-card/80 sticky top-0 z-10">
-            <div className="w-16 flex-shrink-0 border-r border-border/30 p-2">
+          <div className="flex border-b-2 border-border/60 sticky top-0 z-10">
+            <div className="w-16 flex-shrink-0 border-r-2 border-border/40 p-2 bg-card shadow-sm">
               <span className="text-[10px] text-muted-foreground/60 uppercase font-medium">Horário</span>
             </div>
-            {filteredStaff.map((member) => (
-              <div key={member.id} className="flex-1 min-w-[160px] p-2 border-r border-border/20 last:border-r-0">
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-7 w-7">
+            {filteredStaff.map((member, staffIndex) => (
+              <div
+                key={member.id}
+                className={`flex-1 min-w-[160px] p-2.5 last:border-r-0 ${staffIndex > 0 ? 'border-l-2 border-border/40' : ''}`}
+                style={{
+                  backgroundColor: `${member.color || "#10B981"}12`,
+                  borderBottom: `3px solid ${member.color || "#10B981"}`,
+                }}
+              >
+                <div className="flex items-center gap-2 justify-center">
+                  <Avatar className="h-8 w-8 ring-2 ring-offset-1 ring-offset-background" style={{ ['--tw-ring-color' as any]: member.color || "#10B981" }}>
                     <AvatarImage src={member.photo_url || undefined} />
                     <AvatarFallback
-                      className="text-[10px] font-semibold"
-                      style={{ backgroundColor: `${member.color || "#10B981"}30`, color: member.color || "#10B981" }}
+                      className="text-[10px] font-bold text-white"
+                      style={{ backgroundColor: member.color || "#10B981" }}
                     >
                       {member.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-xs font-medium text-foreground truncate">{member.name}</span>
+                  <span className="text-xs font-semibold text-foreground truncate">{member.name}</span>
                 </div>
               </div>
             ))}
@@ -516,29 +525,40 @@ export function ScheduleGrid({
           {/* Body */}
           <div className="flex">
             {/* Time column */}
-            <div className="w-16 flex-shrink-0 border-r border-border/30 sticky left-0 bg-card/80 z-[5]">
-              {slots.map((slotTime) => (
-                <div
-                  key={slotTime}
-                  style={{ height: `${SLOT_HEIGHT}px` }}
-                  className="group relative flex items-center justify-center text-[11px] text-muted-foreground/70 border-b border-border/20 cursor-pointer hover:bg-primary/5 transition-colors"
-                  onClick={() => openBookingModal({ date: dateStr, time: slotTime })}
-                  title={`Novo agendamento às ${slotTime}`}
-                >
-                  <span className="group-hover:opacity-0 transition-opacity">{slotTime}</span>
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="flex items-center gap-0.5 text-primary">
-                      <Plus className="h-3 w-3" />
-                      <span className="text-[10px] font-medium">{slotTime}</span>
+            <div className="w-16 flex-shrink-0 border-r-2 border-border/40 sticky left-0 bg-card z-[5] shadow-[2px_0_4px_-2px_hsl(var(--border)/0.3)]">
+              {slots.map((slotTime) => {
+                const mins = timeToMinutes(slotTime);
+                const isFullHour = mins % 60 === 0;
+                return (
+                  <div
+                    key={slotTime}
+                    style={{ height: `${SLOT_HEIGHT}px` }}
+                    className={`group relative flex items-center justify-center text-[11px] cursor-pointer hover:bg-primary/5 transition-colors ${
+                      isFullHour
+                        ? 'border-b border-border/50 text-muted-foreground font-medium'
+                        : 'border-b border-border/15 text-muted-foreground/50'
+                    }`}
+                    onClick={() => openBookingModal({ date: dateStr, time: slotTime })}
+                    title={`Novo agendamento às ${slotTime}`}
+                  >
+                    <span className="group-hover:opacity-0 transition-opacity">{slotTime}</span>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-0.5 text-primary">
+                        <Plus className="h-3 w-3" />
+                        <span className="text-[10px] font-medium">{slotTime}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Staff columns */}
-            {filteredStaff.map((member) => (
-              <div key={member.id} className="flex-1 min-w-[160px] border-r border-border/20 last:border-r-0">
+            {filteredStaff.map((member, staffIndex) => (
+              <div
+                key={member.id}
+                className={`flex-1 min-w-[160px] ${staffIndex > 0 ? 'border-l-2 border-border/40' : ''} ${staffIndex % 2 === 1 ? 'bg-muted/20' : ''}`}
+              >
                 {renderStaffColumn(member)}
               </div>
             ))}
