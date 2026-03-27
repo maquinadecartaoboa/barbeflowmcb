@@ -13,6 +13,7 @@ import {
 import { Loader2, Users, DollarSign, ChevronRight, Lock, CreditCard, Globe, Gift, Repeat } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import type { SubscriptionCommissionTotals } from "@/components/subscriptions/SubscriptionCommissionDashboard";
 
 interface CommissionDetail {
   id: string;
