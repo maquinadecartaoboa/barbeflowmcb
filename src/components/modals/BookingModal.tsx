@@ -734,6 +734,7 @@ export function BookingModal() {
       form.reset();
       setSelectedCustomerId(null);
       setAdditionalServices([]);
+      setPendingSubmitData(null);
       closeBookingModal();
     } catch (error: any) {
       toast({
