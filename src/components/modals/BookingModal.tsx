@@ -111,6 +111,7 @@ export function BookingModal() {
   const [serviceBenefitsMap, setServiceBenefitsMap] = useState<Map<string, DetectedBenefit>>(new Map());
   const [scheduleWarning, setScheduleWarning] = useState<string | null>(null);
   const [additionalServices, setAdditionalServices] = useState<AdditionalService[]>([]);
+  const [staffServiceIds, setStaffServiceIds] = useState<string[] | null>(null);
   const classifiedSlotsRef = useRef<Array<AvailableSlot & { hasConflict: boolean }>>([]);
 
   const form = useForm<BookingFormData>({
