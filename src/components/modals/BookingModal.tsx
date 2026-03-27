@@ -631,17 +631,24 @@ export function BookingModal() {
 
   const handleSubmit = async (data: BookingFormData) => {
     if (!currentTenant) return;
+
+    // Check for conflict and ask for confirmation before proceeding
+    const selectedSlot = classifiedSlotsRef.current?.find(s => s.time === data.time);
+    const hasConflict = selectedSlot?.hasConflict || false;
+
+    if (hasConflict && !pendingSubmitData) {
+      setPendingSubmitData(data);
+      setConflictDialogOpen(true);
+      return;
+    }
+
     try {
       setFormLoading(true);
 
       const startsAt = new Date(`${data.date}T${data.time}`);
       const { totalDuration } = getTotalDuration();
 
-      // Determine if this slot has a conflict (for admin overlap override)
-      const selectedSlot = classifiedSlotsRef.current?.find(s => s.time === data.time);
-      const hasConflict = selectedSlot?.hasConflict || false;
-
-      const mainStaffId = data.staff_id === "none" ? null : (data.staff_id || null);
+      const mainStaffId = data.staff_id || null;
 
       // 1. Create ONE booking with TOTAL duration
       const body: any = {
