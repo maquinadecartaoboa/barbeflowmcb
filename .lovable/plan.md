@@ -1,91 +1,70 @@
 
-# Order Bump — Recomendacoes de Produtos no Agendamento Publico
 
-## Conceito
-Quando o cliente seleciona um servico e chega na etapa de dados pessoais (step 5), o sistema exibe uma secao de "Adicione ao seu atendimento" com produtos recomendados que o dono configurou para aquele servico. O cliente marca os que deseja e eles sao salvos como `booking_items` do tipo `product` apos a criacao do booking.
+# Plan: UX/UI do Agendamento — Diagnóstico e Correções Restantes
 
----
+## Current State Assessment
 
-## Arquitetura
+After thorough code review, many items from the prompt are **already implemented**:
 
-### 1. Nova tabela: `service_order_bumps`
-Relaciona servicos a produtos recomendados, com ordem de exibicao.
+| Item | Status | Details |
+|------|--------|---------|
+| Admin: Services filtered by staff_services | DONE | BookingModal lines 393-415 |
+| Admin: Reset service when staff changes | DONE | BookingModal lines 410-415 |
+| Comanda: Services filtered by booking staff | DONE | ComandaItemsSection lines 86-103 |
+| Public: Staff filtered by selected service | DONE | BookingPublic `eligibleStaff` memo, lines 1054-1066 |
+| Public: Auto-select if only 1 eligible staff | DONE | Hides "Qualquer" option when eligibleStaff.length === 1 |
+| BookingCard: Items filtered by staff column | DONE | BookingCard lines 28-32 |
+| BookingCard: Duration per staff | DONE | BookingCard lines 34-38 |
+| BookingCard: has_conflict red ring + AlertTriangle | DONE | BookingCard line 47, lines 50-54 |
+| BookingCard: Secondary card dashed border | DONE | BookingCard line 47 |
+| Comanda: total_price_cents on insert | DONE | ComandaItemsSection line 115 |
+| Comanda: Total efetivo computed from items | DONE | ComandaItemsSection `totalItems` reduce |
 
-```text
-service_order_bumps
-- id            uuid PK
-- tenant_id     uuid NOT NULL
-- service_id    uuid NOT NULL (FK services)
-- product_id    uuid NOT NULL (FK products)
-- sort_order    integer DEFAULT 0
-- active        boolean DEFAULT true
-- created_at    timestamptz DEFAULT now()
+## What Still Needs Work
 
-UNIQUE(service_id, product_id)
-RLS: tenant scope (user_belongs_to_tenant)
-```
+### 1. Admin BookingModal: Staff should be required (Priority 1)
+**Problem**: `staff_id` in the Zod schema is `z.string().optional()` (line 48). Admin can submit without selecting a staff member.  
+**Fix**: Make staff_id required in the schema. Show a validation message when empty.  
+**File**: `src/components/modals/BookingModal.tsx`
+- Change schema: `staff_id: z.string().min(1, "Profissional é obrigatório")`
+- Remove "Qualquer profissional" option from SelectItem (or keep it but label it differently)
+- Remove the `value="none"` fallback SelectItem
 
-### 2. Tela de configuracao (Admin)
-No arquivo `src/pages/Services.tsx`, dentro do dialog de editar servico, adicionar uma nova secao "Order Bump" que permite:
-- Buscar e vincular produtos ativos ao servico
-- Reordenar e remover produtos vinculados
-- Toggle ativo/inativo por vinculo
+### 2. Admin BookingModal: Conflict confirmation dialog (Priority 1)
+**Problem**: When admin picks an occupied (amber) slot, the booking is created with `allow_overlap: true` silently — no explicit confirmation dialog.  
+**Fix**: Before submitting, if the selected slot is occupied/conflicting, show an AlertDialog asking the admin to confirm the override.  
+**File**: `src/components/modals/BookingModal.tsx`
+- Add state for `showConflictDialog` and `pendingFormData`
+- In `handleSubmit`, check `hasConflict` — if true, set pending data and show dialog instead of submitting
+- On dialog confirm, proceed with submission; on cancel, return to form
 
-### 3. Fluxo publico (BookingPublic.tsx)
-- Apos o cliente selecionar o servico (step 1), buscar os order bumps ativos: `service_order_bumps` JOIN `products` WHERE `service_id` = selecionado
-- Na step 5 (dados pessoais), exibir uma secao visual **antes** do botao de confirmar:
-  - Titulo: "Aproveite e adicione"
-  - Cards de produto com foto, nome, preco e checkbox
-  - Total atualizado dinamicamente (servico + produtos selecionados)
-- Os produtos selecionados sao enviados no body do `create-booking` como `order_bump_items`
+### 3. Public: "Qualquer profissional" should only fetch slots for eligible staff (Priority 3)
+**Problem**: When client picks "Qualquer disponível", `selectedStaff` is set to `null`, and `loadAvailableSlots` sends `staff_id: null` to the edge function. The edge function then returns slots for ALL staff — including those who don't offer the service.  
+**Fix**: When staff is null but a service is selected, pass eligible staff IDs to the slots function. Since the edge function only accepts a single `staff_id`, the simplest approach is to fetch slots for each eligible staff member, or rely on the backend trigger validation (which already blocks at INSERT time).  
+**Assessment**: The backend trigger `trg_check_staff_service` already blocks invalid bookings. The edge function `get-available-slots` also filters by staff schedule. The risk is showing a time slot that belongs to a staff member who doesn't offer the service — but the booking creation would fail. This is a low-priority refinement since the public prompt data shows only 2 errors (pre-fix).
 
-### 4. Backend (create-booking Edge Function)
-- Aceitar campo opcional `order_bump_items: Array<{product_id, quantity}>` no request
-- Apos criar o booking, inserir os itens na tabela `booking_items` com:
-  - `type: 'product'`
-  - `ref_id: product_id`
-  - `paid_status: 'unpaid'` (serao cobrados na comanda ou junto ao pagamento online)
-  - `staff_id: booking.staff_id`
-  - `purchase_price_cents` do produto (para calculo de margem)
+### 4. Public: Show "no staff available" message (Priority 3)
+**Problem**: If no staff offers the selected service, the eligibleStaff array is empty and step 2 shows no options.  
+**Fix**: Add a fallback message in step 2 when `eligibleStaff.length === 0`.  
+**File**: `src/pages/BookingPublic.tsx`
 
----
+## Technical Details
 
-## Detalhes tecnicos
+### File Changes
 
-### Arquivos modificados/criados
+**`src/components/modals/BookingModal.tsx`**:
+- Line 48: Change `staff_id: z.string().optional()` to `staff_id: z.string().min(1, "Selecione um profissional")`
+- Line 918: Remove `<SelectItem value="none">Qualquer profissional</SelectItem>`
+- Lines 620-728: Wrap `handleSubmit` with conflict check — if selected slot has `hasConflict`, show AlertDialog before proceeding
+- Add AlertDialog import and state variables for conflict confirmation flow
+- Add `conflictDialogOpen`, `pendingSubmitData` state
+- In form submit: intercept when conflict detected, store data, show dialog
+- Dialog confirm: call actual submit with stored data
+- Dialog cancel: close dialog, let admin pick another slot
 
-| Arquivo | Alteracao |
-|---|---|
-| **Migration SQL** | Criar tabela `service_order_bumps` com RLS |
-| `src/pages/Services.tsx` | Secao de configuracao de order bumps no dialog de edicao |
-| `src/pages/BookingPublic.tsx` | Buscar bumps ao selecionar servico, exibir na step 5, enviar no submit |
-| `supabase/functions/create-booking/index.ts` | Aceitar `order_bump_items`, inserir em `booking_items` apos criacao |
+**`src/pages/BookingPublic.tsx`**:
+- After line 1741 (end of eligibleStaff.map): Add empty state message when `eligibleStaff.length === 0`
 
-### Fluxo do cliente (visual)
+### No database changes required
+All backend triggers and validations are already in place.
 
-```text
-Step 1: Seleciona servico
-  -> Sistema busca order bumps do servico
-Step 2: Seleciona profissional
-Step 3: Seleciona data/hora
-Step 4: Forma de pagamento (se aplicavel)
-Step 5: Dados pessoais + SECAO ORDER BUMP
-  -> Cards com checkbox, foto, nome, preco
-  -> "Total: R$ X (servico) + R$ Y (produtos)"
-Step 6: Confirmacao
-```
-
-### Secao de Order Bump (UI publica)
-- Estilo consistente com o restante do BookingPublic (zinc-900, border-zinc-800)
-- Cada produto: card horizontal com imagem 48x48, nome, preco e checkbox
-- Animacao de entrada suave
-- Resumo do total atualizado abaixo
-
-### Secao de configuracao (Admin)
-- Dentro do dialog de edicao de servico, nova aba/secao "Order Bumps"
-- Lista de produtos vinculados com botao de remover
-- Combobox para buscar e adicionar novos produtos
-- Reutilizar padrao visual do `ExtraItemsSection` (Command + Popover)
-
-### Integracao com Comanda
-Os itens de order bump aparecerao automaticamente na comanda (`BookingDetailsModal`) pois ja serao `booking_items` do tipo `product`. O fluxo de pagamento local e fechamento funciona sem alteracoes.
