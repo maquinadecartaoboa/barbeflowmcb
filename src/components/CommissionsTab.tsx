@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useDateRange } from "@/contexts/DateRangeContext";
@@ -10,105 +10,160 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Users, DollarSign, ChevronRight, Lock } from "lucide-react";
+import { Loader2, Users, DollarSign, ChevronRight, Lock, CreditCard, Globe, Gift, Repeat } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-interface Snapshot {
+interface CommissionDetail {
   id: string;
+  tenant_id: string;
   booking_id: string;
   booking_item_id: string;
   staff_id: string;
+  staff_name: string;
   item_type: string;
   item_title: string;
   base_amount_cents: number;
   commission_percent: number;
   commission_cents: number;
+  payment_source: string;
+  commission_type: string;
+  customer_name: string;
+  booking_date: string;
   created_at: string;
 }
 
 interface StaffCommission {
   staffId: string;
   staffName: string;
-  serviceRevenue: number;
-  serviceCommission: number;
-  productRevenue: number;
-  productCommission: number;
   totalCommission: number;
-  snapshots: Snapshot[];
+  details: CommissionDetail[];
+  bySource: Record<string, { count: number; total: number }>;
+}
+
+const SOURCE_CONFIG: Record<string, { label: string; icon: React.ElementType; badgeClass: string; cardClass: string }> = {
+  local: {
+    label: "Presencial",
+    icon: CreditCard,
+    badgeClass: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+    cardClass: "bg-blue-500/10 border-blue-500/30",
+  },
+  online: {
+    label: "Online",
+    icon: Globe,
+    badgeClass: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+    cardClass: "bg-emerald-500/10 border-emerald-500/30",
+  },
+  cortesia: {
+    label: "Cortesia",
+    icon: Gift,
+    badgeClass: "bg-muted text-muted-foreground border-border",
+    cardClass: "bg-muted/50 border-border",
+  },
+  assinatura: {
+    label: "Assinatura",
+    icon: Repeat,
+    badgeClass: "bg-violet-500/10 text-violet-400 border-violet-500/30",
+    cardClass: "bg-violet-500/10 border-violet-500/30",
+  },
+};
+
+function getSourceKey(detail: CommissionDetail): string {
+  if (detail.commission_type === "assinatura") return "assinatura";
+  return detail.payment_source || "local";
+}
+
+function SourceBadge({ source }: { source: string }) {
+  const cfg = SOURCE_CONFIG[source] || SOURCE_CONFIG.local;
+  const Icon = cfg.icon;
+  return (
+    <Badge className={`${cfg.badgeClass} text-[10px] gap-1 font-medium`}>
+      <Icon className="h-3 w-3" />
+      {cfg.label}
+    </Badge>
+  );
 }
 
 export function CommissionsTab() {
   const { currentTenant } = useTenant();
   const { dateRange } = useDateRange();
-  const [commissions, setCommissions] = useState<StaffCommission[]>([]);
+  const [details, setDetails] = useState<CommissionDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStaff, setSelectedStaff] = useState<StaffCommission | null>(null);
 
   useEffect(() => {
-    if (currentTenant) loadSnapshots();
+    if (currentTenant) loadDetails();
   }, [currentTenant, dateRange]);
 
-  const loadSnapshots = async () => {
+  const loadDetails = async () => {
     if (!currentTenant) return;
     try {
       setLoading(true);
-      const fromISO = dateRange.from.toISOString();
-      const toISO = dateRange.to.toISOString();
+      const fromISO = format(dateRange.from, "yyyy-MM-dd");
+      const toISO = format(dateRange.to, "yyyy-MM-dd");
 
-      // 1. Fetch snapshots in period
-      const { data: snaps, error } = await supabase
-        .from("commission_snapshots")
-        .select("*, staff:staff(name)")
+      const { data, error } = await supabase
+        .from("commission_details" as any)
+        .select("*")
         .eq("tenant_id", currentTenant.id)
-        .gte("created_at", fromISO)
-        .lte("created_at", toISO)
-        .order("created_at", { ascending: false });
+        .gte("booking_date", fromISO)
+        .lte("booking_date", toISO)
+        .order("booking_date", { ascending: false });
 
       if (error) throw error;
-
-      // 2. Aggregate per staff
-      const map: Record<string, StaffCommission> = {};
-
-      (snaps || []).forEach((s: any) => {
-        const staffId = s.staff_id;
-        if (!map[staffId]) {
-          map[staffId] = {
-            staffId,
-            staffName: s.staff?.name || "Profissional",
-            serviceRevenue: 0,
-            serviceCommission: 0,
-            productRevenue: 0,
-            productCommission: 0,
-            totalCommission: 0,
-            snapshots: [],
-          };
-        }
-
-        const entry = map[staffId];
-        entry.snapshots.push(s);
-        entry.totalCommission += s.commission_cents;
-
-        if (s.item_type === "service") {
-          entry.serviceRevenue += s.base_amount_cents;
-          entry.serviceCommission += s.commission_cents;
-        } else {
-          entry.productRevenue += s.base_amount_cents;
-          entry.productCommission += s.commission_cents;
-        }
-      });
-
-      setCommissions(
-        Object.values(map)
-          .filter(c => c.totalCommission > 0 || c.snapshots.length > 0)
-          .sort((a, b) => b.totalCommission - a.totalCommission)
-      );
+      setDetails((data || []) as unknown as CommissionDetail[]);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
+
+  // Aggregate by staff
+  const commissions = useMemo(() => {
+    const map: Record<string, StaffCommission> = {};
+
+    details.forEach((d) => {
+      if (!map[d.staff_id]) {
+        map[d.staff_id] = {
+          staffId: d.staff_id,
+          staffName: d.staff_name || "Profissional",
+          totalCommission: 0,
+          details: [],
+          bySource: {},
+        };
+      }
+      const entry = map[d.staff_id];
+      entry.details.push(d);
+      entry.totalCommission += d.commission_cents;
+
+      const key = getSourceKey(d);
+      if (!entry.bySource[key]) entry.bySource[key] = { count: 0, total: 0 };
+      entry.bySource[key].count++;
+      entry.bySource[key].total += d.commission_cents;
+    });
+
+    return Object.values(map)
+      .filter((c) => c.totalCommission > 0 || c.details.length > 0)
+      .sort((a, b) => b.totalCommission - a.totalCommission);
+  }, [details]);
+
+  // Global totals by source
+  const globalBySource = useMemo(() => {
+    const result: Record<string, { count: number; total: number }> = {
+      local: { count: 0, total: 0 },
+      online: { count: 0, total: 0 },
+      assinatura: { count: 0, total: 0 },
+      cortesia: { count: 0, total: 0 },
+    };
+    details.forEach((d) => {
+      const key = getSourceKey(d);
+      if (!result[key]) result[key] = { count: 0, total: 0 };
+      result[key].count++;
+      result[key].total += d.commission_cents;
+    });
+    return result;
+  }, [details]);
 
   const totalCommission = commissions.reduce((s, c) => s + c.totalCommission, 0);
   const fmt = (cents: number) => `R$ ${(cents / 100).toFixed(2)}`;
@@ -136,7 +191,28 @@ export function CommissionsTab() {
         </CardContent>
       </Card>
 
-      {/* Summary */}
+      {/* Summary cards by source */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {(["local", "online", "assinatura", "cortesia"] as const).map((key) => {
+          const cfg = SOURCE_CONFIG[key];
+          const Icon = cfg.icon;
+          const data = globalBySource[key];
+          return (
+            <Card key={key} className={`border ${cfg.cardClass}`}>
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Icon className="h-4 w-4" />
+                  <span className="text-xs font-medium">{cfg.label}</span>
+                </div>
+                <p className="text-lg font-bold">{fmt(data.total)}</p>
+                <p className="text-[10px] text-muted-foreground">{data.count} item{data.count !== 1 ? "s" : ""}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Totals row */}
       <div className="grid grid-cols-2 gap-3">
         <Card>
           <CardContent className="p-4">
@@ -176,11 +252,8 @@ export function CommissionsTab() {
             <TableHeader>
               <TableRow>
                 <TableHead>Profissional</TableHead>
-                <TableHead>Serviços</TableHead>
-                <TableHead>Com. Serv.</TableHead>
-                <TableHead>Produtos</TableHead>
-                <TableHead>Com. Prod.</TableHead>
-                <TableHead>Total</TableHead>
+                <TableHead className="text-center">Itens</TableHead>
+                <TableHead className="text-right">Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -195,12 +268,18 @@ export function CommissionsTab() {
                       {c.staffName}
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
+                    <div className="flex gap-1 mt-1 flex-wrap">
+                      {Object.entries(c.bySource).map(([key, val]) => (
+                        val.count > 0 && (
+                          <span key={key} className="text-[10px] text-muted-foreground">
+                            {SOURCE_CONFIG[key]?.label || key}: {val.count}
+                          </span>
+                        )
+                      ))}
+                    </div>
                   </TableCell>
-                  <TableCell>{fmt(c.serviceRevenue)}</TableCell>
-                  <TableCell className="text-emerald-400">{fmt(c.serviceCommission)}</TableCell>
-                  <TableCell>{fmt(c.productRevenue)}</TableCell>
-                  <TableCell className="text-emerald-400">{fmt(c.productCommission)}</TableCell>
-                  <TableCell>
+                  <TableCell className="text-center">{c.details.length}</TableCell>
+                  <TableCell className="text-right">
                     <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
                       {fmt(c.totalCommission)}
                     </Badge>
@@ -225,79 +304,60 @@ export function CommissionsTab() {
           </DialogHeader>
 
           {selectedStaff && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="p-3 rounded-lg bg-muted/30 border border-border text-center">
-                  <p className="text-xs text-muted-foreground">Serviços</p>
-                  <p className="font-bold">{fmt(selectedStaff.serviceRevenue)}</p>
-                  <p className="text-xs text-emerald-400">Com: {fmt(selectedStaff.serviceCommission)}</p>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/30 border border-border text-center">
-                  <p className="text-xs text-muted-foreground">Produtos</p>
-                  <p className="font-bold">{fmt(selectedStaff.productRevenue)}</p>
-                  <p className="text-xs text-emerald-400">Com: {fmt(selectedStaff.productCommission)}</p>
-                </div>
-                <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-center">
-                  <p className="text-xs text-muted-foreground">Total a Pagar</p>
-                  <p className="font-bold text-emerald-400">{fmt(selectedStaff.totalCommission)}</p>
-                </div>
+            <div className="space-y-4">
+              {/* Source summary for this staff */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {(["local", "online", "assinatura", "cortesia"] as const).map((key) => {
+                  const cfg = SOURCE_CONFIG[key];
+                  const val = selectedStaff.bySource[key];
+                  if (!val || val.count === 0) return null;
+                  return (
+                    <div key={key} className={`p-2 rounded-lg border text-center ${cfg.cardClass}`}>
+                      <p className="text-[10px] font-medium">{cfg.label}</p>
+                      <p className="text-sm font-bold">{fmt(val.total)}</p>
+                      <p className="text-[10px] text-muted-foreground">{val.count} item{val.count !== 1 ? "s" : ""}</p>
+                    </div>
+                  );
+                })}
               </div>
 
-              {/* Service snapshots */}
-              {selectedStaff.snapshots.filter(s => s.item_type === "service").length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold mb-2">
-                    Serviços ({selectedStaff.snapshots.filter(s => s.item_type === "service").length})
-                  </h4>
-                  <div className="space-y-1 max-h-48 overflow-y-auto">
-                    {selectedStaff.snapshots
-                      .filter(s => s.item_type === "service")
-                      .map((s) => (
-                        <div key={s.id} className="flex items-center justify-between py-2 px-3 text-sm rounded-lg bg-muted/20">
-                          <div>
-                            <span className="font-medium">{s.item_title}</span>
-                            <span className="text-muted-foreground ml-2 text-xs">
-                              {format(new Date(s.created_at), "dd/MM", { locale: ptBR })}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span>{fmt(s.base_amount_cents)}</span>
-                            <span className="text-xs text-muted-foreground">{s.commission_percent}%</span>
-                            <span className="text-emerald-400 text-xs">+{fmt(s.commission_cents)}</span>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
+              <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-center">
+                <p className="text-xs text-muted-foreground">Total a Pagar</p>
+                <p className="text-xl font-bold text-emerald-400">{fmt(selectedStaff.totalCommission)}</p>
+              </div>
 
-              {/* Product snapshots */}
-              {selectedStaff.snapshots.filter(s => s.item_type === "product").length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold mb-2">
-                    Produtos ({selectedStaff.snapshots.filter(s => s.item_type === "product").length})
-                  </h4>
-                  <div className="space-y-1 max-h-48 overflow-y-auto">
-                    {selectedStaff.snapshots
-                      .filter(s => s.item_type === "product")
-                      .map((s) => (
-                        <div key={s.id} className="flex items-center justify-between py-2 px-3 text-sm rounded-lg bg-muted/20">
-                          <div>
-                            <span className="font-medium">{s.item_title}</span>
-                            <span className="text-muted-foreground ml-2 text-xs">
-                              {format(new Date(s.created_at), "dd/MM", { locale: ptBR })}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span>{fmt(s.base_amount_cents)}</span>
-                            <span className="text-xs text-muted-foreground">{s.commission_percent}%</span>
-                            <span className="text-emerald-400 text-xs">+{fmt(s.commission_cents)}</span>
-                          </div>
-                        </div>
-                      ))}
+              {/* All items with badges */}
+              <div className="space-y-1 max-h-[40vh] overflow-y-auto">
+                {selectedStaff.details.map((d) => (
+                  <div key={d.id} className="flex items-center justify-between py-2 px-3 text-sm rounded-lg bg-muted/20 gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <SourceBadge source={getSourceKey(d)} />
+                        <span className="font-medium truncate">{d.item_title}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
+                        <span>{d.customer_name || "—"}</span>
+                        <span>•</span>
+                        <span>{d.booking_date ? format(new Date(d.booking_date), "dd/MM", { locale: ptBR }) : "—"}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs shrink-0">
+                      {d.commission_type !== "assinatura" && (
+                        <>
+                          <span className="text-muted-foreground">{fmt(d.base_amount_cents)}</span>
+                          <span className="text-muted-foreground">{d.commission_percent}%</span>
+                        </>
+                      )}
+                      {d.commission_type === "assinatura" && (
+                        <span className="text-muted-foreground">ficha</span>
+                      )}
+                      <span className="text-emerald-400 font-medium">
+                        {d.commission_cents > 0 ? `+${fmt(d.commission_cents)}` : fmt(d.commission_cents)}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
           )}
         </DialogContent>
