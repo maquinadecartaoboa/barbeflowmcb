@@ -54,9 +54,10 @@ interface Props {
   onItemsChange: () => void;
   comandaClosed: boolean;
   bookingStartsAt?: string;
+  bookingStaffId?: string | null;
 }
 
-export function ComandaItemsSection({ bookingId, tenantId, items, onItemsChange, comandaClosed, bookingStartsAt }: Props) {
+export function ComandaItemsSection({ bookingId, tenantId, items, onItemsChange, comandaClosed, bookingStartsAt, bookingStaffId }: Props) {
   const [products, setProducts] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [staffList, setStaffList] = useState<any[]>([]);
@@ -64,6 +65,7 @@ export function ComandaItemsSection({ bookingId, tenantId, items, onItemsChange,
   const [swapServiceItemId, setSwapServiceItemId] = useState<string | null>(null);
   const [swapSearchOpen, setSwapSearchOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [staffServiceIds, setStaffServiceIds] = useState<string[] | null>(null);
   const [discountItemId, setDiscountItemId] = useState<string | null>(null);
   const [discountMode, setDiscountMode] = useState<"value" | "percent">("value");
   const [discountInput, setDiscountInput] = useState("");
@@ -80,12 +82,25 @@ export function ComandaItemsSection({ bookingId, tenantId, items, onItemsChange,
       setProducts(prodRes.data || []);
       setServices(svcRes.data || []);
       setStaffList(staffRes.data || []);
+
+      // Load staff_services to filter available services
+      if (bookingStaffId) {
+        const { data } = await supabase
+          .from('staff_services')
+          .select('service_id')
+          .eq('staff_id', bookingStaffId);
+        setStaffServiceIds(data && data.length > 0 ? data.map(d => d.service_id) : null);
+      }
     };
     load();
-  }, [tenantId]);
+  }, [tenantId, bookingStaffId]);
 
   const fmt = (cents: number) => `R$ ${(cents / 100).toFixed(2)}`;
   const effectivePrice = (item: BookingItem) => item.total_price_cents - (item.discount_cents || 0);
+
+  const filteredServices = staffServiceIds
+    ? services.filter(s => staffServiceIds.includes(s.id))
+    : services;
 
   const addItem = async (type: "product" | "extra_service", item: any) => {
     const unitPrice = type === "product" ? item.sale_price_cents : item.price_cents;
@@ -97,6 +112,7 @@ export function ComandaItemsSection({ bookingId, tenantId, items, onItemsChange,
       title: item.name,
       quantity: 1,
       unit_price_cents: unitPrice,
+      total_price_cents: unitPrice,
       purchase_price_cents: type === "product" ? (item.purchase_price_cents || 0) : 0,
       staff_id: null,
       paid_status: "unpaid",
@@ -332,9 +348,9 @@ export function ComandaItemsSection({ bookingId, tenantId, items, onItemsChange,
                         ))}
                       </CommandGroup>
                     )}
-                    {services.length > 0 && (
+                    {filteredServices.length > 0 && (
                       <CommandGroup heading="Serviços extras">
-                        {services.map(s => (
+                        {filteredServices.map(s => (
                           <CommandItem key={`s-${s.id}`} onSelect={() => addItem("extra_service", s)} className="cursor-pointer">
                             <Scissors className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
                             <span className="flex-1 truncate">{s.name}</span>
@@ -537,7 +553,7 @@ export function ComandaItemsSection({ bookingId, tenantId, items, onItemsChange,
             <CommandList>
               <CommandEmpty>Nenhum serviço encontrado</CommandEmpty>
               <CommandGroup heading="Serviços">
-                {services.map(s => (
+                {filteredServices.map(s => (
                   <CommandItem
                     key={s.id}
                     onSelect={() => swapServiceItemId && swapMainService(swapServiceItemId, s)}
