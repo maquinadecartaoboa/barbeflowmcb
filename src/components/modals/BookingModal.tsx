@@ -390,6 +390,30 @@ export function BookingModal() {
     checkSchedule();
   }, [watchedDate, watchedStaffId, currentTenant, staff]);
 
+  // Load staff_services to filter service dropdown
+  useEffect(() => {
+    if (!watchedStaffId || watchedStaffId === "none" || !currentTenant) {
+      setStaffServiceIds(null);
+      return;
+    }
+    const loadStaffServices = async () => {
+      const { data } = await supabase
+        .from('staff_services')
+        .select('service_id')
+        .eq('staff_id', watchedStaffId);
+      setStaffServiceIds(data && data.length > 0 ? data.map(d => d.service_id) : null);
+    };
+    loadStaffServices();
+  }, [watchedStaffId, currentTenant]);
+
+  // Reset service if selected staff doesn't offer it
+  useEffect(() => {
+    if (staffServiceIds && watchedServiceId && !staffServiceIds.includes(watchedServiceId)) {
+      form.setValue("service_id", "");
+      setAdditionalServices([]);
+    }
+  }, [staffServiceIds]);
+
   // Reset selected time when extra slots change (filtered slots change)
   useEffect(() => {
     form.setValue("time", "");
