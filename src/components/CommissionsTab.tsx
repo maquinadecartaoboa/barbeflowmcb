@@ -13,6 +13,7 @@ import {
 import { Loader2, Users, DollarSign, ChevronRight, Lock, CreditCard, Globe, Gift, Repeat } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import type { SubscriptionCommissionTotals } from "@/components/subscriptions/SubscriptionCommissionDashboard";
 
 interface CommissionDetail {
   id: string;
@@ -84,7 +85,11 @@ function SourceBadge({ source }: { source: string }) {
   );
 }
 
-export function CommissionsTab() {
+interface CommissionsTabProps {
+  subscriptionTotals?: SubscriptionCommissionTotals | null;
+}
+
+export function CommissionsTab({ subscriptionTotals }: CommissionsTabProps) {
   const { currentTenant } = useTenant();
   const { dateRange } = useDateRange();
   const [details, setDetails] = useState<CommissionDetail[]>([]);
@@ -119,11 +124,17 @@ export function CommissionsTab() {
     }
   };
 
-  // Aggregate by staff
+  // Aggregate by staff — exclude subscription items from view (they have 0 commission_cents)
+  // and inject real estimated values from subscriptionTotals
   const commissions = useMemo(() => {
     const map: Record<string, StaffCommission> = {};
 
+    // Process non-subscription details from the view
     details.forEach((d) => {
+      const sourceKey = getSourceKey(d);
+      // Skip subscription items from view — we'll use real data from subscriptionTotals
+      if (sourceKey === "assinatura") return;
+
       if (!map[d.staff_id]) {
         map[d.staff_id] = {
           staffId: d.staff_id,
@@ -137,16 +148,35 @@ export function CommissionsTab() {
       entry.details.push(d);
       entry.totalCommission += d.commission_cents;
 
-      const key = getSourceKey(d);
-      if (!entry.bySource[key]) entry.bySource[key] = { count: 0, total: 0 };
-      entry.bySource[key].count++;
-      entry.bySource[key].total += d.commission_cents;
+      if (!entry.bySource[sourceKey]) entry.bySource[sourceKey] = { count: 0, total: 0 };
+      entry.bySource[sourceKey].count++;
+      entry.bySource[sourceKey].total += d.commission_cents;
     });
+
+    // Inject subscription totals from the dashboard RPC
+    if (subscriptionTotals?.byStaff) {
+      Object.entries(subscriptionTotals.byStaff).forEach(([staffId, data]) => {
+        if (!map[staffId]) {
+          // Staff only has subscription commissions — find their name from details or use fallback
+          const staffDetail = details.find((d) => d.staff_id === staffId);
+          map[staffId] = {
+            staffId,
+            staffName: staffDetail?.staff_name || "Profissional",
+            totalCommission: 0,
+            details: [],
+            bySource: {},
+          };
+        }
+        const entry = map[staffId];
+        entry.totalCommission += data.estimatedCents;
+        entry.bySource["assinatura"] = { count: data.tokens, total: data.estimatedCents };
+      });
+    }
 
     return Object.values(map)
       .filter((c) => c.totalCommission > 0 || c.details.length > 0)
       .sort((a, b) => b.totalCommission - a.totalCommission);
-  }, [details]);
+  }, [details, subscriptionTotals]);
 
   // Global totals by source
   const globalBySource = useMemo(() => {
@@ -156,12 +186,21 @@ export function CommissionsTab() {
       assinatura: { count: 0, total: 0 },
       cortesia: { count: 0, total: 0 },
     };
+    // Only count non-subscription items from view
     details.forEach((d) => {
       const key = getSourceKey(d);
+      if (key === "assinatura") return;
       if (!result[key]) result[key] = { count: 0, total: 0 };
       result[key].count++;
       result[key].total += d.commission_cents;
     });
+    // Inject subscription totals from real data
+    if (subscriptionTotals) {
+      result.assinatura = {
+        count: subscriptionTotals.totalTokens,
+        total: subscriptionTotals.totalEstimatedCents,
+      };
+    }
     return result;
   }, [details]);
 

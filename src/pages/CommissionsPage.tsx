@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { CommissionsTab } from "@/components/CommissionsTab";
 import { DateRangeSelector } from "@/components/DateRangeSelector";
 import { useDateRange } from "@/contexts/DateRangeContext";
-import { SubscriptionCommissionDashboard } from "@/components/subscriptions/SubscriptionCommissionDashboard";
+import { SubscriptionCommissionDashboard, type SubscriptionCommissionTotals } from "@/components/subscriptions/SubscriptionCommissionDashboard";
 import { SubscriptionCommissionHistory } from "@/components/subscriptions/SubscriptionCommissionHistory";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, Ticket, History } from "lucide-react";
@@ -13,9 +13,14 @@ export default function CommissionsPage() {
   usePageTitle("Comissões");
   const { dateRange } = useDateRange();
   const [showHistory, setShowHistory] = useState(false);
+  const [subscriptionTotals, setSubscriptionTotals] = useState<SubscriptionCommissionTotals | null>(null);
 
   const periodStart = format(dateRange.from, "yyyy-MM-dd");
   const periodEnd = format(dateRange.to, "yyyy-MM-dd");
+
+  const handleSubscriptionTotals = useCallback((totals: SubscriptionCommissionTotals) => {
+    setSubscriptionTotals(totals);
+  }, []);
 
   return (
     <div className="space-y-4 md:space-y-6 px-4 md:px-0">
@@ -26,7 +31,7 @@ export default function CommissionsPage() {
           Cálculo automático de comissões por profissional
         </p>
       </div>
-      <CommissionsTab />
+      <CommissionsTab subscriptionTotals={subscriptionTotals} />
 
       {/* Subscription Commissions Section */}
       <div className="border-t border-border pt-6 space-y-4">
@@ -37,7 +42,11 @@ export default function CommissionsPage() {
         <p className="text-sm text-muted-foreground -mt-2">
           Fichas de atendimento e distribuição de comissões por assinatura
         </p>
-        <SubscriptionCommissionDashboard periodStart={periodStart} periodEnd={periodEnd} />
+        <SubscriptionCommissionDashboard
+          periodStart={periodStart}
+          periodEnd={periodEnd}
+          onTotalsChange={handleSubscriptionTotals}
+        />
 
         <Collapsible open={showHistory} onOpenChange={setShowHistory}>
           <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-2">

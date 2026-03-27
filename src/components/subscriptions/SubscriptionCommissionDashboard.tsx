@@ -45,12 +45,19 @@ interface SubscriptionSummary {
   staff_breakdown: StaffBreakdown[];
 }
 
+export interface SubscriptionCommissionTotals {
+  totalTokens: number;
+  totalEstimatedCents: number;
+  byStaff: Record<string, { tokens: number; estimatedCents: number }>;
+}
+
 interface Props {
   periodStart?: string;
   periodEnd?: string;
+  onTotalsChange?: (totals: SubscriptionCommissionTotals) => void;
 }
 
-export function SubscriptionCommissionDashboard({ periodStart, periodEnd }: Props) {
+export function SubscriptionCommissionDashboard({ periodStart, periodEnd, onTotalsChange }: Props) {
   const { currentTenant } = useTenant();
   const [summaries, setSummaries] = useState<SubscriptionSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -145,6 +152,20 @@ export function SubscriptionCommissionDashboard({ periodStart, periodEnd }: Prop
 
   const totalTokens = summaries.reduce((s, i) => s + i.total_tokens, 0);
   const totalEstimated = summaries.reduce((s, i) => s + i.estimated_pool_cents, 0);
+
+  // Expose totals to parent
+  useEffect(() => {
+    if (!onTotalsChange) return;
+    const byStaff: Record<string, { tokens: number; estimatedCents: number }> = {};
+    summaries.forEach((s) => {
+      (s.staff_breakdown || []).forEach((sb) => {
+        if (!byStaff[sb.staff_id]) byStaff[sb.staff_id] = { tokens: 0, estimatedCents: 0 };
+        byStaff[sb.staff_id].tokens += sb.tokens;
+        byStaff[sb.staff_id].estimatedCents += sb.estimated_commission_cents;
+      });
+    });
+    onTotalsChange({ totalTokens, totalEstimatedCents: totalEstimated, byStaff });
+  }, [summaries, onTotalsChange]);
 
   if (loading) {
     return (
