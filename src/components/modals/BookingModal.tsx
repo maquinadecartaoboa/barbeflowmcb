@@ -748,6 +748,7 @@ export function BookingModal() {
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={closeBookingModal}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
