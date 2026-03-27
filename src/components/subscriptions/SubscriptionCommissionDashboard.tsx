@@ -153,6 +153,20 @@ export function SubscriptionCommissionDashboard({ periodStart, periodEnd, onTota
   const totalTokens = summaries.reduce((s, i) => s + i.total_tokens, 0);
   const totalEstimated = summaries.reduce((s, i) => s + i.estimated_pool_cents, 0);
 
+  // Expose totals to parent
+  useEffect(() => {
+    if (!onTotalsChange) return;
+    const byStaff: Record<string, { tokens: number; estimatedCents: number }> = {};
+    summaries.forEach((s) => {
+      (s.staff_breakdown || []).forEach((sb) => {
+        if (!byStaff[sb.staff_id]) byStaff[sb.staff_id] = { tokens: 0, estimatedCents: 0 };
+        byStaff[sb.staff_id].tokens += sb.tokens;
+        byStaff[sb.staff_id].estimatedCents += sb.estimated_commission_cents;
+      });
+    });
+    onTotalsChange({ totalTokens, totalEstimatedCents: totalEstimated, byStaff });
+  }, [summaries, onTotalsChange]);
+
   if (loading) {
     return (
       <div className="flex justify-center py-8">
