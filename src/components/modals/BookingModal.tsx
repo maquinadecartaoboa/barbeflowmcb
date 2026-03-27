@@ -1415,5 +1415,35 @@ export function BookingModal() {
         </Form>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={conflictDialogOpen} onOpenChange={setConflictDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            Conflito de Horário
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            Este horário já possui outro agendamento para o profissional selecionado. Deseja criar o agendamento mesmo assim? Ele será marcado como encaixe.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => { setPendingSubmitData(null); setConflictDialogOpen(false); }}>
+            Escolher Outro Horário
+          </AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-amber-600 hover:bg-amber-700"
+            onClick={() => {
+              setConflictDialogOpen(false);
+              if (pendingSubmitData) {
+                handleSubmit(pendingSubmitData);
+              }
+            }}
+          >
+            Agendar Mesmo Assim
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

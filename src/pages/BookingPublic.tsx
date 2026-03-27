@@ -1739,6 +1739,12 @@ END:VCALENDAR`;
                   </div>
                 </button>
               ))}
+              {eligibleStaff.length === 0 && (
+                <div className="text-center py-8 text-zinc-500">
+                  <p className="text-sm">Nenhum profissional disponível para este serviço.</p>
+                  <p className="text-xs mt-1">Tente selecionar outro serviço.</p>
+                </div>
+              )}
             </div>
             
             <button
