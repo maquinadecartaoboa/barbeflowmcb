@@ -54,9 +54,10 @@ interface Props {
   onItemsChange: () => void;
   comandaClosed: boolean;
   bookingStartsAt?: string;
+  bookingStaffId?: string | null;
 }
 
-export function ComandaItemsSection({ bookingId, tenantId, items, onItemsChange, comandaClosed, bookingStartsAt }: Props) {
+export function ComandaItemsSection({ bookingId, tenantId, items, onItemsChange, comandaClosed, bookingStartsAt, bookingStaffId }: Props) {
   const [products, setProducts] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [staffList, setStaffList] = useState<any[]>([]);
