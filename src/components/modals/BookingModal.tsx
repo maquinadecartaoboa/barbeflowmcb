@@ -1446,5 +1446,6 @@ export function BookingModal() {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    </>
   );
 }
