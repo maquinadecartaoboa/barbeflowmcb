@@ -228,6 +228,7 @@ export function BookingDetailsModal({
   const handleRefresh = () => {
     loadData();
     setBalanceKey(prev => prev + 1);
+    queryClient.invalidateQueries({ queryKey: ['staff-bookings'] });
   };
 
   const retryRefund = async (paymentId: string) => {
