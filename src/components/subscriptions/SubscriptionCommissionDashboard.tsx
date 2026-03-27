@@ -57,7 +57,7 @@ interface Props {
   onTotalsChange?: (totals: SubscriptionCommissionTotals) => void;
 }
 
-export function SubscriptionCommissionDashboard({ periodStart, periodEnd }: Props) {
+export function SubscriptionCommissionDashboard({ periodStart, periodEnd, onTotalsChange }: Props) {
   const { currentTenant } = useTenant();
   const [summaries, setSummaries] = useState<SubscriptionSummary[]>([]);
   const [loading, setLoading] = useState(true);
