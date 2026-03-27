@@ -65,6 +65,7 @@ export function ComandaItemsSection({ bookingId, tenantId, items, onItemsChange,
   const [swapServiceItemId, setSwapServiceItemId] = useState<string | null>(null);
   const [swapSearchOpen, setSwapSearchOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [staffServiceIds, setStaffServiceIds] = useState<string[] | null>(null);
   const [discountItemId, setDiscountItemId] = useState<string | null>(null);
   const [discountMode, setDiscountMode] = useState<"value" | "percent">("value");
   const [discountInput, setDiscountInput] = useState("");
