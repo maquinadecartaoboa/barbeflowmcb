@@ -98,6 +98,10 @@ export function ComandaItemsSection({ bookingId, tenantId, items, onItemsChange,
   const fmt = (cents: number) => `R$ ${(cents / 100).toFixed(2)}`;
   const effectivePrice = (item: BookingItem) => item.total_price_cents - (item.discount_cents || 0);
 
+  const filteredServices = staffServiceIds
+    ? services.filter(s => staffServiceIds.includes(s.id))
+    : services;
+
   const addItem = async (type: "product" | "extra_service", item: any) => {
     const unitPrice = type === "product" ? item.sale_price_cents : item.price_cents;
     const { error } = await supabase.from("booking_items").insert({
@@ -108,6 +112,7 @@ export function ComandaItemsSection({ bookingId, tenantId, items, onItemsChange,
       title: item.name,
       quantity: 1,
       unit_price_cents: unitPrice,
+      total_price_cents: unitPrice,
       purchase_price_cents: type === "product" ? (item.purchase_price_cents || 0) : 0,
       staff_id: null,
       paid_status: "unpaid",
