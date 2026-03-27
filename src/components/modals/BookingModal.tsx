@@ -935,7 +935,6 @@ export function BookingModal() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="none">Qualquer profissional</SelectItem>
                         {staff.map((member) => (
                           <SelectItem key={member.id} value={member.id}>
                             {member.name}
