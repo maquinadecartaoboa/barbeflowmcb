@@ -66,6 +66,7 @@ const CATEGORIES: { icon: typeof CalendarCheck; title: string; toggles: ToggleDe
       { key: "subscription_near_block", label: "Aviso de bloqueio", description: "Avisa que a assinatura será bloqueada em breve" },
       { key: "subscription_cycle_reminder", label: "Lembrete de ciclo", description: "Lembra o cliente de usar suas sessões antes do ciclo acabar" },
     ],
+  },
 ];
 
 export function NotificationPreferencesSection() {
