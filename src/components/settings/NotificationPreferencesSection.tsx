@@ -77,8 +77,10 @@ export function NotificationPreferencesSection() {
 
   useEffect(() => {
     if (currentTenant?.settings) {
-      const saved = (currentTenant.settings as any)?.notification_preferences;
-      setPrefs({ ...DEFAULT_PREFS, ...(saved || {}) });
+      const saved = (currentTenant.settings as any)?.notification_preferences || {};
+      // Exclude owner_weekly_summary — managed in Alta Performance
+      const { owner_weekly_summary, ...rest } = saved;
+      setPrefs({ ...DEFAULT_PREFS, ...rest });
     }
   }, [currentTenant?.id, currentTenant?.settings]);
 
@@ -90,14 +92,18 @@ export function NotificationPreferencesSection() {
     if (!currentTenant) return;
     setSaving(true);
     try {
+      // Preserve owner_weekly_summary from Alta Performance
+      const existingOwnerPref = (currentTenant.settings as any)?.notification_preferences?.owner_weekly_summary ?? false;
       const { error } = await supabase
         .from("tenants")
         .update({
           settings: {
             ...(currentTenant.settings as any),
-            notification_preferences: prefs,
+            notification_preferences: {
+              ...prefs,
+              owner_weekly_summary: existingOwnerPref,
+            },
             weekly_summary_enabled: prefs.recurring_weekly_summary,
-            owner_summary_enabled: prefs.owner_weekly_summary,
             cycle_reminders_enabled: prefs.subscription_cycle_reminder,
           },
         })
