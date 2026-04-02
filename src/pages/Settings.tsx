@@ -1196,68 +1196,7 @@ export default function Settings() {
 
         {/* Notifications Settings */}
         <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Bell className="h-5 w-5 mr-2" />
-                Notificações
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Form {...settingsForm}>
-                <form onSubmit={settingsForm.handleSubmit(handleSettingsSubmit)} className="space-y-6">
-
-                  <WhatsAppNotificationStatus />
-
-                  <Separator className="my-4" />
-
-                  <h3 className="text-sm font-medium mb-3">Clientes Fixos (Recorrentes)</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Configure como clientes com horários fixos recebem notificações.
-                  </p>
-
-                  <FormField
-                    control={settingsForm.control}
-                    name="weekly_summary_enabled"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center justify-between rounded-lg border p-4 mb-3">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">Resumo semanal</FormLabel>
-                          <FormDescription>Envia 1 mensagem por semana com todos os horários fixos do cliente</FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={settingsForm.control}
-                    name="recurring_reminder_enabled"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">Lembretes individuais</FormLabel>
-                          <FormDescription>Envia lembrete automático antes de cada horário fixo (como para agendamentos normais)</FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="flex justify-end">
-                    <Button type="submit" disabled={loading}>
-                      {loading ? "Salvando..." : "Salvar Configurações"}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-          {/* Owner Weekly Summary moved to Alta Performance */}
+          <NotificationPreferencesSection />
         </TabsContent>
 
         {/* Payments Settings */}
