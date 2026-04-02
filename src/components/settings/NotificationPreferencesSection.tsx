@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { CalendarCheck, Clock, CreditCard, BarChart3, AlertTriangle } from "lucide-react";
+import { CalendarCheck, Clock, CreditCard, AlertTriangle } from "lucide-react";
 
 const DEFAULT_PREFS: Record<string, boolean> = {
   booking_confirmed: true,
@@ -19,7 +19,7 @@ const DEFAULT_PREFS: Record<string, boolean> = {
   booking_reminder_24h: true,
   booking_reminder_1h: true,
   recurring_weekly_summary: true,
-  owner_weekly_summary: false,
+  owner_weekly_summary: false, // managed in Alta Performance
   subscription_activated: true,
   subscription_renewed: true,
   subscription_payment_failed: true,
@@ -66,14 +66,6 @@ const CATEGORIES: { icon: typeof CalendarCheck; title: string; toggles: ToggleDe
       { key: "subscription_near_block", label: "Aviso de bloqueio", description: "Avisa que a assinatura será bloqueada em breve" },
       { key: "subscription_cycle_reminder", label: "Lembrete de ciclo", description: "Lembra o cliente de usar suas sessões antes do ciclo acabar" },
     ],
-  },
-  {
-    icon: BarChart3,
-    title: "📊 Relatórios",
-    toggles: [
-      { key: "owner_weekly_summary", label: "Resumo semanal do dono", description: "Envia relatório semanal com métricas da barbearia para o dono" },
-    ],
-  },
 ];
 
 export function NotificationPreferencesSection() {
