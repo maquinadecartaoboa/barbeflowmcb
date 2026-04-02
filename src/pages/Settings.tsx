@@ -17,6 +17,7 @@ import { AvailabilityBlocksManager } from "@/components/AvailabilityBlocksManage
 import LegalSettingsSection from "@/components/settings/LegalSettingsSection";
 import { supabase } from "@/integrations/supabase/client";
 import { WhatsAppMessagesSection } from "@/components/settings/WhatsAppMessagesSection";
+import { NotificationPreferencesSection } from "@/components/settings/NotificationPreferencesSection";
 
 
 import { useToast } from "@/hooks/use-toast";
