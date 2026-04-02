@@ -46,6 +46,11 @@ export function OwnerWeeklySummarySettings({ currentTenant }: Props) {
   const barbershopPhone = currentTenant?.phone || "";
   const hasPhone = barbershopPhone.length >= 10;
 
+  const getPrefs = () => {
+    const defaults = { owner_weekly_summary: false };
+    return { ...defaults, ...(currentTenant?.settings?.notification_preferences || {}) };
+  };
+
   // Check owner
   useEffect(() => {
     if (!user || !currentTenant) {
@@ -73,7 +78,8 @@ export function OwnerWeeklySummarySettings({ currentTenant }: Props) {
   useEffect(() => {
     if (!currentTenant) return;
     const s = currentTenant.settings || {};
-    setEnabled(s.owner_summary_enabled !== false);
+    const prefs = getPrefs();
+    setEnabled(prefs.owner_weekly_summary);
     const saved = s.owner_summary_phone || "";
     setAltPhone(saved ? formatPhoneMask(saved) : "");
     setShowAltField(!!saved);
@@ -83,11 +89,14 @@ export function OwnerWeeklySummarySettings({ currentTenant }: Props) {
     setEnabled(val);
     try {
       setSaving(true);
+      const currentPrefs = getPrefs();
+      const newPrefs = { ...currentPrefs, owner_weekly_summary: val };
       const { error } = await supabase
         .from("tenants")
         .update({
           settings: {
             ...currentTenant.settings,
+            notification_preferences: newPrefs,
             owner_summary_enabled: val,
           },
         })
