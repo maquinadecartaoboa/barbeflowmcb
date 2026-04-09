@@ -89,6 +89,7 @@ export default function Bookings() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { isOpen: modalIsOpen } = useBookingModal();
+  const queryClient = useQueryClient();
 
   // View state
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
