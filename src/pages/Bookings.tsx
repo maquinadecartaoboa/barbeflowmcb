@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useNavigate } from "react-router-dom";
 import { BookingDetailsModal } from "@/components/modals/BookingDetailsModal";
@@ -88,6 +89,7 @@ export default function Bookings() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { isOpen: modalIsOpen } = useBookingModal();
+  const queryClient = useQueryClient();
 
   // View state
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -459,7 +461,18 @@ export default function Bookings() {
       setConflictWarning({ open: false, conflicts: [] });
       setShowDetails(false);
       setEditMode(false);
-      refetch();
+
+      // If date changed, navigate the calendar to the new date
+      const newDate = new Date(`${editForm.date}T12:00:00`);
+      if (format(newDate, "yyyy-MM-dd") !== format(selectedDate, "yyyy-MM-dd")) {
+        setSelectedDate(newDate);
+        // useBookingsByDate will auto-refetch via useEffect when date changes
+      } else {
+        await refetch();
+      }
+
+      // Invalidate React Query caches used by other components (BookingDetailsModal, Dashboard, etc.)
+      queryClient.invalidateQueries({ queryKey: ["staff-bookings"] });
     } catch (err: any) {
       toast({ title: "Erro", description: err.message || "Erro ao atualizar", variant: "destructive" });
     } finally {
