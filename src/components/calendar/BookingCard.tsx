@@ -27,13 +27,15 @@ export function BookingCard({ booking, onClick, isRecurring, hasOverlap, isSecon
 
   // Filter items for this staff column, or show all if no currentStaffId
   const allItems = booking.all_items || [];
+  const isSecondaryBooking = booking.staff_role === 'secondary';
   const myItems = currentStaffId
     ? allItems.filter(item => item.staff_id === currentStaffId)
     : allItems;
 
   // Calculate end time: use staff-specific duration if available
-  const myDuration = myItems.reduce((sum, i) => sum + (i.duration_minutes || 0), 0);
-  const endTime = myDuration > 0
+  // Only use items-based duration for secondary bookings; primary always uses ends_at
+  const myDuration = isSecondaryBooking ? myItems.reduce((sum, i) => sum + (i.duration_minutes || 0), 0) : 0;
+  const endTime = isSecondaryBooking && myDuration > 0
     ? formatInTimeZone(new Date(new Date(booking.starts_at).getTime() + myDuration * 60 * 1000), TZ, "HH:mm")
     : formatInTimeZone(new Date(booking.ends_at), TZ, "HH:mm");
 
