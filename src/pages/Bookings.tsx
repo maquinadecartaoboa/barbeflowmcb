@@ -442,6 +442,7 @@ export default function Bookings() {
           starts_at: startsAt.toISOString(),
           ends_at: endsAt.toISOString(),
           ...(timeChanged ? { reminder_sent: false } : {}),
+          ...(forceOverlap ? { has_conflict: true } : {}),
         })
         .eq("id", selectedBooking.id);
 
