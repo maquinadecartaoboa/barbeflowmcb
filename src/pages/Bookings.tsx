@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { fromZonedTime } from "date-fns-tz";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useNavigate } from "react-router-dom";
@@ -382,8 +383,8 @@ export default function Bookings() {
     if (!selectedBooking || !currentTenant) return;
     setEditLoading(true);
     try {
-      const startsAt = new Date(`${editForm.date}T${editForm.time}`);
-      const endsAt = new Date(`${editForm.date}T${editForm.end_time}`);
+      const startsAt = fromZonedTime(`${editForm.date}T${editForm.time}:00`, "America/Bahia");
+      const endsAt = fromZonedTime(`${editForm.date}T${editForm.end_time}:00`, "America/Bahia");
 
       if (endsAt <= startsAt) {
         toast({ title: "Erro", description: "Horário de término deve ser após o início", variant: "destructive" });
@@ -463,10 +464,9 @@ export default function Bookings() {
       setEditMode(false);
 
       // If date changed, navigate the calendar to the new date
-      const newDate = new Date(`${editForm.date}T12:00:00`);
+      const newDate = fromZonedTime(`${editForm.date}T12:00:00`, "America/Bahia");
       if (format(newDate, "yyyy-MM-dd") !== format(selectedDate, "yyyy-MM-dd")) {
         setSelectedDate(newDate);
-        // useBookingsByDate will auto-refetch via useEffect when date changes
       } else {
         await refetch();
       }
@@ -873,6 +873,14 @@ export default function Bookings() {
                   <Input type="time" value={editForm.end_time} onChange={(e) => setEditForm((f) => ({ ...f, end_time: e.target.value }))} />
                 </div>
               </div>
+              {editForm.time && editForm.end_time && (() => {
+                const [sh, sm] = editForm.time.split(":").map(Number);
+                const [eh, em] = editForm.end_time.split(":").map(Number);
+                const diff = (eh * 60 + em) - (sh * 60 + sm);
+                return diff > 0 ? (
+                  <p className="text-xs text-muted-foreground">Duração: {diff}min</p>
+                ) : null;
+              })()}
               <div className="flex gap-2 pt-2 border-t border-border">
                 <Button size="sm" onClick={() => saveBookingEdit()} disabled={editLoading}>
                   {editLoading ? "Salvando..." : "Salvar"}
