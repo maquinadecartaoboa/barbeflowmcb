@@ -1,70 +1,61 @@
 
 
-# Plan: UX/UI do Agendamento — Diagnóstico e Correções Restantes
+## Problema identificado
 
-## Current State Assessment
+Há **dois problemas** no fluxo de edição de agendamentos:
 
-After thorough code review, many items from the prompt are **already implemented**:
+### 1. Bug de timezone na construção das datas
+Na função `saveBookingEdit` (linha 385-386), as datas são construídas assim:
+```js
+const startsAt = new Date(`${editForm.date}T${editForm.time}`);
+```
+Isso cria a data no timezone **local do browser**, mas o hook `useBookingsByDate` busca dados com offset `-03:00` (America/Bahia). Se o browser do usuário estiver em timezone diferente, o horário salvo no banco ficará errado — e mesmo se estiver no mesmo timezone, a falta de offset explícito pode causar inconsistências.
 
-| Item | Status | Details |
-|------|--------|---------|
-| Admin: Services filtered by staff_services | DONE | BookingModal lines 393-415 |
-| Admin: Reset service when staff changes | DONE | BookingModal lines 410-415 |
-| Comanda: Services filtered by booking staff | DONE | ComandaItemsSection lines 86-103 |
-| Public: Staff filtered by selected service | DONE | BookingPublic `eligibleStaff` memo, lines 1054-1066 |
-| Public: Auto-select if only 1 eligible staff | DONE | Hides "Qualquer" option when eligibleStaff.length === 1 |
-| BookingCard: Items filtered by staff column | DONE | BookingCard lines 28-32 |
-| BookingCard: Duration per staff | DONE | BookingCard lines 34-38 |
-| BookingCard: has_conflict red ring + AlertTriangle | DONE | BookingCard line 47, lines 50-54 |
-| BookingCard: Secondary card dashed border | DONE | BookingCard line 47 |
-| Comanda: total_price_cents on insert | DONE | ComandaItemsSection line 115 |
-| Comanda: Total efetivo computed from items | DONE | ComandaItemsSection `totalItems` reduce |
+**Correção**: Usar `fromZonedTime` do `date-fns-tz` para construir a data no timezone correto (America/Bahia), garantindo que o horário editado seja salvo exatamente como o usuário vê.
 
-## What Still Needs Work
+### 2. A duração pode ser editada livremente (já funciona)
+O campo "Término" já é editável independentemente (linha 873). O usuário **pode** alongar ou encurtar manualmente. Porém, isso pode não estar claro na UI.
 
-### 1. Admin BookingModal: Staff should be required (Priority 1)
-**Problem**: `staff_id` in the Zod schema is `z.string().optional()` (line 48). Admin can submit without selecting a staff member.  
-**Fix**: Make staff_id required in the schema. Show a validation message when empty.  
-**File**: `src/components/modals/BookingModal.tsx`
-- Change schema: `staff_id: z.string().min(1, "Profissional é obrigatório")`
-- Remove "Qualquer profissional" option from SelectItem (or keep it but label it differently)
-- Remove the `value="none"` fallback SelectItem
+**Melhoria**: Adicionar uma indicação visual da duração calculada (ex: "90min") ao lado dos campos de horário para dar feedback imediato ao admin.
 
-### 2. Admin BookingModal: Conflict confirmation dialog (Priority 1)
-**Problem**: When admin picks an occupied (amber) slot, the booking is created with `allow_overlap: true` silently — no explicit confirmation dialog.  
-**Fix**: Before submitting, if the selected slot is occupied/conflicting, show an AlertDialog asking the admin to confirm the override.  
-**File**: `src/components/modals/BookingModal.tsx`
-- Add state for `showConflictDialog` and `pendingFormData`
-- In `handleSubmit`, check `hasConflict` — if true, set pending data and show dialog instead of submitting
-- On dialog confirm, proceed with submission; on cancel, return to form
+---
 
-### 3. Public: "Qualquer profissional" should only fetch slots for eligible staff (Priority 3)
-**Problem**: When client picks "Qualquer disponível", `selectedStaff` is set to `null`, and `loadAvailableSlots` sends `staff_id: null` to the edge function. The edge function then returns slots for ALL staff — including those who don't offer the service.  
-**Fix**: When staff is null but a service is selected, pass eligible staff IDs to the slots function. Since the edge function only accepts a single `staff_id`, the simplest approach is to fetch slots for each eligible staff member, or rely on the backend trigger validation (which already blocks at INSERT time).  
-**Assessment**: The backend trigger `trg_check_staff_service` already blocks invalid bookings. The edge function `get-available-slots` also filters by staff schedule. The risk is showing a time slot that belongs to a staff member who doesn't offer the service — but the booking creation would fail. This is a low-priority refinement since the public prompt data shows only 2 errors (pre-fix).
+## Plano de implementação
 
-### 4. Public: Show "no staff available" message (Priority 3)
-**Problem**: If no staff offers the selected service, the eligibleStaff array is empty and step 2 shows no options.  
-**Fix**: Add a fallback message in step 2 when `eligibleStaff.length === 0`.  
-**File**: `src/pages/BookingPublic.tsx`
+### Arquivo: `src/pages/Bookings.tsx`
 
-## Technical Details
+**A) Corrigir construção de datas com timezone explícito**
+- Importar `fromZonedTime` de `date-fns-tz`
+- Na `saveBookingEdit`, substituir:
+  ```js
+  const startsAt = new Date(`${editForm.date}T${editForm.time}`);
+  const endsAt = new Date(`${editForm.date}T${editForm.end_time}`);
+  ```
+  Por:
+  ```js
+  const startsAt = fromZonedTime(`${editForm.date}T${editForm.time}`, "America/Bahia");
+  const endsAt = fromZonedTime(`${editForm.date}T${editForm.end_time}`, "America/Bahia");
+  ```
 
-### File Changes
+**B) Adicionar indicador de duração no formulário de edição**
+- Abaixo dos campos de horário, mostrar um texto calculado como:
+  ```
+  Duração: 90min
+  ```
+- Calcular a diferença entre `end_time` e `time` em minutos e exibir.
 
-**`src/components/modals/BookingModal.tsx`**:
-- Line 48: Change `staff_id: z.string().optional()` to `staff_id: z.string().min(1, "Selecione um profissional")`
-- Line 918: Remove `<SelectItem value="none">Qualquer profissional</SelectItem>`
-- Lines 620-728: Wrap `handleSubmit` with conflict check — if selected slot has `hasConflict`, show AlertDialog before proceeding
-- Add AlertDialog import and state variables for conflict confirmation flow
-- Add `conflictDialogOpen`, `pendingSubmitData` state
-- In form submit: intercept when conflict detected, store data, show dialog
-- Dialog confirm: call actual submit with stored data
-- Dialog cancel: close dialog, let admin pick another slot
+**C) Garantir refetch robusto após salvar**
+- Após o `await refetch()`, também atualizar o `selectedBooking` local com os novos horários para que, caso o modal permaneça aberto, os dados estejam corretos.
 
-**`src/pages/BookingPublic.tsx`**:
-- After line 1741 (end of eligibleStaff.map): Add empty state message when `eligibleStaff.length === 0`
+---
 
-### No database changes required
-All backend triggers and validations are already in place.
+## Resumo técnico
+
+| O quê | Onde |
+|---|---|
+| Fix timezone na edição | `saveBookingEdit()` linhas 385-386 |
+| Indicador de duração | UI do formulário, após linha 875 |
+| Import `fromZonedTime` | Topo do arquivo |
+
+Apenas `src/pages/Bookings.tsx` será alterado. Nenhuma mudança no backend.
 
