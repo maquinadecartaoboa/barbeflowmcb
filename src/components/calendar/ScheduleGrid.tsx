@@ -193,8 +193,10 @@ export function ScheduleGrid({
 
     // Calculate end time: use staff-specific duration if available
     let endMins: number;
-    const myDuration = staffId ? getStaffDurationMinutes(booking, staffId) : null;
-    if (myDuration && myDuration > 0) {
+    // Only use items-based duration for secondary bookings (staff appears via booking_items, not as primary)
+    const isSecondary = booking.staff_role === 'secondary';
+    const myDuration = isSecondary && staffId ? getStaffDurationMinutes(booking, staffId) : null;
+    if (isSecondary && myDuration && myDuration > 0) {
       endMins = startMins + myDuration;
     } else {
       const bEnd = formatInTimeZone(new Date(booking.ends_at), TZ, "HH:mm");
@@ -215,8 +217,9 @@ export function ScheduleGrid({
 
     // Helper to get effective end minutes for a booking in this staff column
     function getEffectiveEndMins(booking: BookingData): number {
-      const myDuration = getStaffDurationMinutes(booking, staffId);
-      if (myDuration && myDuration > 0) {
+      const isSecondary = booking.staff_role === 'secondary';
+      const myDuration = isSecondary ? getStaffDurationMinutes(booking, staffId) : null;
+      if (isSecondary && myDuration && myDuration > 0) {
         const bStart = timeToMinutes(formatInTimeZone(new Date(booking.starts_at), TZ, "HH:mm"));
         return bStart + myDuration;
       }
