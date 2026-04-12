@@ -14,7 +14,12 @@ import {
 } from "@/components/ui/select";
 import { BookingCard } from "./BookingCard";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Plus } from "lucide-react";
+import { Plus, Layers } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const TZ = "America/Bahia";
 
