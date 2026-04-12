@@ -467,14 +467,14 @@ export function ScheduleGrid({
                   <div
                     key={slotTime}
                     style={{ height: `${SLOT_HEIGHT}px` }}
-                    className="group relative flex items-center justify-center text-[10px] font-medium text-muted-foreground/70 border-b border-border/20 cursor-pointer active:bg-primary/10 transition-colors"
+                    className="group relative flex items-start justify-end pr-1 text-[10px] font-medium text-muted-foreground/70 border-b border-border/20 cursor-pointer active:bg-primary/10 transition-colors"
                     onClick={() => openBookingModal({
                       staffId: mStaff?.id,
                       date: dateStr,
                       time: slotTime,
                     })}
                   >
-                    <span>{slotTime}</span>
+                    <span className="-translate-y-[6px]">{slotTime}</span>
                     <Plus className="h-2.5 w-2.5 text-primary absolute right-0.5 top-0.5 opacity-40" />
                   </div>
                 );
@@ -536,7 +536,7 @@ export function ScheduleGrid({
                   <div
                     key={slotTime}
                     style={{ height: `${SLOT_HEIGHT}px` }}
-                    className={`group relative flex items-center justify-center text-[11px] cursor-pointer hover:bg-primary/5 transition-colors ${
+                    className={`group relative flex items-start justify-end pr-1.5 text-[11px] cursor-pointer hover:bg-primary/5 transition-colors ${
                       isFullHour
                         ? 'border-b border-border/50 text-muted-foreground font-medium'
                         : 'border-b border-border/15 text-muted-foreground/50'
@@ -544,9 +544,9 @@ export function ScheduleGrid({
                     onClick={() => openBookingModal({ date: dateStr, time: slotTime })}
                     title={`Novo agendamento às ${slotTime}`}
                   >
-                    <span className="group-hover:opacity-0 transition-opacity">{slotTime}</span>
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="flex items-center gap-0.5 text-primary">
+                    <span className="group-hover:opacity-0 transition-opacity -translate-y-[7px]">{slotTime}</span>
+                    <div className="absolute inset-0 flex items-start justify-end pr-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-0.5 text-primary -translate-y-[7px]">
                         <Plus className="h-3 w-3" />
                         <span className="text-[10px] font-medium">{slotTime}</span>
                       </div>
