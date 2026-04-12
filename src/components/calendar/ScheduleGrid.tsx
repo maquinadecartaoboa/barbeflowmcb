@@ -14,7 +14,12 @@ import {
 } from "@/components/ui/select";
 import { BookingCard } from "./BookingCard";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Plus } from "lucide-react";
+import { Plus, Layers } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const TZ = "America/Bahia";
 
@@ -351,8 +356,23 @@ export function ScheduleGrid({
         {staffBookings.map((booking) => {
           const { top, height } = getBookingPosition(booking, member.id);
           const colInfo = columnAssignments.get(booking.id) || { col: 0, totalCols: 1, hasOverlap: false };
-          const widthPercent = 100 / colInfo.totalCols;
-          const leftPercent = colInfo.col * widthPercent;
+
+          // When there are overlapping bookings, show the first card full-width
+          // with a "+N" badge, and hide secondary cards (accessible via popover)
+          if (colInfo.hasOverlap && colInfo.col > 0) {
+            return null; // Hidden — accessible via the "+N" popover on col 0
+          }
+
+          // Collect overlapping siblings for the popover
+          const overlapSiblings = colInfo.hasOverlap
+            ? staffBookings.filter((b) => {
+                const info = columnAssignments.get(b.id);
+                if (!info || !info.hasOverlap) return false;
+                // Same overlap group: check if they actually overlap with this booking
+                const bPos = getBookingPosition(b, member.id);
+                return b.id !== booking.id && bPos.top < top + height && bPos.top + bPos.height > top;
+              })
+            : [];
 
           return (
             <div
@@ -361,8 +381,8 @@ export function ScheduleGrid({
               style={{
                 top: `${top}px`,
                 height: `${height}px`,
-                left: `${leftPercent}%`,
-                width: `${widthPercent}%`,
+                left: '0%',
+                width: '100%',
                 zIndex: 5,
               }}
             >
@@ -381,6 +401,43 @@ export function ScheduleGrid({
                 hasOverlap={colInfo.hasOverlap}
                 isSecondary={booking.staff_role === 'secondary'}
               />
+              {/* Overlap badge with popover */}
+              {overlapSiblings.length > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="absolute top-1 right-1 z-10 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold shadow-md hover:scale-110 transition-transform"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Layers className="h-3 w-3" />
+                      +{overlapSiblings.length}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-2 space-y-1.5" side="left" align="start">
+                    <p className="text-xs font-semibold text-muted-foreground mb-1">Agendamentos sobrepostos</p>
+                    {overlapSiblings.map((sibling) => (
+                      <div key={sibling.id} className="rounded-md overflow-hidden">
+                        <BookingCard
+                          booking={sibling}
+                          currentStaffId={member.id}
+                          onClick={() => {
+                            if (sibling.staff_role === 'secondary' && sibling.original_booking_id) {
+                              const orig = bookings.find(b => b.id === sibling.original_booking_id);
+                              onBookingClick(orig || sibling);
+                            } else {
+                              onBookingClick(sibling);
+                            }
+                          }}
+                          isRecurring={recurringCustomerIds?.has(sibling.customer_id)}
+                          hasOverlap={true}
+                          isSecondary={sibling.staff_role === 'secondary'}
+                        />
+                      </div>
+                    ))}
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
           );
         })}
@@ -396,7 +453,7 @@ export function ScheduleGrid({
           return (
             <div
               key={`quick-${slotTime}`}
-              className="absolute right-0 flex items-center justify-center group/quick"
+              className="absolute right-0 flex items-center justify-center group/quick pointer-events-none"
               style={{
                 top: `${top}px`,
                 height: `${SLOT_HEIGHT}px`,
@@ -406,7 +463,7 @@ export function ScheduleGrid({
             >
               <button
                 type="button"
-                className="h-5 w-5 rounded-full bg-primary/80 text-primary-foreground flex items-center justify-center shadow-sm opacity-0 group-hover/quick:opacity-100 hover:bg-primary hover:scale-110 transition-all"
+                className="h-5 w-5 rounded-full bg-primary/80 text-primary-foreground flex items-center justify-center shadow-sm opacity-0 group-hover/quick:opacity-100 hover:bg-primary hover:scale-110 transition-all pointer-events-auto"
                 onClick={(e) => {
                   e.stopPropagation();
                   openBookingModal({ staffId: member.id, date: dateStr, time: slotTime });
