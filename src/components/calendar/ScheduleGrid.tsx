@@ -396,7 +396,7 @@ export function ScheduleGrid({
           return (
             <div
               key={`quick-${slotTime}`}
-              className="absolute right-0 flex items-center justify-center group/quick"
+              className="absolute right-0 flex items-center justify-center group/quick pointer-events-none"
               style={{
                 top: `${top}px`,
                 height: `${SLOT_HEIGHT}px`,
@@ -406,7 +406,7 @@ export function ScheduleGrid({
             >
               <button
                 type="button"
-                className="h-5 w-5 rounded-full bg-primary/80 text-primary-foreground flex items-center justify-center shadow-sm opacity-0 group-hover/quick:opacity-100 hover:bg-primary hover:scale-110 transition-all"
+                className="h-5 w-5 rounded-full bg-primary/80 text-primary-foreground flex items-center justify-center shadow-sm opacity-0 group-hover/quick:opacity-100 hover:bg-primary hover:scale-110 transition-all pointer-events-auto"
                 onClick={(e) => {
                   e.stopPropagation();
                   openBookingModal({ staffId: member.id, date: dateStr, time: slotTime });
