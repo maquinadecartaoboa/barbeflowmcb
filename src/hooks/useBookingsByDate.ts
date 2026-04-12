@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 import { format } from "date-fns";
@@ -307,17 +307,31 @@ export function useBookingsByDate(tenantId: string | undefined, date: Date) {
     fetchData();
   }, [fetchData]);
 
-  // Realtime subscription
+  // Realtime subscription with debounce to avoid overwriting manual refetch with stale data
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (!tenantId) return;
 
+    const debouncedFetch = () => {
+      if (realtimeDebounceRef.current) {
+        clearTimeout(realtimeDebounceRef.current);
+      }
+      realtimeDebounceRef.current = setTimeout(() => {
+        fetchData();
+      }, 500);
+    };
+
     const channel = supabase
       .channel(`schedule-${tenantId}-${dateStr}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "bookings", filter: `tenant_id=eq.${tenantId}` }, () => fetchData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "blocks", filter: `tenant_id=eq.${tenantId}` }, () => fetchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings", filter: `tenant_id=eq.${tenantId}` }, debouncedFetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "blocks", filter: `tenant_id=eq.${tenantId}` }, debouncedFetch)
       .subscribe();
 
     return () => {
+      if (realtimeDebounceRef.current) {
+        clearTimeout(realtimeDebounceRef.current);
+      }
       supabase.removeChannel(channel);
     };
   }, [tenantId, dateStr, fetchData]);

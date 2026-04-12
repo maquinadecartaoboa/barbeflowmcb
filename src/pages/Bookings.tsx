@@ -434,7 +434,7 @@ export default function Bookings() {
 
       const timeChanged = startsAt.toISOString() !== selectedBooking.starts_at;
 
-      const { error } = await supabase
+      const { data: updatedBooking, error } = await supabase
         .from("bookings")
         .update({
           service_id: editForm.service_id,
@@ -444,9 +444,12 @@ export default function Bookings() {
           ...(timeChanged ? { reminder_sent: false } : {}),
           ...(forceOverlap ? { has_conflict: true } : {}),
         })
-        .eq("id", selectedBooking.id);
+        .eq("id", selectedBooking.id)
+        .select()
+        .maybeSingle();
 
       if (error) throw error;
+      if (!updatedBooking) throw new Error("Falha ao atualizar — registro não encontrado");
 
       // If time changed, clear reminder dedup entries so reminders fire for new time
       if (timeChanged) {
