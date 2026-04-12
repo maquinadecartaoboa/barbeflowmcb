@@ -356,21 +356,16 @@ export function ScheduleGrid({
         {staffBookings.map((booking) => {
           const { top, height } = getBookingPosition(booking, member.id);
           const colInfo = columnAssignments.get(booking.id) || { col: 0, totalCols: 1, hasOverlap: false };
+          const widthPercent = 100 / colInfo.totalCols;
+          const leftPercent = colInfo.col * widthPercent;
 
-          // When there are overlapping bookings, show the first card full-width
-          // with a "+N" badge, and hide secondary cards (accessible via popover)
-          if (colInfo.hasOverlap && colInfo.col > 0) {
-            return null; // Hidden — accessible via the "+N" popover on col 0
-          }
-
-          // Collect overlapping siblings for the popover
-          const overlapSiblings = colInfo.hasOverlap
+          // Collect overlapping siblings for the popover (only on col 0)
+          const overlapSiblings = colInfo.hasOverlap && colInfo.col === 0
             ? staffBookings.filter((b) => {
                 const info = columnAssignments.get(b.id);
-                if (!info || !info.hasOverlap) return false;
-                // Same overlap group: check if they actually overlap with this booking
+                if (!info || !info.hasOverlap || b.id === booking.id) return false;
                 const bPos = getBookingPosition(b, member.id);
-                return b.id !== booking.id && bPos.top < top + height && bPos.top + bPos.height > top;
+                return bPos.top < top + height && bPos.top + bPos.height > top;
               })
             : [];
 
@@ -381,8 +376,8 @@ export function ScheduleGrid({
               style={{
                 top: `${top}px`,
                 height: `${height}px`,
-                left: '0%',
-                width: '100%',
+                left: `${leftPercent}%`,
+                width: `${widthPercent}%`,
                 zIndex: 5,
               }}
             >
@@ -401,7 +396,7 @@ export function ScheduleGrid({
                 hasOverlap={colInfo.hasOverlap}
                 isSecondary={booking.staff_role === 'secondary'}
               />
-              {/* Overlap badge with popover */}
+              {/* Overlap badge with popover — only on first card of the group */}
               {overlapSiblings.length > 0 && (
                 <Popover>
                   <PopoverTrigger asChild>
@@ -416,22 +411,22 @@ export function ScheduleGrid({
                   </PopoverTrigger>
                   <PopoverContent className="w-64 p-2 space-y-1.5" side="left" align="start">
                     <p className="text-xs font-semibold text-muted-foreground mb-1">Agendamentos sobrepostos</p>
-                    {overlapSiblings.map((sibling) => (
-                      <div key={sibling.id} className="rounded-md overflow-hidden">
+                    {[booking, ...overlapSiblings].map((item) => (
+                      <div key={item.id} className="rounded-md overflow-hidden">
                         <BookingCard
-                          booking={sibling}
+                          booking={item}
                           currentStaffId={member.id}
                           onClick={() => {
-                            if (sibling.staff_role === 'secondary' && sibling.original_booking_id) {
-                              const orig = bookings.find(b => b.id === sibling.original_booking_id);
-                              onBookingClick(orig || sibling);
+                            if (item.staff_role === 'secondary' && item.original_booking_id) {
+                              const orig = bookings.find(b => b.id === item.original_booking_id);
+                              onBookingClick(orig || item);
                             } else {
-                              onBookingClick(sibling);
+                              onBookingClick(item);
                             }
                           }}
-                          isRecurring={recurringCustomerIds?.has(sibling.customer_id)}
+                          isRecurring={recurringCustomerIds?.has(item.customer_id)}
                           hasOverlap={true}
-                          isSecondary={sibling.staff_role === 'secondary'}
+                          isSecondary={item.staff_role === 'secondary'}
                         />
                       </div>
                     ))}
