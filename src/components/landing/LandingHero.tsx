@@ -87,48 +87,16 @@ export default function LandingHero() {
             Teste grátis por 14 dias · Cancele quando quiser
           </motion.p>
 
-          {/* Video Frame with Stats */}
+          {/* Stats */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="relative w-full max-w-[860px]"
+            transition={{ duration: 0.6, delay: 0.7 }}
+            className="flex flex-wrap justify-center gap-6 sm:gap-10"
           >
-            {/* Glow */}
-            <div className="absolute -inset-8 bg-gradient-to-b from-[#d4a843]/[0.04] to-transparent rounded-[3rem] blur-3xl -z-10" />
-
-            {/* Frame */}
-            <div className="relative rounded-2xl sm:rounded-3xl border border-white/[0.06] bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-3 sm:p-5 md:p-7 backdrop-blur-sm">
-              {/* Stats TOP */}
-              <div className="flex justify-between items-center mb-4 sm:mb-5 px-1 sm:px-3">
-                <StatItem number={2600} suffix="+" label="clientes atendidos" />
-                <div className="w-px h-6 bg-white/[0.06] hidden sm:block" />
-                <StatItem number={27} prefix="R$" suffix="mil" label="processados" highlight />
-                <div className="w-px h-6 bg-white/[0.06] hidden sm:block" />
-                <StatItem number={940} suffix="+" label="agendamentos" />
-              </div>
-
-              {/* Video */}
-              <div className="relative aspect-video rounded-xl sm:rounded-2xl border border-white/[0.06] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7)] overflow-hidden bg-[#0a0a0a]">
-                <iframe
-                  src="https://www.youtube.com/embed/dQw4w9WgXcQ?modestbranding=1&rel=0"
-                  title="modoGESTOR — sistema de gestão para barbearias"
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  loading="lazy"
-                />
-              </div>
-
-              {/* Stats BOTTOM */}
-              <div className="flex justify-between items-center mt-4 sm:mt-5 px-1 sm:px-3">
-                <StatItem number={52} suffix="%" label="agendamentos online" />
-                <div className="w-px h-6 bg-white/[0.06] hidden sm:block" />
-                <StatItem number={40} prefix="R$" label="ticket médio" highlight />
-                <div className="w-px h-6 bg-white/[0.06] hidden sm:block" />
-                <StatItem number={459} label="lembretes enviados" />
-              </div>
-            </div>
+            <StatItem number={2600} suffix="+" label="clientes atendidos" />
+            <StatItem number={27} prefix="R$" suffix="mil" label="processados" highlight />
+            <StatItem number={940} suffix="+" label="agendamentos" />
           </motion.div>
         </div>
       </div>
