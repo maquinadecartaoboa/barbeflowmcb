@@ -1,6 +1,9 @@
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { Sparkles, Shield, Trophy } from "lucide-react";
+import descontoImg from "@/assets/landing-desconto-inteligente.jpg";
+import protecaoImg from "@/assets/landing-protecao-anti-falta.jpg";
+import fidelidadeImg from "@/assets/landing-cartao-fidelidade.jpg";
 
 const diferenciais = [
   {
@@ -9,6 +12,7 @@ const diferenciais = [
     title: "Desconto Inteligente",
     desc: "Ofereça desconto para quem paga online antes do atendimento. Mais pré-pagamentos = menos faltas = mais dinheiro certo no caixa.",
     align: "left" as const,
+    image: descontoImg,
   },
   {
     tag: "EXCLUSIVO",
@@ -16,6 +20,7 @@ const diferenciais = [
     title: "Proteção Anti-Falta",
     desc: "Cliente não apareceu? O sistema retém automaticamente uma parte do valor pago e devolve o resto. Sem constrangimento. Sem prejuízo.",
     align: "right" as const,
+    image: protecaoImg,
   },
   {
     tag: "ILIMITADO",
@@ -23,6 +28,7 @@ const diferenciais = [
     title: "Cartão Fidelidade Digital",
     desc: "Seus clientes acumulam selos a cada corte. Completou o cartão? Ganha um serviço grátis. Volta garantida.",
     align: "left" as const,
+    image: fidelidadeImg,
   },
 ];
 
@@ -51,7 +57,6 @@ export default function LandingDifferentials() {
         {/* Feature rows */}
         <div className="space-y-16 sm:space-y-24 mt-16 sm:mt-20">
           {diferenciais.map((d, i) => {
-            const Icon = d.icon;
             const isRight = d.align === "right";
             return (
               <motion.div
@@ -74,15 +79,18 @@ export default function LandingDifferentials() {
                   </p>
                 </div>
 
-                {/* Visual placeholder */}
+                {/* Image */}
                 <div className="flex-1 w-full max-w-md lg:max-w-none">
-                  <div className="relative aspect-[4/3] rounded-2xl border border-white/[0.06] bg-white/[0.02] flex items-center justify-center overflow-hidden group">
-                    {/* Subtle glow */}
+                  <div className="relative rounded-2xl border border-white/[0.06] overflow-hidden group">
                     <div className="absolute -inset-4 bg-[#d4a843]/[0.02] rounded-3xl blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                    <div className="relative flex flex-col items-center gap-3 text-zinc-600">
-                      <Icon className="h-10 w-10 text-[#d4a843]/30" />
-                      <span className="text-xs tracking-wider uppercase">Screenshot em breve</span>
-                    </div>
+                    <img
+                      src={d.image}
+                      alt={d.title}
+                      loading="lazy"
+                      width={800}
+                      height={600}
+                      className="w-full h-auto object-cover"
+                    />
                   </div>
                 </div>
               </motion.div>
