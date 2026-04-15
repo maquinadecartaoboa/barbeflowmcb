@@ -42,7 +42,7 @@ export default function LandingNavbar() {
                   Entrar
                 </button>
               </a>
-              <a href={getDashboardUrl("/app/login")}>
+              <a href={getDashboardUrl("/app/register")}>
                 <button className="px-5 py-2 bg-[#d4a843] hover:bg-[#c49a3a] text-[#0a0a0a] font-semibold rounded-lg text-sm transition-all duration-300 hover:shadow-[0_4px_16px_-4px_rgba(212,168,67,0.3)]">
                   Começar grátis
                 </button>
