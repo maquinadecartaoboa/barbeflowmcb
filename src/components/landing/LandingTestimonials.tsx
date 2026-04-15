@@ -20,6 +20,15 @@ const depoimentos = [
     plan: "Plano Profissional",
     featured: false,
   },
+  {
+    text: "Meus clientes adoraram poder agendar pelo link. Reduzi as faltas em mais de 60% depois que comecei a cobrar antecipado. O sistema é muito intuitivo.",
+    name: "Lucas Mendes",
+    business: "Barbearia do Lucas",
+    city: "Salvador/BA",
+    stats: "312 clientes · 620 agendamentos",
+    plan: "Plano Ilimitado",
+    featured: false,
+  },
 ];
 
 export default function LandingTestimonials() {

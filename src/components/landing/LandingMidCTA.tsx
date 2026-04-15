@@ -32,7 +32,7 @@ export default function LandingMidCTA() {
           </h2>
 
           <div className="mt-8">
-            <a href={getDashboardUrl("/app/login")}>
+            <a href={getDashboardUrl("/app/register")}>
               <button className="px-8 py-4 bg-[#d4a843] hover:bg-[#c49a3a] text-[#0a0a0a] font-semibold rounded-xl text-base transition-all duration-300 hover:shadow-[0_8px_30px_-4px_rgba(212,168,67,0.35)] hover:translate-y-[-1px]">
                 Criar minha conta grátis
               </button>

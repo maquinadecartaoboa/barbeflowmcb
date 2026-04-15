@@ -10,7 +10,7 @@ export default function LandingFinalCTA() {
 
   const handleClick = () => {
     trackViewContent("cta_clicked");
-    window.location.href = getDashboardUrl("/app/login");
+    window.location.href = getDashboardUrl("/app/register");
   };
 
   return (
