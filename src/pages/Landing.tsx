@@ -36,7 +36,7 @@ const Landing = () => {
 
   return (
     <div
-      className="min-h-screen bg-[#050505] text-zinc-100 overflow-x-hidden"
+      className="min-h-screen bg-[#050505] text-zinc-100 overflow-x-hidden scroll-smooth"
       style={{ fontFamily: "'Satoshi', sans-serif" }}
     >
       <LandingNavbar />
