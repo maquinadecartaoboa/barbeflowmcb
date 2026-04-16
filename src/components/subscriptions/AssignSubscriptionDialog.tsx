@@ -83,6 +83,24 @@ export function AssignSubscriptionDialog({ open, onOpenChange, onAssigned }: Ass
     try {
       setSaving(true);
 
+      // Check for existing active subscription
+      const { data: existingSubs } = await supabase
+        .from('customer_subscriptions')
+        .select('id, status')
+        .eq('customer_id', selectedCustomer)
+        .eq('tenant_id', currentTenant.id)
+        .in('status', ['active', 'authorized', 'pending']);
+
+      if (existingSubs && existingSubs.length > 0) {
+        toast({ 
+          title: "Assinatura já existe", 
+          description: "Este cliente já possui uma assinatura ativa ou pendente. Cancele a existente antes de criar uma nova.", 
+          variant: "destructive" 
+        });
+        setSaving(false);
+        return;
+      }
+
       // Create customer_subscription
       const { data: sub, error } = await supabase.from('customer_subscriptions').insert({
         tenant_id: currentTenant.id,

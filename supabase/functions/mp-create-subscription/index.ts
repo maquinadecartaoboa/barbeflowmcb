@@ -138,6 +138,23 @@ serve(async (req) => {
       });
     }
 
+    // --- Check for existing active subscription ---
+    const { data: existingSubs } = await supabase
+      .from('customer_subscriptions')
+      .select('id, status')
+      .eq('customer_id', customerId)
+      .eq('tenant_id', tenant_id)
+      .in('status', ['active', 'authorized', 'pending']);
+
+    if (existingSubs && existingSubs.length > 0) {
+      console.warn('Duplicate subscription blocked for customer:', customerId, 'existing:', existingSubs.map(s => s.id));
+      return new Response(JSON.stringify({ 
+        error: 'Cliente já possui uma assinatura ativa ou pendente. Cancele a existente antes de criar uma nova.' 
+      }), {
+        status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // --- Create pending subscription ---
     const { data: subscription, error: subErr } = await supabase
       .from('customer_subscriptions')

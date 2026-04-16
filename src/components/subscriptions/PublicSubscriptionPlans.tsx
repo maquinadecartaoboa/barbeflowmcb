@@ -97,7 +97,7 @@ export function PublicSubscriptionPlans({ tenant, plans, onBack, initialPlanId, 
     }
   };
 
-  const handleProceedToPayment = () => {
+  const handleProceedToPayment = async () => {
     if (!selectedPlan || !phone || !email || !name || !cpf) return;
 
     const digits = phone.replace(/\D/g, '');
