@@ -515,9 +515,14 @@ serve(async (req) => {
     // Determine if we should skip conflict check (admin override for overlapping bookings)
     const isAdminBooking = (payload.created_via || 'public') === 'admin';
     const skipConflictCheck = isAdminBooking && payload.allow_overlap === true;
+    // Admin bookings always skip block validation (barbershop can book on blocked slots)
+    const skipBlockCheck = isAdminBooking;
 
     if (skipConflictCheck) {
       console.log('Admin override: skipping conflict check for overlapping booking');
+    }
+    if (skipBlockCheck) {
+      console.log('Admin booking: skipping block conflict check');
     }
 
     const { data: atomicResult, error: atomicError } = await supabase.rpc('create_booking_if_available', {
@@ -534,6 +539,7 @@ serve(async (req) => {
       p_customer_subscription_id: resolvedSubscriptionId,
       p_buffer_minutes: bufferTime,
       p_skip_conflict_check: skipConflictCheck,
+      p_skip_block_check: skipBlockCheck,
     });
 
     if (atomicError) {
