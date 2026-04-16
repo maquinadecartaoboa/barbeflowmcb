@@ -3557,6 +3557,25 @@ export type Database = {
             }
             Returns: string
           }
+        | {
+            Args: {
+              p_buffer_minutes?: number
+              p_created_via?: string
+              p_customer_id: string
+              p_customer_package_id?: string
+              p_customer_subscription_id?: string
+              p_ends_at: string
+              p_notes?: string
+              p_service_id: string
+              p_skip_block_check?: boolean
+              p_skip_conflict_check?: boolean
+              p_staff_id: string
+              p_starts_at: string
+              p_status: string
+              p_tenant_id: string
+            }
+            Returns: string
+          }
       generate_subscription_commission_tokens: {
         Args: { p_booking_id: string; p_tenant_id: string }
         Returns: Json
