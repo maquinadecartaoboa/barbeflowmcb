@@ -5,6 +5,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { useNavigate } from "react-router-dom";
 import { BookingDetailsModal } from "@/components/modals/BookingDetailsModal";
 import { CancelBookingDialog } from "@/components/modals/CancelBookingDialog";
+import { StaffFilterChips } from "@/components/calendar/StaffFilterChips";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +25,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -51,10 +51,9 @@ import {
 import { 
   Calendar, 
   Clock, 
-  User, 
-  Phone, 
+  User,
+  Phone,
   Search,
-  Filter,
   Edit,
   CheckCircle,
   XCircle,
@@ -74,23 +73,12 @@ import { useBookingModal } from "@/hooks/useBookingModal";
 import { DateNavigator } from "@/components/calendar/DateNavigator";
 import { ScheduleGrid } from "@/components/calendar/ScheduleGrid";
 import { BlockDialog } from "@/components/calendar/BlockDialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useIsMobile } from "@/hooks/use-mobile";
-
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 
 export default function Bookings() {
   usePageTitle("Agendamentos");
   const navigate = useNavigate();
   const { currentTenant, loading: tenantLoading } = useTenant();
   const { toast } = useToast();
-  const isMobile = useIsMobile();
   const { isOpen: modalIsOpen } = useBookingModal();
   const queryClient = useQueryClient();
 
@@ -132,12 +120,39 @@ export default function Bookings() {
     recurringCustomerIds,
   } = useBookingsByDate(currentTenant?.id, selectedDate);
 
-  // Initialize visible staff when staff loads
+  // Initialize visible staff when staff or tenant changes — read from localStorage,
+  // filter out stale ids (removed staff), fall back to "all" when nothing saved.
+  const staffFilterStorageKey = currentTenant?.id
+    ? `modogestor:agenda:selected_staff:${currentTenant.id}`
+    : null;
   useEffect(() => {
-    if (staff.length > 0 && visibleStaffIds.length === 0) {
-      setVisibleStaffIds(staff.map((s) => s.id));
+    if (staff.length === 0) return;
+    const validIds = new Set(staff.map((s) => s.id));
+    let next: string[] | null = null;
+    if (staffFilterStorageKey) {
+      try {
+        const raw = localStorage.getItem(staffFilterStorageKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            next = parsed.filter((id): id is string => typeof id === "string" && validIds.has(id));
+          }
+        }
+      } catch {
+        next = null;
+      }
     }
-  }, [staff]);
+    setVisibleStaffIds(next && next.length > 0 ? next : staff.map((s) => s.id));
+  }, [staff, staffFilterStorageKey]);
+
+  const persistVisibleStaff = (ids: string[]) => {
+    if (!staffFilterStorageKey) return;
+    try {
+      localStorage.setItem(staffFilterStorageKey, JSON.stringify(ids));
+    } catch {
+      // storage quota / private mode — silently ignore
+    }
+  };
 
   // Refetch grid when booking modal closes (new booking created)
   const prevModalOpen = useRef(modalIsOpen);
@@ -363,9 +378,19 @@ export default function Bookings() {
   };
 
   const toggleStaffVisibility = (staffId: string) => {
-    setVisibleStaffIds((prev) =>
-      prev.includes(staffId) ? prev.filter((id) => id !== staffId) : [...prev, staffId]
-    );
+    setVisibleStaffIds((prev) => {
+      const next = prev.includes(staffId)
+        ? prev.filter((id) => id !== staffId)
+        : [...prev, staffId];
+      persistVisibleStaff(next);
+      return next;
+    });
+  };
+
+  const toggleAllStaff = () => {
+    const next = visibleStaffIds.length === staff.length ? [] : staff.map((s) => s.id);
+    setVisibleStaffIds(next);
+    persistVisibleStaff(next);
   };
 
   const handleBookingClick = (booking: BookingData) => {
@@ -575,37 +600,6 @@ export default function Bookings() {
 
   const loading = gridLoading;
 
-  const StaffFilter = () => (
-    <div className="space-y-2">
-      <button
-        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-        onClick={() =>
-          setVisibleStaffIds(visibleStaffIds.length === staff.length ? [] : staff.map((s) => s.id))
-        }
-      >
-        {visibleStaffIds.length === staff.length ? "Desmarcar todos" : "Selecionar todos"}
-      </button>
-      {staff.map((s) => (
-        <label key={s.id} className="flex items-center gap-2.5 cursor-pointer group py-1">
-          <Checkbox
-            checked={visibleStaffIds.includes(s.id)}
-            onCheckedChange={() => toggleStaffVisibility(s.id)}
-          />
-          <Avatar className="h-6 w-6">
-            <AvatarImage src={s.photo_url || undefined} />
-            <AvatarFallback
-              className="text-[9px] font-semibold"
-              style={{ backgroundColor: `${s.color || "#10B981"}30`, color: s.color || "#10B981" }}
-            >
-              {s.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-            </AvatarFallback>
-          </Avatar>
-          <span className="text-sm text-foreground group-hover:text-foreground/80 truncate">{s.name}</span>
-        </label>
-      ))}
-    </div>
-  );
-
   return (
     <div className="space-y-4 px-4 md:px-0">
       {/* Header */}
@@ -630,60 +624,36 @@ export default function Bookings() {
       {/* Main content */}
       {viewMode === "grid" ? (
         <div className="space-y-3">
-          {/* Mobile staff filter */}
-          {isMobile && staff.length > 1 && (
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 w-full">
-                  <Filter className="h-3.5 w-3.5 mr-1.5" />
-                  Filtrar Profissionais ({visibleStaffIds.length}/{staff.length})
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-72">
-                <SheetHeader>
-                  <SheetTitle>Profissionais</SheetTitle>
-                </SheetHeader>
-                <div className="mt-4">
-                  <StaffFilter />
-                </div>
-              </SheetContent>
-            </Sheet>
+          {staff.length > 1 && (
+            <StaffFilterChips
+              staff={staff}
+              visibleStaffIds={visibleStaffIds}
+              onToggle={toggleStaffVisibility}
+              onToggleAll={toggleAllStaff}
+            />
           )}
 
-          <div className="flex gap-4">
-            {/* Desktop staff sidebar */}
-            {!isMobile && staff.length > 0 && (
-              <div className="w-48 flex-shrink-0">
-                <Card className="sticky top-4">
-                  <CardHeader className="pb-2 px-3 pt-3">
-                    <CardTitle className="text-xs text-muted-foreground uppercase tracking-wider">Profissionais</CardTitle>
-                  </CardHeader>
-                  <CardContent className="px-3 pb-3">
-                    <StaffFilter />
-                  </CardContent>
-                </Card>
+          <div className="min-w-0">
+            {loading ? (
+              <div className="h-96 bg-muted/30 rounded-xl animate-pulse" />
+            ) : staff.length > 0 && visibleStaffIds.length === 0 ? (
+              <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+                Selecione ao menos um profissional.
               </div>
+            ) : (
+              <ScheduleGrid
+                staff={staff}
+                schedules={schedules}
+                bookings={gridBookings}
+                blocks={blocks}
+                settings={settings}
+                timeRange={timeRange}
+                date={selectedDate}
+                onBookingClick={handleBookingClick}
+                visibleStaffIds={visibleStaffIds}
+                recurringCustomerIds={recurringCustomerIds}
+              />
             )}
-
-            {/* Grid */}
-            <div className="flex-1 min-w-0">
-              {loading ? (
-                <div className="h-96 bg-muted/30 rounded-xl animate-pulse" />
-              ) : (
-                <ScheduleGrid
-                  staff={staff}
-                  schedules={schedules}
-                  bookings={gridBookings}
-                  blocks={blocks}
-                  settings={settings}
-                  timeRange={timeRange}
-                  date={selectedDate}
-                  onBookingClick={handleBookingClick}
-                  visibleStaffIds={visibleStaffIds}
-                  recurringCustomerIds={recurringCustomerIds}
-                />
-              )}
-            </div>
           </div>
         </div>
       ) : (
