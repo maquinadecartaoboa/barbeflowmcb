@@ -44,13 +44,14 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   onEdit?: () => void;
   onStatusChange?: (bookingId: string, status: string, booking?: any) => void;
+  onRequestCancel?: (bookingId: string, booking?: any) => void;
   showActions?: boolean;
   tenantSettings?: any;
 }
 
 export function BookingDetailsModal({
   booking, tenantId, open, onOpenChange,
-  onEdit, onStatusChange, showActions = false, tenantSettings,
+  onEdit, onStatusChange, onRequestCancel, showActions = false, tenantSettings,
 }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -506,7 +507,10 @@ export function BookingDetailsModal({
                             <Button
                               size="sm" variant="ghost"
                               className="h-6 text-[10px] text-destructive hover:text-destructive/80 px-2"
-                              onClick={() => onStatusChange(rb.id, "cancelled")}
+                              onClick={() => {
+                                if (onRequestCancel) onRequestCancel(rb.id, rb);
+                                else onStatusChange(rb.id, "cancelled");
+                              }}
                             >
                               <XCircle className="h-3 w-3 mr-1" /> Cancelar
                             </Button>
@@ -685,8 +689,20 @@ export function BookingDetailsModal({
                 <AlertTriangle className="h-4 w-4 mr-1 text-amber-500" /> Faltou
               </Button>
             )}
-            {!isCancelled && !isNoShow && !isCompleted && onStatusChange && (
-              <Button size="sm" variant="destructive" onClick={() => { onStatusChange(booking.id, "cancelled", booking); onOpenChange(false); }}>
+            {!isCancelled && !isNoShow && !isCompleted && (onRequestCancel || onStatusChange) && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => {
+                  if (onRequestCancel) {
+                    onRequestCancel(booking.id, booking);
+                    onOpenChange(false);
+                  } else if (onStatusChange) {
+                    onStatusChange(booking.id, "cancelled", booking);
+                    onOpenChange(false);
+                  }
+                }}
+              >
                 <XCircle className="h-4 w-4 mr-1" /> Cancelar
               </Button>
             )}

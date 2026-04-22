@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useNavigate } from "react-router-dom";
 import { BookingDetailsModal } from "@/components/modals/BookingDetailsModal";
+import { CancelBookingDialog } from "@/components/modals/CancelBookingDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -108,6 +109,7 @@ export default function Bookings() {
   const [editStaff, setEditStaff] = useState<any[]>([]);
   const [conflictWarning, setConflictWarning] = useState<{ open: boolean; conflicts: any[] }>({ open: false, conflicts: [] });
   const [editExtraServices, setEditExtraServices] = useState<Array<{ id: string; title: string; duration_minutes: number; unit_price_cents: number }>>([]);
+  const [cancelTarget, setCancelTarget] = useState<{ bookingId: string; booking?: BookingData } | null>(null);
   
 
   // List view state
@@ -203,28 +205,8 @@ export default function Bookings() {
     }
 
     try {
-      // Use atomic DB functions for cancellation and no_show
-      if (newStatus === "cancelled" && currentTenant) {
-        const cancellationMinHours = currentTenant.settings?.cancellation_min_hours ?? 4;
-        const { data: result, error: rpcError } = await supabase.rpc("cancel_booking_with_refund", {
-          p_booking_id: realId,
-          p_tenant_id: currentTenant.id,
-          p_cancellation_min_hours: cancellationMinHours,
-        });
-        if (rpcError) throw rpcError;
-        const res = result as any;
-        if (!res?.success) throw new Error(res?.error || "Erro ao cancelar");
-
-        // Set cancellation_reason for WhatsApp notification suppression logic
-        await supabase.from("bookings").update({ cancellation_reason: "admin_request" }).eq("id", realId);
-        
-        // Show appropriate message based on session outcome
-        if (res.session_outcome === 'refunded') {
-          toast({ title: "Sessão devolvida", description: `Cancelado com ${res.hours_until_start}h de antecedência. Sessão devolvida ao cliente.` });
-        } else if (res.session_outcome === 'forfeited') {
-          toast({ title: "Sessão consumida", description: `Cancelamento tardio (menos de ${cancellationMinHours}h). Sessão não devolvida.`, variant: "destructive" });
-        }
-      } else if (newStatus === "no_show" && currentTenant) {
+      // Cancelamento é tratado via CancelBookingDialog (openCancelDialog); não passa por aqui.
+      if (newStatus === "no_show" && currentTenant) {
         const { data: result, error: rpcError } = await supabase.rpc("mark_booking_no_show", {
           p_booking_id: realId,
           p_tenant_id: currentTenant.id,
@@ -242,8 +224,8 @@ export default function Bookings() {
         await supabase.from("bookings").update({ session_outcome: "consumed" }).eq("id", realId).or("customer_package_id.not.is.null,customer_subscription_id.not.is.null");
       }
 
+      // Cancelamento é tratado via CancelBookingDialog (handleCancelComplete)
       const notificationTypeMap: Record<string, string | null> = {
-        cancelled: "booking_cancelled",
         confirmed: "booking_confirmed",
         completed: null,
         no_show: "booking_no_show",
@@ -258,9 +240,8 @@ export default function Bookings() {
       }
 
       // Push notification para admins/staff sobre mudança de status
-      if (currentTenant && (newStatus === "cancelled" || newStatus === "confirmed" || newStatus === "no_show")) {
+      if (currentTenant && (newStatus === "confirmed" || newStatus === "no_show")) {
         const pushTitleMap: Record<string, string> = {
-          cancelled: "❌ Agendamento cancelado",
           confirmed: "✅ Agendamento confirmado",
           no_show: "⚠️ Cliente faltou",
         };
@@ -306,6 +287,54 @@ export default function Bookings() {
     } catch (err) {
       toast({ title: "Erro", description: "Erro ao atualizar status", variant: "destructive" });
     }
+  };
+
+  const openCancelDialog = async (bookingId: string, booking?: BookingData) => {
+    let realId = bookingId;
+    if (isVirtualBooking(bookingId)) {
+      if (!booking) {
+        toast({ title: "Erro", description: "Dados do agendamento não encontrados", variant: "destructive" });
+        return;
+      }
+      const id = await materializeVirtualBooking(booking);
+      if (!id) return;
+      realId = id;
+    }
+    setCancelTarget({ bookingId: realId, booking });
+  };
+
+  const handleCancelComplete = (_result: any) => {
+    const target = cancelTarget;
+    setCancelTarget(null);
+    if (!target || !currentTenant) {
+      refetch();
+      return;
+    }
+    const { bookingId: realId, booking } = target;
+
+    supabase.functions
+      .invoke("send-whatsapp-notification", {
+        body: { type: "booking_cancelled", booking_id: realId, tenant_id: currentTenant.id },
+      })
+      .catch((e) => console.error(e));
+
+    const customerName = booking?.customer?.name || "Cliente";
+    const serviceName = booking?.service?.name || "Serviço";
+    supabase.functions
+      .invoke("send-push-notification", {
+        body: {
+          tenant_id: currentTenant.id,
+          title: "❌ Agendamento cancelado",
+          body: `${customerName} — ${serviceName}`,
+          url: "/app/bookings",
+          data: { booking_id: realId },
+        },
+      })
+      .catch(console.error);
+
+    setShowDetails(false);
+    setSelectedBooking(null);
+    refetch();
   };
 
   const getStatusLabel = (status: string) => {
@@ -681,7 +710,7 @@ export default function Bookings() {
                           <div className="flex items-center gap-1">
                             <Button variant="ghost" size="sm" onClick={() => { setSelectedBooking(booking); setShowDetails(true); }} className="h-8 w-8 p-0"><Edit className="h-4 w-4" /></Button>
                             {booking.status === "confirmed" && <Button variant="ghost" size="sm" onClick={() => updateBookingStatus(booking.id, "completed", booking)} className="h-8 w-8 p-0"><CheckCircle className="h-4 w-4 text-emerald-500" /></Button>}
-                            {booking.status !== "cancelled" && <Button variant="ghost" size="sm" onClick={() => updateBookingStatus(booking.id, "cancelled", booking)} className="h-8 w-8 p-0"><XCircle className="h-4 w-4 text-destructive" /></Button>}
+                            {booking.status !== "cancelled" && <Button variant="ghost" size="sm" onClick={() => openCancelDialog(booking.id, booking)} className="h-8 w-8 p-0"><XCircle className="h-4 w-4 text-destructive" /></Button>}
                           </div>
                         </div>
                       </div>
@@ -748,7 +777,7 @@ export default function Bookings() {
                               <div className="flex items-center gap-1">
                                 <Button variant="ghost" size="sm" onClick={() => { setSelectedBooking(booking); setShowDetails(true); }}><Edit className="h-4 w-4" /></Button>
                                 {booking.status === "confirmed" && <Button variant="ghost" size="sm" onClick={() => updateBookingStatus(booking.id, "completed", booking)}><CheckCircle className="h-4 w-4 text-emerald-500" /></Button>}
-                                {booking.status !== "cancelled" && <Button variant="ghost" size="sm" onClick={() => updateBookingStatus(booking.id, "cancelled", booking)}><XCircle className="h-4 w-4 text-destructive" /></Button>}
+                                {booking.status !== "cancelled" && <Button variant="ghost" size="sm" onClick={() => openCancelDialog(booking.id, booking)}><XCircle className="h-4 w-4 text-destructive" /></Button>}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -783,6 +812,18 @@ export default function Bookings() {
           tenantSettings={currentTenant.settings}
           onEdit={startEditMode}
           onStatusChange={updateBookingStatus}
+          onRequestCancel={openCancelDialog}
+        />
+      )}
+
+      {currentTenant && (
+        <CancelBookingDialog
+          open={!!cancelTarget}
+          onOpenChange={(open) => { if (!open) setCancelTarget(null); }}
+          bookingId={cancelTarget?.bookingId || ""}
+          tenantId={currentTenant.id}
+          tenantSettings={currentTenant.settings}
+          onComplete={handleCancelComplete}
         />
       )}
 
