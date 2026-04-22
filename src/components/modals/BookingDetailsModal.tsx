@@ -21,7 +21,7 @@ import { ptBR } from "date-fns/locale";
 import {
   User, Phone, Scissors, Clock, Users, Edit,
   CheckCircle, XCircle, MessageCircle, AlertTriangle, RefreshCw, Loader2,
-  ClipboardList, ChevronLeft, RotateCcw,
+  ClipboardList, ChevronLeft, RotateCcw, History, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +36,113 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "destr
   no_show: { label: "Faltou", variant: "destructive" },
   pending: { label: "Pendente", variant: "outline" },
 };
+
+const REASON_LABELS: Record<string, string> = {
+  cancel_client_requested: "Cliente pediu cancelamento",
+  cancel_client_no_response: "Cliente não respondeu",
+  cancel_barber_unavailable: "Barbeiro indisponível",
+  cancel_scheduling_error: "Erro de agendamento",
+  cancel_health_issue: "Problema de saúde",
+  cancel_weather_emergency: "Clima / emergência",
+  cancel_other: "Outro",
+  no_show_no_contact: "Não apareceu sem aviso",
+  no_show_late_cancel: "Avisou em cima da hora",
+  no_show_client_unreachable: "Não consegui contatar",
+  no_show_other: "Outro",
+  reschedule_client_requested: "Cliente pediu para remarcar",
+  reschedule_barber_requested: "Barbeiro pediu para remarcar",
+  reschedule_conflict_resolution: "Resolver conflito de agenda",
+  reschedule_emergency: "Emergência",
+  reschedule_other: "Outro",
+};
+
+interface TimelineEntry {
+  changed_at: string;
+  change_type: string;
+  from_value: string | null;
+  to_value: string | null;
+  from_status?: string | null;
+  to_status?: string | null;
+  from_starts_at?: string | null;
+  to_starts_at?: string | null;
+  reason_code: string | null;
+  reason_note: string | null;
+  changed_by_user_id: string | null;
+}
+
+function BookingTimeline({ bookingId }: { bookingId: string }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [entries, setEntries] = useState<TimelineEntry[] | null>(null);
+
+  useEffect(() => {
+    if (!open || entries !== null) return;
+    (async () => {
+      setLoading(true);
+      const { data, error } = await supabase.rpc("get_booking_timeline", {
+        p_booking_id: bookingId,
+      } as any);
+      if (!error && Array.isArray(data)) setEntries(data as any);
+      else setEntries([]);
+      setLoading(false);
+    })();
+  }, [open, bookingId, entries]);
+
+  const describe = (e: TimelineEntry): string => {
+    const when = format(new Date(e.changed_at), "dd/MM HH:mm", { locale: ptBR });
+    if (e.change_type === "status") {
+      const fromLabel = STATUS_CONFIG[e.from_status || ""]?.label || e.from_status || "—";
+      const toLabel = STATUS_CONFIG[e.to_status || ""]?.label || e.to_status || "—";
+      return `${when} — Status: ${fromLabel} → ${toLabel}`;
+    }
+    if (e.change_type === "reschedule" || e.change_type === "schedule") {
+      const fromTs = e.from_starts_at ? format(new Date(e.from_starts_at), "dd/MM HH:mm", { locale: ptBR }) : "—";
+      const toTs = e.to_starts_at ? format(new Date(e.to_starts_at), "dd/MM HH:mm", { locale: ptBR }) : "—";
+      return `${when} — Reagendado: ${fromTs} → ${toTs}`;
+    }
+    return `${when} — ${e.change_type}: ${e.from_value || "—"} → ${e.to_value || "—"}`;
+  };
+
+  return (
+    <div className="p-3 rounded-xl border space-y-2">
+      <button
+        type="button"
+        className="w-full flex items-center justify-between text-sm font-medium"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="flex items-center gap-2">
+          <History className="h-4 w-4" /> Histórico
+        </span>
+        {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      </button>
+      {open && (
+        <div className="space-y-2 pt-1">
+          {loading ? (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" /> Carregando...
+            </div>
+          ) : entries && entries.length > 0 ? (
+            <ul className="space-y-2">
+              {entries.map((e, i) => (
+                <li key={i} className="text-xs space-y-0.5 border-l-2 border-border pl-3">
+                  <div>{describe(e)}</div>
+                  {e.reason_code && (
+                    <div className="text-muted-foreground">
+                      Motivo: {REASON_LABELS[e.reason_code] || e.reason_code}
+                      {e.reason_note ? ` — ${e.reason_note}` : ""}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground">Sem alterações registradas.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   booking: any;
@@ -653,6 +760,13 @@ export function BookingDetailsModal({
                   </Button>
                 )}
               </div>
+            </>
+          )}
+
+          {booking?.id && !isRecurring && (
+            <>
+              <Separator />
+              <BookingTimeline bookingId={booking.id} />
             </>
           )}
 
