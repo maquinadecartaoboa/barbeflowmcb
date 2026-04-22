@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -110,6 +111,8 @@ export default function Bookings() {
   const [conflictWarning, setConflictWarning] = useState<{ open: boolean; conflicts: any[] }>({ open: false, conflicts: [] });
   const [editExtraServices, setEditExtraServices] = useState<Array<{ id: string; title: string; duration_minutes: number; unit_price_cents: number }>>([]);
   const [cancelTarget, setCancelTarget] = useState<{ bookingId: string; booking?: BookingData } | null>(null);
+  const [rescheduleReasonCode, setRescheduleReasonCode] = useState<string>("");
+  const [rescheduleReasonNote, setRescheduleReasonNote] = useState<string>("");
   
 
   // List view state
@@ -405,8 +408,18 @@ export default function Bookings() {
       };
     });
     setEditExtraServices(extras);
+    setRescheduleReasonCode("");
+    setRescheduleReasonNote("");
     setEditMode(true);
   };
+
+  const RESCHEDULE_REASONS = [
+    { code: "reschedule_client_requested", label: "Cliente pediu para remarcar" },
+    { code: "reschedule_barber_requested", label: "Barbeiro pediu para remarcar" },
+    { code: "reschedule_conflict_resolution", label: "Resolver conflito de agenda" },
+    { code: "reschedule_emergency", label: "Emergência" },
+    { code: "reschedule_other", label: "Outro (descrever)" },
+  ];
 
   const saveBookingEdit = async (forceOverlap = false) => {
     if (!selectedBooking || !currentTenant) return;
@@ -462,23 +475,59 @@ export default function Bookings() {
       }
 
       const timeChanged = startsAt.toISOString() !== selectedBooking.starts_at;
+      const staffChanged = (staffId || null) !== (selectedBooking.staff_id || null);
+      const serviceChanged = editForm.service_id !== selectedBooking.service_id;
 
-      const { data: updatedBooking, error } = await supabase
-        .from("bookings")
-        .update({
-          service_id: editForm.service_id,
-          staff_id: staffId,
-          starts_at: startsAt.toISOString(),
-          ends_at: endsAt.toISOString(),
-          ...(timeChanged ? { reminder_sent: false } : {}),
-          ...(forceOverlap ? { has_conflict: true } : {}),
-        })
-        .eq("id", selectedBooking.id)
-        .select()
-        .maybeSingle();
+      if (!rescheduleReasonCode) {
+        toast({ title: "Motivo obrigatório", description: "Selecione o motivo da alteração.", variant: "destructive" });
+        setEditLoading(false);
+        return;
+      }
+      if (rescheduleReasonCode === "reschedule_other" && !rescheduleReasonNote.trim()) {
+        toast({ title: "Observação obrigatória", description: "Descreva o motivo ao escolher 'Outro'.", variant: "destructive" });
+        setEditLoading(false);
+        return;
+      }
 
-      if (error) throw error;
-      if (!updatedBooking) throw new Error("Falha ao atualizar — registro não encontrado");
+      const { data: result, error: rpcError } = await supabase.rpc("reschedule_booking", {
+        p_booking_id: selectedBooking.id,
+        p_tenant_id: currentTenant.id,
+        p_new_starts_at: startsAt.toISOString(),
+        p_new_ends_at: endsAt.toISOString(),
+        p_new_staff_id: staffChanged ? staffId : null,
+        p_new_service_id: serviceChanged ? editForm.service_id : null,
+        p_reason_code: rescheduleReasonCode,
+        p_reason_note: rescheduleReasonNote.trim() || null,
+        p_skip_conflict_check: forceOverlap,
+      } as any);
+
+      if (rpcError) {
+        if ((rpcError as any).code === "P0001" || /conflict|overlap/i.test(rpcError.message || "")) {
+          toast({
+            title: "Conflito de horário",
+            description: "Horário conflita com outro atendimento. Escolha outro ou use 'Forçar encaixe'.",
+            variant: "destructive",
+          });
+          setEditLoading(false);
+          return;
+        }
+        throw rpcError;
+      }
+
+      const res = result as any;
+      if (!res?.success) {
+        if (res?.error === "CANNOT_RESCHEDULE") {
+          toast({
+            title: "Não é possível reagendar",
+            description: `Status atual: ${res.current_status}. Só agendamentos confirmados podem ser reagendados.`,
+            variant: "destructive",
+          });
+        } else {
+          toast({ title: "Erro", description: res?.error || "Falha ao reagendar", variant: "destructive" });
+        }
+        setEditLoading(false);
+        return;
+      }
 
       // If time changed, clear reminder dedup entries so reminders fire for new time
       if (timeChanged) {
@@ -926,6 +975,32 @@ export default function Bookings() {
                   <p className="text-xs text-muted-foreground">Duração: {diff}min</p>
                 ) : null;
               })()}
+
+              <div className="space-y-2 pt-2 border-t border-border">
+                <Label className="text-sm font-medium">Motivo da alteração</Label>
+                <Select value={rescheduleReasonCode} onValueChange={setRescheduleReasonCode}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o motivo" /></SelectTrigger>
+                  <SelectContent>
+                    {RESCHEDULE_REASONS.map((r) => (
+                      <SelectItem key={r.code} value={r.code}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {rescheduleReasonCode && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    Observação{rescheduleReasonCode === "reschedule_other" ? " (obrigatória)" : " (opcional)"}
+                  </Label>
+                  <Textarea
+                    value={rescheduleReasonNote}
+                    onChange={(e) => setRescheduleReasonNote(e.target.value)}
+                    placeholder={rescheduleReasonCode === "reschedule_other" ? "Descreva o motivo" : "Detalhes adicionais"}
+                    rows={2}
+                  />
+                </div>
+              )}
+
               <div className="flex gap-2 pt-2 border-t border-border">
                 <Button size="sm" onClick={() => saveBookingEdit()} disabled={editLoading}>
                   {editLoading ? "Salvando..." : "Salvar"}
