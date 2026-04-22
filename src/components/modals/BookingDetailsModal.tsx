@@ -680,7 +680,7 @@ export function BookingDetailsModal({
               </Button>
             )}
 
-            {(booking.status === "confirmed" || booking.status === "completed") && !isNoShow && (
+            {booking.status === "confirmed" && !isNoShow && (
               <Button size="sm" variant="outline" onClick={() => setShowNoShowDialog(true)}>
                 <AlertTriangle className="h-4 w-4 mr-1 text-amber-500" /> Faltou
               </Button>
