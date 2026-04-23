@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { CalendarCheck, Clock, CreditCard, AlertTriangle } from "lucide-react";
+import { CalendarCheck, Clock, CreditCard, Scissors, AlertTriangle } from "lucide-react";
 
 const DEFAULT_PREFS: Record<string, boolean> = {
   booking_confirmed: true,
@@ -16,6 +16,7 @@ const DEFAULT_PREFS: Record<string, boolean> = {
   booking_expired: true,
   booking_no_show: true,
   payment_received: true,
+  comanda_completed: true,
   booking_reminder_24h: true,
   booking_reminder_1h: true,
   recurring_weekly_summary: true,
@@ -44,6 +45,13 @@ const CATEGORIES: { icon: typeof CalendarCheck; title: string; toggles: ToggleDe
       { key: "booking_expired", label: "Agendamento expirado", description: "Notifica quando o agendamento expira por falta de pagamento" },
       { key: "booking_no_show", label: "Falta registrada", description: "Avisa o cliente quando uma falta é registrada" },
       { key: "payment_received", label: "Pagamento confirmado", description: "Confirma o recebimento do pagamento online" },
+    ],
+  },
+  {
+    icon: Scissors,
+    title: "✂️ Pós-atendimento",
+    toggles: [
+      { key: "comanda_completed", label: "Mensagem de conclusão", description: "Envia agradecimento ao cliente quando a comanda é fechada, com link para agendar novamente" },
     ],
   },
   {

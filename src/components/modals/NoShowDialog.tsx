@@ -16,9 +16,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+const NO_SHOW_REASONS = [
+  { code: "no_show_no_contact", label: "Não apareceu sem aviso" },
+  { code: "no_show_late_cancel", label: "Avisou em cima da hora" },
+  { code: "no_show_client_unreachable", label: "Não consegui contatar" },
+  { code: "no_show_other", label: "Outro (descrever)" },
+] as const;
+
+type NoShowReasonCode = typeof NO_SHOW_REASONS[number]["code"];
 
 interface Props {
   open: boolean;
@@ -36,12 +46,20 @@ export function NoShowDialog({ open, onOpenChange, bookingId, tenantId, tenantSe
   const [payment, setPayment] = useState<any>(null);
   const defaultForfeit = tenantSettings?.no_show_forfeit_percent ?? 30;
   const [forfeitPercent, setForfeitPercent] = useState(defaultForfeit);
+  const [reasonCode, setReasonCode] = useState<NoShowReasonCode | "">("");
+  const [reasonNote, setReasonNote] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setForfeitPercent(defaultForfeit);
+    setReasonCode("");
+    setReasonNote("");
     checkPayment();
   }, [open, bookingId]);
+
+  const requiresNote = reasonCode === "no_show_other";
+  const canConfirm =
+    !!reasonCode && (!requiresNote || reasonNote.trim().length > 0);
 
   const checkPayment = async () => {
     setCheckingPayment(true);
@@ -87,7 +105,9 @@ export function NoShowDialog({ open, onOpenChange, bookingId, tenantId, tenantSe
         p_booking_id: bookingId,
         p_tenant_id: tenantId,
         p_forfeit_override: forfeitPercent,
-      });
+        p_reason_code: reasonCode || null,
+        p_reason_note: reasonNote.trim() || null,
+      } as any);
       if (rpcError) throw rpcError;
       const res = result as any;
       if (!res?.success) throw new Error(res?.error || "Erro ao marcar no-show");
@@ -203,6 +223,39 @@ export function NoShowDialog({ open, onOpenChange, bookingId, tenantId, tenantSe
               ) : (
                 <p>O cliente não compareceu ao agendamento. Nenhum pagamento online para reembolsar.</p>
               )}
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Motivo:</label>
+                <Select
+                  value={reasonCode}
+                  onValueChange={(v) => setReasonCode(v as NoShowReasonCode)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione o motivo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {NO_SHOW_REASONS.map((r) => (
+                      <SelectItem key={r.code} value={r.code}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {reasonCode && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Observação{requiresNote ? " (obrigatória)" : " (opcional)"}
+                  </label>
+                  <Textarea
+                    value={reasonNote}
+                    onChange={(e) => setReasonNote(e.target.value)}
+                    placeholder={requiresNote ? "Descreva o motivo" : "Detalhes adicionais"}
+                    rows={2}
+                  />
+                </div>
+              )}
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -213,7 +266,7 @@ export function NoShowDialog({ open, onOpenChange, bookingId, tenantId, tenantSe
               e.preventDefault();
               handleConfirm();
             }}
-            disabled={loading || checkingPayment}
+            disabled={loading || checkingPayment || !canConfirm}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {loading ? (

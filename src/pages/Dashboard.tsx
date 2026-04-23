@@ -25,6 +25,7 @@ import { RevenueLineChart } from "@/components/dashboard/RevenueLineChart";
 import { ClientRevenuePanel } from "@/components/dashboard/ClientRevenuePanel";
 import { BirthdayPanel } from "@/components/dashboard/BirthdayPanel";
 import { BookingDetailsModal } from "@/components/modals/BookingDetailsModal";
+import { CancelBookingDialog } from "@/components/modals/CancelBookingDialog";
 
 const spring = { type: "spring" as const, stiffness: 200, damping: 26, mass: 0.6 };
 const gentleSpring = { type: "spring" as const, stiffness: 120, damping: 20, mass: 0.8 };
@@ -49,6 +50,7 @@ const Dashboard = () => {
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [birthdayCount, setBirthdayCount] = useState(0);
+  const [cancelTarget, setCancelTarget] = useState<{ bookingId: string; booking?: any } | null>(null);
 
 
   const { user, signOut, loading: authLoading } = useAuth();
@@ -58,22 +60,11 @@ const Dashboard = () => {
   const { toast } = useToast();
   const { data: cashData } = useCashRevenue({ tenantId: currentTenant?.id, dateRange });
 
-  const updateBookingStatus = useCallback(async (bookingId: string, newStatus: string, booking?: any) => {
+  const updateBookingStatus = useCallback(async (bookingId: string, newStatus: string, _booking?: any) => {
     if (!currentTenant) return;
     try {
-      if (newStatus === "cancelled") {
-        const cancellationMinHours = currentTenant.settings?.cancellation_min_hours ?? 4;
-        const { data: result, error: rpcError } = await supabase.rpc("cancel_booking_with_refund", {
-          p_booking_id: bookingId,
-          p_tenant_id: currentTenant.id,
-          p_cancellation_min_hours: cancellationMinHours,
-        });
-        if (rpcError) throw rpcError;
-        const res = result as any;
-        if (!res?.success) throw new Error(res?.error || "Erro ao cancelar");
-        // Set cancellation_reason for WhatsApp notification suppression logic
-        await supabase.from("bookings").update({ cancellation_reason: "admin_request" }).eq("id", bookingId);
-      } else if (newStatus === "no_show") {
+      // Cancelamento é tratado via CancelBookingDialog (openCancelDialog).
+      if (newStatus === "no_show") {
         const { data: result, error: rpcError } = await supabase.rpc("mark_booking_no_show", {
           p_booking_id: bookingId,
           p_tenant_id: currentTenant.id,
@@ -91,7 +82,7 @@ const Dashboard = () => {
       }
 
       const notificationTypeMap: Record<string, string | null> = {
-        cancelled: "booking_cancelled", confirmed: "booking_confirmed", completed: null, no_show: "booking_no_show",
+        confirmed: "booking_confirmed", completed: null, no_show: "booking_no_show",
       };
       const notificationType = notificationTypeMap[newStatus];
       if (notificationType) {
@@ -115,6 +106,26 @@ const Dashboard = () => {
       toast({ title: "Erro", description: err.message || "Erro ao atualizar status", variant: "destructive" });
     }
   }, [currentTenant]);
+
+  const openCancelDialog = useCallback((bookingId: string, booking?: any) => {
+    setCancelTarget({ bookingId, booking });
+  }, []);
+
+  const handleCancelComplete = useCallback((_result: any) => {
+    const target = cancelTarget;
+    setCancelTarget(null);
+    if (!target || !currentTenant) {
+      loadDashboardData();
+      return;
+    }
+    supabase.functions
+      .invoke("send-whatsapp-notification", {
+        body: { type: "booking_cancelled", booking_id: target.bookingId, tenant_id: currentTenant.id },
+      })
+      .catch((e) => console.error(e));
+    setSelectedBooking(null);
+    loadDashboardData();
+  }, [cancelTarget, currentTenant]);
 
   useEffect(() => {
     if (user && !tenantLoading) {
@@ -426,6 +437,17 @@ const Dashboard = () => {
             navigate(dashPath("/app/bookings"));
           }}
           onStatusChange={updateBookingStatus}
+          onRequestCancel={openCancelDialog}
+        />
+      )}
+      {currentTenant && (
+        <CancelBookingDialog
+          open={!!cancelTarget}
+          onOpenChange={(open) => { if (!open) setCancelTarget(null); }}
+          bookingId={cancelTarget?.bookingId || ""}
+          tenantId={currentTenant.id}
+          tenantSettings={currentTenant.settings}
+          onComplete={handleCancelComplete}
         />
       )}
     </div>

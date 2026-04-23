@@ -23,6 +23,20 @@ interface Props {
 
 const QUICK_TIPS = [500, 1000, 2000]; // cents
 
+const sendComandaNotification = async (bookingId: string, tenantId: string) => {
+  try {
+    await supabase.functions.invoke("send-whatsapp-notification", {
+      body: {
+        type: "comanda_completed",
+        booking_id: bookingId,
+        tenant_id: tenantId,
+      },
+    });
+  } catch (error) {
+    console.error("Erro ao enviar notificação de conclusão:", error);
+  }
+};
+
 export function ComandaCloseSection({ bookingId, tenantId, items, comandaClosed, commissionBasis, onClose }: Props) {
   const [closing, setClosing] = useState(false);
   const [acceptDebt, setAcceptDebt] = useState(false);
@@ -79,6 +93,8 @@ export function ComandaCloseSection({ bookingId, tenantId, items, comandaClosed,
       if (tokensCreated > 0) {
         toast.info(`💰 ${tokensCreated} ficha(s) de comissão de assinatura registrada(s)`);
       }
+
+      sendComandaNotification(bookingId, tenantId);
 
       onClose();
     } catch (err: any) {
