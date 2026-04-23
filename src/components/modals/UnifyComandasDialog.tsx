@@ -68,6 +68,7 @@ interface Props {
   customerName: string;
   bookings: RelatedBooking[];
   currentBookingId: string;
+  tenantId: string;
   onCompleted: () => void;
 }
 
@@ -109,6 +110,7 @@ export function UnifyComandasDialog({
   customerName,
   bookings,
   currentBookingId,
+  tenantId,
   onCompleted,
 }: Props) {
   const { toast } = useToast();
@@ -172,8 +174,13 @@ export function UnifyComandasDialog({
     if (selectedCount === 0 || !paymentMethod) return;
     setProcessing(true);
     try {
+      // Ordered chronologically (sortedBookings is already sorted by starts_at)
+      const selectedBookingIds = sortedBookings
+        .filter((b) => selectedIds.has(b.id))
+        .map((b) => b.id);
+
       const { data, error } = await supabase.rpc("conclude_unified_bookings", {
-        p_booking_ids: Array.from(selectedIds),
+        p_booking_ids: selectedBookingIds,
         p_payment_method: paymentMethod,
         p_discount_cents: clampedDiscount,
         p_notes: notes.trim() || null,
@@ -199,14 +206,35 @@ export function UnifyComandasDialog({
 
       const concluded = res.bookings_concluded ?? selectedCount;
       const total = res.final_cents ?? finalCents;
-      toast({
-        title: `${concluded} ${concluded === 1 ? "comanda fechada" : "comandas fechadas"}`,
-        description: `${formatBRL(total)} registrado`,
-      });
+
+      // Fire-and-forget unified WhatsApp notification — never block UX
+      if (concluded >= 2 && selectedBookingIds.length >= 2) {
+        try {
+          supabase.functions
+            .invoke("send-whatsapp-notification", {
+              body: {
+                type: "comanda_completed",
+                booking_id: selectedBookingIds[0],
+                tenant_id: tenantId,
+                unified_booking_ids: selectedBookingIds,
+              },
+            })
+            .catch((err) => {
+              console.error("[UnifyComandasDialog] Notificação falhou (ignorado):", err);
+            });
+        } catch (err) {
+          console.error("[UnifyComandasDialog] Erro ao disparar notificação (ignorado):", err);
+        }
+      }
 
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
       queryClient.invalidateQueries({ queryKey: ["staff-bookings"] });
       queryClient.invalidateQueries({ queryKey: ["cash-entries"] });
+
+      toast({
+        title: `${concluded} ${concluded === 1 ? "comanda fechada" : "comandas fechadas"}`,
+        description: `${formatBRL(total)} registrado`,
+      });
 
       onCompleted();
       onOpenChange(false);

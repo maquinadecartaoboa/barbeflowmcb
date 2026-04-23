@@ -753,6 +753,7 @@ export function BookingDetailsModal({
           customerName={booking.customer?.name || "Cliente"}
           bookings={relatedBookings as RelatedBooking[]}
           currentBookingId={booking.id}
+          tenantId={tenantId}
           onCompleted={() => {
             handleRefresh();
             onOpenChange(false);
