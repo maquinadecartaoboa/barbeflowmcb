@@ -19,6 +19,7 @@ import { LoyaltyWidget } from "@/components/public/LoyaltyWidget";
 import { Calendar as CalendarRac } from "@/components/ui/calendar-rac";
 import { MercadoPagoCheckout } from "@/components/MercadoPagoCheckout";
 import { CustomerBookingsModal } from "@/components/modals/CustomerBookingsModal";
+import { saveCustomerPhone } from "@/lib/customer-phone-storage";
 import { Badge } from "@/components/ui/badge";
 import { getOnlineDiscount, hasAnyOnlineDiscount, hasPerMethodDiscount } from "@/utils/onlineDiscount";
 import { 
@@ -722,6 +723,8 @@ const BookingPublic = () => {
         setForcedOnlinePayment(data.customer.forced_online_payment || false);
         // Set loyalty data
         setLoyaltyData(data.loyalty || null);
+        // Persist phone on successful lookup
+        if (slug) saveCustomerPhone(slug, phoneValue);
         // Fetch benefits to show badges
         await fetchCustomerBenefits(digits);
       } else {
@@ -790,6 +793,8 @@ const BookingPublic = () => {
         setCustomerBirthday(data.customer.birthday || '');
         setCustomerFound(true);
         setForcedOnlinePayment(data.customer.forced_online_payment || false);
+        // Persist phone on successful lookup
+        if (slug) saveCustomerPhone(slug, phoneValue);
       } else {
         setCustomerFound(false);
       }
@@ -867,6 +872,9 @@ const BookingPublic = () => {
       if (data.success) {
         const booking = data.booking;
         setCreatedBooking(booking);
+
+        // Persist phone on successful booking
+        if (slug) saveCustomerPhone(slug, customerPhone);
 
         // If covered by package or subscription, backend already handled session decrement
         if (packageCoveredService || subscriptionCoveredService) {
@@ -2522,6 +2530,7 @@ END:VCALENDAR`;
           open={showCustomerBookings}
           onOpenChange={setShowCustomerBookings}
           tenantId={tenant.id}
+          tenantSlug={slug || ''}
           tenantName={tenant.name}
           tenantPhone={tenant.phone || undefined}
         />

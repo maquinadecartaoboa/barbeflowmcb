@@ -1,8 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { LoyaltyWidget } from "@/components/public/LoyaltyWidget";
 import { WhatsAppContactButton } from "@/components/public/WhatsAppContactButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import {
+  saveCustomerPhone,
+  loadCustomerPhone,
+  clearCustomerPhone,
+} from "@/lib/customer-phone-storage";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +44,7 @@ interface CustomerBookingsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tenantId: string;
+  tenantSlug: string;
   tenantName: string;
   tenantPhone?: string;
 }
@@ -50,6 +56,10 @@ interface Booking {
   status: string;
   service: { name: string; price_cents: number } | null;
   staff: { name: string } | null;
+}
+
+interface CustomerSummary {
+  name?: string;
 }
 
 const TIMEZONE = 'America/Bahia';
@@ -74,10 +84,11 @@ const formatPhoneDisplay = (value: string): string => {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
 };
 
-export function CustomerBookingsModal({ 
-  open, 
-  onOpenChange, 
+export function CustomerBookingsModal({
+  open,
+  onOpenChange,
   tenantId,
+  tenantSlug,
   tenantName,
   tenantPhone
 }: CustomerBookingsModalProps) {
@@ -89,21 +100,38 @@ export function CustomerBookingsModal({
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [loyalty, setLoyalty] = useState<any>(null);
+  const [customer, setCustomer] = useState<CustomerSummary | null>(null);
+  const [loadedFromStorage, setLoadedFromStorage] = useState(false);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
+
+  // When modal opens: read saved phone and auto-query (once per open).
   useEffect(() => {
     if (!open) {
       setPhone('');
       setStep('phone');
       setBookings([]);
+      setLoyalty(null);
+      setCustomer(null);
+      setLoadedFromStorage(false);
+      return;
     }
-  }, [open]);
+    const saved = loadCustomerPhone(tenantSlug);
+    if (!saved) return;
+    setPhone(formatPhoneDisplay(saved));
+    setLoadedFromStorage(true);
+    runSearch(saved, { persist: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, tenantSlug]);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPhoneDisplay(e.target.value);
     setPhone(formatted);
+    // Any manual edit means the current value is no longer "from storage".
+    setLoadedFromStorage(false);
   };
 
-  const handleSearch = async () => {
-    const digits = phone.replace(/\D/g, '');
+  const runSearch = async (rawPhone: string, opts: { persist: boolean }) => {
+    const digits = rawPhone.replace(/\D/g, '');
     if (digits.length < 10) {
       toast({
         title: "Número inválido",
@@ -115,8 +143,6 @@ export function CustomerBookingsModal({
 
     try {
       setLoading(true);
-      const digits = phone.replace(/\D/g, '');
-
       const { data, error } = await supabase.functions.invoke('public-customer-bookings', {
         body: { phone: digits, tenant_id: tenantId },
       });
@@ -125,7 +151,10 @@ export function CustomerBookingsModal({
 
       setBookings(data?.bookings || []);
       setLoyalty(data?.loyalty || null);
+      setCustomer(data?.customer ?? null);
       setStep('bookings');
+      // Save only on successful response (and only when user typed it this session).
+      if (opts.persist) saveCustomerPhone(tenantSlug, digits);
     } catch (error) {
       console.error('Error searching bookings:', error);
       toast({
@@ -136,6 +165,19 @@ export function CustomerBookingsModal({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = () => runSearch(phone, { persist: true });
+
+  const handleSwitchNumber = () => {
+    clearCustomerPhone(tenantSlug);
+    setPhone('');
+    setBookings([]);
+    setLoyalty(null);
+    setCustomer(null);
+    setLoadedFromStorage(false);
+    setStep('phone');
+    phoneInputRef.current?.focus();
   };
 
   const handleCancel = async (bookingId: string) => {
@@ -229,6 +271,7 @@ export function CustomerBookingsModal({
                 Número do celular
               </label>
               <Input
+                ref={phoneInputRef}
                 type="tel"
                 placeholder="(11) 99999-9999"
                 value={phone}
@@ -257,13 +300,20 @@ export function CustomerBookingsModal({
 
         {step === 'bookings' && (
           <div className="space-y-4">
-            <button
-              onClick={() => setStep('phone')}
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Trocar número
-            </button>
+            <div className="flex items-center justify-between gap-2">
+              <button
+                onClick={handleSwitchNumber}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                {loadedFromStorage ? 'Não sou eu / Trocar número' : 'Trocar número'}
+              </button>
+              {loadedFromStorage && customer?.name && (
+                <p className="text-sm text-muted-foreground">
+                  Olá, {customer.name.split(' ')[0]} 👋
+                </p>
+              )}
+            </div>
 
             {/* Loyalty Widget */}
             {loyalty && <LoyaltyWidget loyalty={loyalty} variant="light" />}
