@@ -62,11 +62,16 @@ serve(async (req) => {
     // ============================
     const now24h = new Date(now.getTime() + 24 * 60 * 60000);
 
+    // Trava de segurança: só envia lembrete se o booking foi criado com pelo menos 2h de
+    // antecedência em relação ao starts_at. Bookings criados em cima da hora não devem
+    // receber lembretes de 24h ou 1h — só o "Agendamento Confirmado" já foi enviado.
+    const MIN_LEAD_TIME_MS = 2 * 60 * 60 * 1000; // 2 horas em ms
+
     console.log(`[24h] Sweeping confirmed bookings between ${now.toISOString()} and ${now24h.toISOString()} with reminder_sent=false`);
 
     const { data: bookings24h, error: err24h } = await supabase
       .from("bookings")
-      .select("id, tenant_id, starts_at")
+      .select("id, tenant_id, starts_at, created_at")
       .eq("status", "confirmed")
       .eq("reminder_sent", false)
       .gte("starts_at", now.toISOString())
@@ -79,6 +84,13 @@ serve(async (req) => {
       results.total += bookings24h.length;
 
       for (const booking of bookings24h) {
+        // Trava: ignorar bookings criados com menos de 2h de antecedência do horário
+        const leadTimeMs = new Date(booking.starts_at).getTime() - new Date(booking.created_at).getTime();
+        if (leadTimeMs < MIN_LEAD_TIME_MS) {
+          console.log(`[24h] Skipping booking ${booking.id} — created too close to starts_at (${Math.round(leadTimeMs / 60000)}min lead time, minimum is 120min)`);
+          continue;
+        }
+
         const dedupKey = `reminder_24h_${booking.id}`;
         const { data: existing } = await supabase
           .from("notification_log")
@@ -127,7 +139,7 @@ serve(async (req) => {
 
     const { data: bookings1h, error: err1h } = await supabase
       .from("bookings")
-      .select("id, tenant_id, starts_at")
+      .select("id, tenant_id, starts_at, created_at")
       .eq("status", "confirmed")
       .gte("starts_at", now.toISOString())
       .lte("starts_at", now1h.toISOString());
@@ -139,6 +151,13 @@ serve(async (req) => {
       results.total += bookings1h.length;
 
       for (const booking of bookings1h) {
+        // Trava: ignorar bookings criados com menos de 2h de antecedência do horário
+        const leadTimeMs = new Date(booking.starts_at).getTime() - new Date(booking.created_at).getTime();
+        if (leadTimeMs < MIN_LEAD_TIME_MS) {
+          console.log(`[1h] Skipping booking ${booking.id} — created too close to starts_at (${Math.round(leadTimeMs / 60000)}min lead time, minimum is 120min)`);
+          continue;
+        }
+
         const dedupKey = `reminder_1h_${booking.id}`;
         const { data: existing } = await supabase
           .from("notification_log")
