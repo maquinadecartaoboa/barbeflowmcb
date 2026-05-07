@@ -57,7 +57,30 @@ serve(async (req) => {
       );
     }
 
-    const connections = validTokens.map(t => ({ tenant_id: t.tenant_id, access_token: t.access_token }));
+    let connections = validTokens.map(t => ({ tenant_id: t.tenant_id, access_token: t.access_token }));
+
+    // Narrow to matching connection via body.user_id (mp_user_id) to avoid
+    // fan-out 404s in the payment loop. Falls back to all connections if
+    // user_id is missing, doesn't match a known connection, or that connection
+    // failed token validation upstream.
+    if (body.user_id) {
+      const { data: matchedConn } = await supabase
+        .from('mercadopago_connections')
+        .select('tenant_id')
+        .eq('mp_user_id', String(body.user_id))
+        .maybeSingle();
+      if (matchedConn) {
+        const narrowed = connections.find(c => c.tenant_id === matchedConn.tenant_id);
+        if (narrowed) {
+          connections = [narrowed];
+          console.log(`[USER_ID_MATCH] narrowed to tenant ${narrowed.tenant_id} via body.user_id=${body.user_id}`);
+        } else {
+          console.log(`[USER_ID_MATCH] tenant ${matchedConn.tenant_id} has no valid token, falling back to fan-out`);
+        }
+      } else {
+        console.log(`[USER_ID_MATCH] no connection for body.user_id=${body.user_id}, falling back to fan-out`);
+      }
+    }
 
     // SUBSCRIPTION PREAPPROVAL NOTIFICATIONS
     if (type === 'subscription_preapproval' && data?.id) {
@@ -80,6 +103,25 @@ serve(async (req) => {
 
     const mpPaymentId = data.id;
     console.log('Processing payment notification:', mpPaymentId, 'action:', action);
+
+    // Short-circuit: if this mp_payment_id was already processed by
+    // subscription_authorized_payment, the type=payment notification is
+    // redundant. Recurring payments aren't visible via /v1/payments anyway,
+    // so the loop below would only produce 404s. Returning 200 here stops
+    // the MP retry storm.
+    const { data: existingSubPayment } = await supabase
+      .from('subscription_payments')
+      .select('id')
+      .eq('mp_payment_id', String(mpPaymentId))
+      .maybeSingle();
+
+    if (existingSubPayment) {
+      console.log(`[SHORT_CIRCUIT] payment ${mpPaymentId} already recorded as subscription_payment, ignoring redundant type=payment`);
+      return new Response(
+        JSON.stringify({ received: true, ignored: true, reason: 'already_processed_as_subscription' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     let mpPaymentData: any = null;
     let usedConnection: any = null;
