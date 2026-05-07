@@ -109,15 +109,42 @@ Outra possibilidade: era de fato um pagamento avulso fora do nosso sistema, sem 
 
 **Pista de entrada:** comparando os 2 pagamentos do mesmo cliente (ANDERSON RUFINO, tenant Adriano), a única diferença em `payments` é `payment_method`: `'pix'` no que gravou (R$28,50, mp_id=153555127965) vs `null` no que não gravou (R$40, mp_id=155631091627).
 
-### Mapeamento dos INSERTs em `platform_fees`
+### Mapeamento dos INSERTs em `payments` e `platform_fees`
 
-Grep mostra **exatamente 3 lugares** que inserem em `platform_fees`. **Nenhum deles é o `mp-webhook`**. Não há trigger SQL que popule a tabela automaticamente.
+Grep encontra **4 edge functions** que inserem em `payments`, mas **só 3** inserem em `platform_fees`. **Nenhuma das 4 é o `mp-webhook`**. Não há trigger SQL que popule a tabela automaticamente.
+
+| Edge function | INSERT em `payments` | INSERT em `platform_fees` | Inclui `application_fee` no body MP? |
+|---|---|---|---|
+| `mp-process-payment` | sim (linha 128-140) | linha 335-345, **só se `mpResult.status === 'approved'`** | sim (linha 179, 219) |
+| `mp-create-checkout` | sim (linha 122-133) | linha 252-262, sempre que `marketplaceFee > 0` (status='pending') | sim (linha 196, `marketplace_fee`) |
+| `mp-create-package-checkout` | sim (linha 201-213) | linha 308-317, igual ao acima | sim (linha 271-273) |
+| **`wa-booking-engine`** (createPixCharge) | **sim (linha 387-398)** | **NÃO** | **NÃO** |
+
+### O 4º caminho — descoberto: `wa-booking-engine/createPixCharge`
+
+A função `createPixCharge` em `wa-booking-engine/index.ts:373-462` é o caminho de pagamento **PIX criado via fluxo público do WhatsApp** (cliente agenda pelo bot). Ela cria o `payment` direto e chama `POST /v1/payments` no MP, mas o body em `index.ts:405-420` **omite `application_fee`** e nunca insere em `platform_fees`. Não usa o helper `getCommissionRate` do `_shared/commission.ts` (grep confirmou zero referências em todo o diretório `wa-booking-engine/`).
+
+Isso bate com o pagamento `mp_id=155631091627` (R$40 Adriano, 25/abr): provavelmente foi um agendamento via WhatsApp.
+
+### Implicação financeira (mais grave do que só auditoria)
+
+> ⚠️ **Atenção:** o contexto do prompt afirmava que o split de comissão é "automático" — isso é verdade quando `application_fee` (cartão) ou `marketplace_fee` (preference checkout) **estão no body**. No caminho `wa-booking-engine`, **nem um nem outro é enviado**, então o MP processa o PIX **sem split** e o tenant recebe 100% do valor.
+
+Para o pagamento R$40 de plano ilimitado (1,5%): ~R$0,60 não cobrados. Volume baixo no agregado (alinhado com a estimativa "R$1-2 no histórico"), mas a causa raiz é diferente da inicialmente assumida — não é só registro interno, é **comissão não cobrada pelo MP** nesse caminho específico.
+
+Recomendação adicional para Task 7 (separada):
+- **Adicionar `application_fee` ao body MP em `wa-booking-engine/createPixCharge`** (espelhando `mp-process-payment` linha 178-179) — fecha o vazamento de comissão.
+- **Adicionar INSERT em `platform_fees`** após receber `mpResult.id` aprovado.
+- **Adicionar `notification_url` ao body** (também ausente em `wa-booking-engine`) — garante que o webhook receba callback desse pagamento.
+
+### Mapeamento dos INSERTs em `platform_fees` (resumo)
 
 | Edge function | Linha | Condição | Status inserido | `mp_payment_id`? |
 |---|---|---|---|---|
 | `mp-process-payment` | 335-345 | `mpResult.status === 'approved' && applicationFee > 0` | `'collected'` | sim |
 | `mp-create-checkout` | 252-262 | `marketplaceFee > 0` (sempre que cria checkout) | `'pending'` | não |
 | `mp-create-package-checkout` | 308-317 | `marketplaceFee > 0` | `'pending'` | não |
+| `wa-booking-engine` (createPixCharge) | — | **AUSENTE** | — | — |
 
 ### O bug
 
