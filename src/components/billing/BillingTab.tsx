@@ -345,7 +345,7 @@ export function BillingTab() {
                     {discountInfo.amount_off ? ` (R$ ${(discountInfo.amount_off / 100).toFixed(2).replace(".", ",")} de desconto)` : ""}
                   </p>
                 )}
-                {additionalProfessionals > 0 && (
+                {planName !== "ilimitado" && additionalProfessionals > 0 && (
                   <p className="text-muted-foreground text-xs mt-1">
                     👥 {additionalProfessionals} profissional(is) adicional(is) — +R$ {(additionalProfessionals * 14.9).toFixed(2).replace(".", ",")}/mês
                   </p>
