@@ -5,6 +5,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useCurrentStaff } from "@/hooks/useCurrentStaff";
 import { dashPath } from "@/lib/hostname";
 import { SubscriptionBanner } from "@/components/billing/SubscriptionBanner";
 
@@ -96,61 +98,68 @@ interface NavItem {
   url: string;
   icon: any;
   statusDot?: boolean;
-  children?: { title: string; url: string; icon: any; statusDot?: boolean }[];
+  adminOnly?: boolean;
+  staffOnly?: boolean;
+  children?: { title: string; url: string; icon: any; statusDot?: boolean; adminOnly?: boolean; staffOnly?: boolean }[];
 }
 
 const baseNavigationItems: NavItem[] = [
-  { title: "Dashboard", url: "/app/dashboard", icon: Home },
+  { title: "Dashboard", url: "/app/dashboard", icon: Home, adminOnly: true },
   { title: "Agendamentos", url: "/app/bookings", icon: FileText },
-  { 
-    title: "Clientes", 
-    url: "/app/customers", 
+  {
+    title: "Clientes",
+    url: "/app/customers",
     icon: User,
     children: [
       { title: "Listar Clientes", url: "/app/customers", icon: User },
-      { title: "Clientes Fixos", url: "/app/recurring-clients", icon: CalendarCheck },
+      { title: "Clientes Fixos", url: "/app/recurring-clients", icon: CalendarCheck, adminOnly: true },
     ]
   },
-  { 
-    title: "Catálogo", 
-    url: "/app/services", 
+  {
+    title: "Catálogo",
+    url: "/app/services",
     icon: ShoppingBag,
+    adminOnly: true,
     children: [
       { title: "Serviços", url: "/app/services", icon: Scissors },
       { title: "Pacotes", url: "/app/packages", icon: Gift },
       { title: "Produtos", url: "/app/products", icon: Package },
     ]
   },
-  { 
-    title: "Assinaturas", 
-    url: "/app/subscriptions/plans", 
+  {
+    title: "Assinaturas",
+    url: "/app/subscriptions/plans",
     icon: Repeat,
+    adminOnly: true,
     children: [
       { title: "Planos", url: "/app/subscriptions/plans", icon: CreditCard },
       { title: "Assinantes", url: "/app/subscriptions/members", icon: Users },
       { title: "Recebíveis", url: "/app/subscriptions/receivables", icon: Receipt },
       { title: "Calendário", url: "/app/subscriptions/calendar", icon: CalendarDays },
       { title: "Inadimplentes", url: "/app/subscriptions/delinquents", icon: AlertTriangle },
-      
+
     ]
   },
-  { title: "Profissionais", url: "/app/staff", icon: Users },
-  { 
-    title: "Financeiro", 
-    url: "/app/finance", 
+  { title: "Profissionais", url: "/app/staff", icon: Users, adminOnly: true },
+  {
+    title: "Financeiro",
+    url: "/app/finance",
     icon: Wallet,
+    adminOnly: true,
     children: [
       { title: "Visão Geral", url: "/app/finance", icon: BarChart3 },
       { title: "Caixa", url: "/app/caixa", icon: Banknote },
       { title: "Comissões", url: "/app/commissions", icon: CreditCard },
     ]
   },
-  { title: "Relatórios", url: "/app/reports", icon: BarChart3 },
-  { title: "Alta Performance", url: "/app/alta-performance", icon: Rocket },
-  { 
-    title: "Configurações", 
-    url: "/app/settings", 
+  { title: "Minhas Comissões", url: "/app/commissions", icon: CreditCard, staffOnly: true },
+  { title: "Relatórios", url: "/app/reports", icon: BarChart3, adminOnly: true },
+  { title: "Alta Performance", url: "/app/alta-performance", icon: Rocket, adminOnly: true },
+  {
+    title: "Configurações",
+    url: "/app/settings",
     icon: Settings,
+    adminOnly: true,
     children: [
       { title: "Geral", url: "/app/settings?tab=general", icon: Settings },
       { title: "Aparência", url: "/app/settings?tab=appearance", icon: Palette },
@@ -164,11 +173,12 @@ const baseNavigationItems: NavItem[] = [
   },
 ];
 
-const baseBottomTabItems = [
-  { title: "Home", url: "/app/dashboard", icon: Home },
+const baseBottomTabItems: NavItem[] = [
+  { title: "Home", url: "/app/dashboard", icon: Home, adminOnly: true },
   { title: "Agenda", url: "/app/bookings", icon: CalendarCheck },
   { title: "Clientes", url: "/app/customers", icon: User },
-  { title: "Financeiro", url: "/app/finance", icon: Wallet },
+  { title: "Financeiro", url: "/app/finance", icon: Wallet, adminOnly: true },
+  { title: "Comissões", url: "/app/commissions", icon: CreditCard, staffOnly: true },
 ];
 
 const applyDashPath = (items: NavItem[]): NavItem[] => items.map(item => ({
@@ -179,6 +189,21 @@ const applyDashPath = (items: NavItem[]): NavItem[] => items.map(item => ({
 
 const navigationItems = applyDashPath(baseNavigationItems);
 const bottomTabItems = baseBottomTabItems.map(item => ({ ...item, url: dashPath(item.url) }));
+
+function filterNavByRole<T extends { adminOnly?: boolean; staffOnly?: boolean; children?: any[] }>(
+  items: T[],
+  isStaff: boolean,
+): T[] {
+  return items
+    .filter(item => (isStaff ? !item.adminOnly : !item.staffOnly))
+    .map(item =>
+      item.children
+        ? { ...item, children: filterNavByRole(item.children, isStaff) }
+        : item,
+    )
+    // Drop parent groups that became empty after filtering children
+    .filter(item => !item.children || item.children.length > 0);
+}
 
 function NavItemLink({ item, isActive, onClick, statusDot }: { item: { title: string; url: string; icon: any }; isActive: boolean; onClick?: () => void; statusDot?: 'connected' | 'disconnected' | null }) {
   return (
@@ -268,6 +293,9 @@ function AppSidebar() {
   const location = useLocation();
   const waConnected = useWhatsAppStatus();
   const { isAdmin } = useAdminAuth({ redirect: false });
+  const { isStaff } = useUserRole();
+  const { staff: currentStaff } = useCurrentStaff();
+  const visibleNavItems = useMemo(() => filterNavByRole(navigationItems, isStaff), [isStaff]);
 
   return (
     <Sidebar className="border-r border-border/30 bg-background/80 backdrop-blur-xl">
@@ -299,7 +327,7 @@ function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-0.5">
-              {navigationItems.map((item) => {
+              {visibleNavItems.map((item) => {
                 if (item.children) {
                   return (
                     <SidebarMenuItem key={item.title}>
@@ -311,9 +339,9 @@ function AppSidebar() {
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
-                      <NavItemLink 
-                        item={item} 
-                        isActive={isActive} 
+                      <NavItemLink
+                        item={item}
+                        isActive={isActive}
                         statusDot={item.statusDot ? (waConnected ? 'connected' : 'disconnected') : null}
                       />
                     </SidebarMenuButton>
@@ -339,7 +367,7 @@ function AppSidebar() {
               </div>
               <div className="flex-1 text-left">
                 <p className="text-sm font-semibold text-foreground tracking-tight">
-                  {user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuário'}
+                  {currentStaff?.name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuário'}
                 </p>
                 <p className="text-[11px] text-muted-foreground/60 truncate">
                   {user?.email}
@@ -379,6 +407,8 @@ function MobileDrawer() {
   const { user, signOut } = useAuth();
   const { currentTenant } = useTenant();
   const waConnected = useWhatsAppStatus();
+  const { isStaff } = useUserRole();
+  const visibleNavItems = useMemo(() => filterNavByRole(navigationItems, isStaff), [isStaff]);
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -408,7 +438,7 @@ function MobileDrawer() {
         </DrawerHeader>
         <div className="p-3 overflow-y-auto flex-1">
           <div className="space-y-0.5">
-            {navigationItems.map((item) => {
+            {visibleNavItems.map((item) => {
               if (item.children) {
                 const fullUrl = location.pathname + location.search;
                 const isAnyChildActive = item.children.some(c => {
@@ -491,12 +521,15 @@ function MobileDrawer() {
 function BottomTabs() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isStaff } = useUserRole();
+  const visibleTabs = useMemo(() => filterNavByRole(bottomTabItems, isStaff), [isStaff]);
+  const colsClass = visibleTabs.length === 3 ? "grid-cols-3" : "grid-cols-4";
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-2xl border-t border-border/30 z-50 safe-area-pb">
-      <div className="grid grid-cols-4 max-w-md mx-auto">
-        {bottomTabItems.map((item) => {
-          const isActive = location.pathname === item.url || 
+      <div className={`grid ${colsClass} max-w-md mx-auto`}>
+        {visibleTabs.map((item) => {
+          const isActive = location.pathname === item.url ||
             (item.url === dashPath("/app/finance") && location.pathname === dashPath("/app/commissions"));
           return (
             <button
