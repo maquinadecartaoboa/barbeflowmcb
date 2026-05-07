@@ -70,7 +70,9 @@ const AdminBilling = lazy(() => import("./pages/admin/AdminBilling"));
 // Lazy-loaded components
 const AuthWatcher = lazy(() => import("./components/AuthWatcher"));
 import ProtectedRoute from "./components/ProtectedRoute";
+import RoleGuard from "./components/RoleGuard";
 const AppShell = lazy(() => import("./components/layout/AppShell"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 
 import { ScrollToTop } from "./components/ScrollToTop";
 import { CookieBanner } from "./components/CookieBanner";
@@ -171,33 +173,34 @@ const App = () => {
                       <Route path={`${dashPrefix}/register`} element={<Login />} />
                       <Route path={`${dashPrefix}/forgot-password`} element={<ForgotPassword />} />
                       <Route path={`${dashPrefix}/reset-password`} element={<ResetPassword />} />
-                      
+                      <Route path={`${dashPrefix}/auth/callback`} element={<AuthCallback />} />
+
                       <Route path={`${dashPrefix}/onboarding`} element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
                       <Route path={`${dashPrefix}/questionnaire`} element={<ProtectedRoute><Questionnaire /></ProtectedRoute>} />
                       <Route path={`${dashPrefix}/onboarding-wizard`} element={<ProtectedRoute><OnboardingWizard /></ProtectedRoute>} />
                       
                       <Route path={dashPrefix || '/'} element={<ProtectedAppShell />}>
-                        <Route path={dashPrefix ? 'dashboard' : 'dashboard'} element={<Dashboard />} />
+                        <Route path={dashPrefix ? 'dashboard' : 'dashboard'} element={<RoleGuard requireAdmin><Dashboard /></RoleGuard>} />
                         <Route path="bookings" element={<Bookings />} />
-                        <Route path="services" element={<Services />} />
-                        <Route path="packages" element={<PackagesPage />} />
+                        <Route path="services" element={<RoleGuard requireAdmin><Services /></RoleGuard>} />
+                        <Route path="packages" element={<RoleGuard requireAdmin><PackagesPage /></RoleGuard>} />
                         <Route path="subscription-plans" element={<Navigate to={`${dashPrefix}/subscriptions/plans`} replace />} />
-                        <Route path="subscriptions/plans" element={<SubscriptionPlansPage />} />
-                        <Route path="subscriptions/members" element={<SubscriptionMembers />} />
-                        <Route path="subscriptions/receivables" element={<SubscriptionReceivables />} />
-                        <Route path="subscriptions/calendar" element={<SubscriptionCalendar />} />
-                        <Route path="subscriptions/delinquents" element={<SubscriptionDelinquents />} />
-                        <Route path="staff" element={<Staff />} />
+                        <Route path="subscriptions/plans" element={<RoleGuard requireAdmin><SubscriptionPlansPage /></RoleGuard>} />
+                        <Route path="subscriptions/members" element={<RoleGuard requireAdmin><SubscriptionMembers /></RoleGuard>} />
+                        <Route path="subscriptions/receivables" element={<RoleGuard requireAdmin><SubscriptionReceivables /></RoleGuard>} />
+                        <Route path="subscriptions/calendar" element={<RoleGuard requireAdmin><SubscriptionCalendar /></RoleGuard>} />
+                        <Route path="subscriptions/delinquents" element={<RoleGuard requireAdmin><SubscriptionDelinquents /></RoleGuard>} />
+                        <Route path="staff" element={<RoleGuard requireAdmin><Staff /></RoleGuard>} />
                         <Route path="customers" element={<Customers />} />
-                        <Route path="recurring-clients" element={<RecurringClients />} />
-                        <Route path="finance" element={<Finance />} />
+                        <Route path="recurring-clients" element={<RoleGuard requireAdmin><RecurringClients /></RoleGuard>} />
+                        <Route path="finance" element={<RoleGuard requireAdmin><Finance /></RoleGuard>} />
                         <Route path="commissions" element={<CommissionsPage />} />
-                        
-                        <Route path="caixa" element={<CashRegister />} />
-                        <Route path="products" element={<Products />} />
-                        <Route path="reports" element={<Reports />} />
-                        <Route path="alta-performance" element={<HighPerformance />} />
-                        <Route path="settings" element={<Settings />} />
+
+                        <Route path="caixa" element={<RoleGuard requireAdmin><CashRegister /></RoleGuard>} />
+                        <Route path="products" element={<RoleGuard requireAdmin><Products /></RoleGuard>} />
+                        <Route path="reports" element={<RoleGuard requireAdmin><Reports /></RoleGuard>} />
+                        <Route path="alta-performance" element={<RoleGuard requireAdmin><HighPerformance /></RoleGuard>} />
+                        <Route path="settings" element={<RoleGuard requireAdmin><Settings /></RoleGuard>} />
                       </Route>
                     </>
                   )}
