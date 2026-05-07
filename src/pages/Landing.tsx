@@ -30,7 +30,19 @@ const Landing = () => {
 
   useEffect(() => {
     if (pricingInView) {
-      trackViewContent("pricing_section");
+      trackViewContent({
+        content_type: "product",
+        content_name: "Planos modoGESTOR",
+        content_category: "saas_subscription",
+        contents: [
+          { id: "profissional_mensal", quantity: 1, item_price: 59.90 },
+          { id: "profissional_anual",  quantity: 1, item_price: 47.90 },
+          { id: "ilimitado_mensal",    quantity: 1, item_price: 109.90 },
+          { id: "ilimitado_anual",     quantity: 1, item_price: 87.90 },
+        ],
+        currency: "BRL",
+        value: 0,
+      });
     }
   }, [pricingInView]);
 

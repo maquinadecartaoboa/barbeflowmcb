@@ -230,8 +230,40 @@ export function initTracking() {
   recordSession();
 }
 
+/**
+ * Allowlist de paths onde PageView é trackeado.
+ * Tudo fora daqui (booking de tenants em /[slug], dashboard pós-login) NÃO dispara
+ * PageView — evita poluir o Pixel com tráfego que não é lead orgânico.
+ */
+const TRACKABLE_PAGEVIEW_PATHS = [
+  '/',
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/onboarding',
+  '/onboarding-wizard',
+  '/questionnaire',
+  '/termos',
+  '/privacidade',
+  '/reembolso',
+  '/dpa',
+  '/termos-agendamento',
+] as const;
+
+function isTrackablePageViewPath(pathname: string): boolean {
+  return TRACKABLE_PAGEVIEW_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p + '/')
+  );
+}
+
 /** Page view — call on EVERY route change */
 export function trackPageView(pagePath?: string) {
+  if (typeof window !== 'undefined') {
+    const path = pagePath || window.location.pathname;
+    if (!isTrackablePageViewPath(path)) return;
+  }
+
   const eventId = generateEventId();
 
   // Meta Pixel
@@ -248,13 +280,19 @@ export function trackPageView(pagePath?: string) {
 }
 
 /** View pricing/plans page */
-export function trackViewContent(contentName: string, value?: number) {
-  trackEvent('ViewContent', 'view_item', undefined, {
-    content_name: contentName,
-    content_category: 'plans',
-    currency: 'BRL',
-    ...(value && { value }),
-  });
+export function trackViewContent(contentName: string, value?: number): void;
+export function trackViewContent(customData: Record<string, any>): void;
+export function trackViewContent(arg1: string | Record<string, any>, value?: number) {
+  if (typeof arg1 === 'string') {
+    trackEvent('ViewContent', 'view_item', undefined, {
+      content_name: arg1,
+      content_category: 'plans',
+      currency: 'BRL',
+      ...(value && { value }),
+    });
+  } else {
+    trackEvent('ViewContent', 'view_item', undefined, arg1);
+  }
 }
 
 /** Signup completed */
@@ -306,11 +344,25 @@ export function trackPurchase(planName: string, value: number, orderId: string, 
 }
 
 /** Questionnaire / lead form completed */
-export function trackLead(userData?: Record<string, any>) {
+export function trackLead(userData?: Record<string, any>, contentName: string = 'onboarding_questionnaire') {
   trackEvent('Lead', 'generate_lead', userData, {
-    content_name: 'onboarding_questionnaire',
+    content_name: contentName,
     currency: 'BRL',
     value: 0,
+  });
+}
+
+/** Payment info added — Stripe Hosted Checkout: dispare ANTES do redirect */
+export function trackAddPaymentInfo(
+  userData: { email?: string; phone?: string; first_name?: string; last_name?: string; external_id?: string },
+  planContext: { plan_name: string; value: number; billing_interval?: 'month' | 'year' }
+) {
+  trackEvent('AddPaymentInfo', 'add_payment_info', userData, {
+    content_category: 'saas_subscription',
+    content_name: planContext.plan_name,
+    currency: 'BRL',
+    value: planContext.value,
+    ...(planContext.billing_interval && { plan_billing_interval: planContext.billing_interval }),
   });
 }
 

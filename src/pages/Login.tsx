@@ -4,12 +4,12 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Mail, Lock, User, Building2, Phone } from "lucide-react";
 import { getPublicUrl, isDashboardDomain } from "@/lib/hostname";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
 import logoBranca from "@/assets/modoGESTOR_branca.png";
-import { trackCompleteRegistration, getTrackingData } from "@/lib/tracking";
+import { trackCompleteRegistration, getTrackingData, trackLead } from "@/lib/tracking";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,8 +23,18 @@ const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const lastEmailFiredRef = useRef<string | null>(null);
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();
+
+  function handleEmailBlur() {
+    if (!isSignUp) return;
+    const trimmed = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return;
+    if (lastEmailFiredRef.current === trimmed) return;
+    lastEmailFiredRef.current = trimmed;
+    trackLead({ email: trimmed }, 'signup_email');
+  }
 
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, "").slice(0, 11);
@@ -84,10 +94,18 @@ const Login = () => {
                 .eq('user_id', userId)
                 .limit(1);
               if (ut && ut.length > 0) {
+                const tenantId = ut[0].tenant_id;
                 await supabase.rpc('link_visitor_attribution' as any, {
-                  p_tenant_id: ut[0].tenant_id,
+                  p_tenant_id: tenantId,
                   p_visitor_id: tracking.visitor_id,
                 });
+                await supabase
+                  .from('tenants')
+                  .update({
+                    signup_user_agent: navigator.userAgent,
+                    signup_completed_at: new Date().toISOString(),
+                  } as any)
+                  .eq('id', tenantId);
               }
             } catch (e) {
               console.warn('[TRACKING] Attribution linking failed:', e);
@@ -230,6 +248,7 @@ const Login = () => {
                   placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onBlur={handleEmailBlur}
                   required
                   className="h-12 pl-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 placeholder:text-zinc-600 focus:border-primary/50 focus:ring-primary/20"
                 />
