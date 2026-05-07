@@ -20,7 +20,26 @@ export default function AuthWatcher() {
     // Only redirect from login/root pages
     if (!isOnLoginPage && !(isOnRoot && isDashboardDomain())) return;
 
-    const checkOnboarding = async () => {
+    const route = async () => {
+      // Staff users (login próprio, role='staff' em users_tenant) vão direto
+      // pra agenda — não passam por onboarding e não têm Dashboard.
+      try {
+        const { data: roles } = await supabase
+          .from("users_tenant")
+          .select("role")
+          .eq("user_id", user.id);
+        const hasAdminRole = (roles ?? []).some((r) =>
+          ["owner", "admin", "manager"].includes(r.role as string),
+        );
+        const isStaffOnly = (roles ?? []).length > 0 && !hasAdminRole;
+        if (isStaffOnly) {
+          navigate(dashPath("/app/bookings"), { replace: true });
+          return;
+        }
+      } catch {
+        // role lookup failed — fall through to default flow
+      }
+
       try {
         const { data: progress } = await supabase
           .from("onboarding_progress")
@@ -46,7 +65,7 @@ export default function AuthWatcher() {
       navigate(dashPath("/app/dashboard"), { replace: true });
     };
 
-    checkOnboarding();
+    route();
   }, [user, pathname, navigate, loading]);
 
   return null;
