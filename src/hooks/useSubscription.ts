@@ -80,7 +80,7 @@ export const PLANS = {
 };
 
 // Tenants isentos do fluxo de assinatura (slugs)
-const EXEMPT_TENANT_SLUGS = ["barbeariaws", "barberflow", "adrianoalves"];
+export const EXEMPT_TENANT_SLUGS = ["barbeariaws", "barberflow", "adrianoalves"];
 
 export function useSubscription() {
   const { currentTenant } = useTenant();

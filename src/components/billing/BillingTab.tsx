@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTenant } from "@/hooks/useTenant";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useSubscription, PLANS } from "@/hooks/useSubscription";
+import { useSubscription, PLANS, EXEMPT_TENANT_SLUGS } from "@/hooks/useSubscription";
 import { useToast } from "@/hooks/use-toast";
+import { trackAddPaymentInfo } from "@/lib/tracking";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +51,7 @@ const PLAN_ORDER: Record<string, number> = { profissional: 1, ilimitado: 2 };
 export function BillingTab() {
   const { subscription, loading, hasActiveSubscription, isTrialing, isPastDue, needsSubscription, checkSubscription, planName } = useSubscription();
   const { currentTenant } = useTenant();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
@@ -135,6 +138,40 @@ export function BillingTab() {
         body: { plan, billing_interval: billingInterval },
       });
       if (error) throw error;
+
+      // Stripe Hosted Checkout sai do nosso domínio; capturar AddPaymentInfo
+      // (sinal de alta intenção) ANTES do redirect. Falha não bloqueia checkout.
+      // Skip pra tenants exempt — não são leads orgânicos, polui sinal de aquisição.
+      const isExempt = EXEMPT_TENANT_SLUGS.some(
+        (slug) => currentTenant?.slug?.toLowerCase().startsWith(slug)
+      );
+      if (!isExempt) {
+        try {
+          if (currentTenant && (plan === "profissional" || plan === "ilimitado")) {
+            const planConfig = PLANS[plan];
+            const priceCents = planConfig[billingInterval].price_monthly;
+            const ownerName = (user?.user_metadata?.owner_name as string | undefined)?.trim() || currentTenant.name || "";
+            const [firstName, ...lastParts] = ownerName.split(/\s+/);
+            await trackAddPaymentInfo(
+              {
+                email: user?.email || currentTenant.email,
+                phone: currentTenant.phone,
+                first_name: firstName || undefined,
+                last_name: lastParts.join(" ") || undefined,
+                external_id: currentTenant.id,
+              },
+              {
+                plan_name: plan,
+                value: priceCents / 100,
+                billing_interval: billingInterval,
+              }
+            );
+          }
+        } catch (err) {
+          console.warn("[Meta] AddPaymentInfo failed:", err);
+        }
+      }
+
       if (data?.url) window.location.href = data.url;
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });

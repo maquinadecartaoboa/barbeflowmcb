@@ -18,6 +18,7 @@ import LegalSettingsSection from "@/components/settings/LegalSettingsSection";
 import { supabase } from "@/integrations/supabase/client";
 import { WhatsAppMessagesSection } from "@/components/settings/WhatsAppMessagesSection";
 import { NotificationPreferencesSection } from "@/components/settings/NotificationPreferencesSection";
+import { SecuritySection } from "@/components/settings/SecuritySection";
 
 
 import { useToast } from "@/hooks/use-toast";
@@ -602,6 +603,7 @@ export default function Settings() {
             <TabsTrigger value="general">Geral</TabsTrigger>
             <TabsTrigger value="scheduling">Agendamento</TabsTrigger>
             <TabsTrigger value="notifications">Notificações</TabsTrigger>
+            <TabsTrigger value="security">Segurança</TabsTrigger>
             <TabsTrigger value="payments">Pagamentos</TabsTrigger>
             <TabsTrigger value="data">Dados</TabsTrigger>
             <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
@@ -1198,6 +1200,11 @@ export default function Settings() {
         {/* Notifications Settings */}
         <TabsContent value="notifications">
           <NotificationPreferencesSection />
+        </TabsContent>
+
+        {/* Security Settings */}
+        <TabsContent value="security">
+          <SecuritySection />
         </TabsContent>
 
         {/* Payments Settings */}
