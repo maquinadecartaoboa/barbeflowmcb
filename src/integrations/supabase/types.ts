@@ -243,10 +243,94 @@ export type Database = {
           },
         ]
       }
+      booking_status_history: {
+        Row: {
+          booking_id: string
+          changed_at: string
+          changed_by_user_id: string | null
+          from_comanda_status: string | null
+          from_ends_at: string | null
+          from_staff_id: string | null
+          from_starts_at: string | null
+          from_status: string | null
+          id: string
+          metadata: Json | null
+          reason_code: Database["public"]["Enums"]["booking_reason_code"] | null
+          reason_note: string | null
+          tenant_id: string
+          to_comanda_status: string | null
+          to_ends_at: string | null
+          to_staff_id: string | null
+          to_starts_at: string | null
+          to_status: string | null
+        }
+        Insert: {
+          booking_id: string
+          changed_at?: string
+          changed_by_user_id?: string | null
+          from_comanda_status?: string | null
+          from_ends_at?: string | null
+          from_staff_id?: string | null
+          from_starts_at?: string | null
+          from_status?: string | null
+          id?: string
+          metadata?: Json | null
+          reason_code?:
+            | Database["public"]["Enums"]["booking_reason_code"]
+            | null
+          reason_note?: string | null
+          tenant_id: string
+          to_comanda_status?: string | null
+          to_ends_at?: string | null
+          to_staff_id?: string | null
+          to_starts_at?: string | null
+          to_status?: string | null
+        }
+        Update: {
+          booking_id?: string
+          changed_at?: string
+          changed_by_user_id?: string | null
+          from_comanda_status?: string | null
+          from_ends_at?: string | null
+          from_staff_id?: string | null
+          from_starts_at?: string | null
+          from_status?: string | null
+          id?: string
+          metadata?: Json | null
+          reason_code?:
+            | Database["public"]["Enums"]["booking_reason_code"]
+            | null
+          reason_note?: string | null
+          tenant_id?: string
+          to_comanda_status?: string | null
+          to_ends_at?: string | null
+          to_staff_id?: string | null
+          to_starts_at?: string | null
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_booking_received_amount"
+            referencedColumns: ["booking_id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           cancellation_reason: string | null
+          cancelled_at: string | null
           comanda_status: string
+          completed_at: string | null
           created_at: string
           created_via: string | null
           customer_id: string
@@ -255,8 +339,14 @@ export type Database = {
           ends_at: string
           has_conflict: boolean | null
           id: string
+          last_reason_code:
+            | Database["public"]["Enums"]["booking_reason_code"]
+            | null
+          last_reason_note: string | null
+          no_show_at: string | null
           notes: string | null
           reminder_sent: boolean | null
+          rescheduled_at: string | null
           service_id: string
           session_outcome: string | null
           staff_id: string | null
@@ -268,7 +358,9 @@ export type Database = {
         }
         Insert: {
           cancellation_reason?: string | null
+          cancelled_at?: string | null
           comanda_status?: string
+          completed_at?: string | null
           created_at?: string
           created_via?: string | null
           customer_id: string
@@ -277,8 +369,14 @@ export type Database = {
           ends_at: string
           has_conflict?: boolean | null
           id?: string
+          last_reason_code?:
+            | Database["public"]["Enums"]["booking_reason_code"]
+            | null
+          last_reason_note?: string | null
+          no_show_at?: string | null
           notes?: string | null
           reminder_sent?: boolean | null
+          rescheduled_at?: string | null
           service_id: string
           session_outcome?: string | null
           staff_id?: string | null
@@ -290,7 +388,9 @@ export type Database = {
         }
         Update: {
           cancellation_reason?: string | null
+          cancelled_at?: string | null
           comanda_status?: string
+          completed_at?: string | null
           created_at?: string
           created_via?: string | null
           customer_id?: string
@@ -299,8 +399,14 @@ export type Database = {
           ends_at?: string
           has_conflict?: boolean | null
           id?: string
+          last_reason_code?:
+            | Database["public"]["Enums"]["booking_reason_code"]
+            | null
+          last_reason_note?: string | null
+          no_show_at?: string | null
           notes?: string | null
           reminder_sent?: boolean | null
+          rescheduled_at?: string | null
           service_id?: string
           session_outcome?: string | null
           staff_id?: string | null
@@ -1171,12 +1277,16 @@ export type Database = {
           event_name: string
           event_source: string
           event_source_url: string | null
+          event_time: string | null
           external_id: string | null
           fbc: string | null
           fbp: string | null
+          fbtrace_id: string | null
           id: string
           meta_response_body: string | null
           meta_response_status: number | null
+          tenant_id: string | null
+          test_event_code: string | null
           user_email_hash: string | null
           user_phone_hash: string | null
         }
@@ -1190,12 +1300,16 @@ export type Database = {
           event_name: string
           event_source?: string
           event_source_url?: string | null
+          event_time?: string | null
           external_id?: string | null
           fbc?: string | null
           fbp?: string | null
+          fbtrace_id?: string | null
           id?: string
           meta_response_body?: string | null
           meta_response_status?: number | null
+          tenant_id?: string | null
+          test_event_code?: string | null
           user_email_hash?: string | null
           user_phone_hash?: string | null
         }
@@ -1209,16 +1323,28 @@ export type Database = {
           event_name?: string
           event_source?: string
           event_source_url?: string | null
+          event_time?: string | null
           external_id?: string | null
           fbc?: string | null
           fbp?: string | null
+          fbtrace_id?: string | null
           id?: string
           meta_response_body?: string | null
           meta_response_status?: number | null
+          tenant_id?: string | null
+          test_event_code?: string | null
           user_email_hash?: string | null
           user_phone_hash?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "meta_events_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_log: {
         Row: {
@@ -2094,6 +2220,7 @@ export type Database = {
           product_commission_percent: number | null
           tenant_id: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           active?: boolean | null
@@ -2108,6 +2235,7 @@ export type Database = {
           product_commission_percent?: number | null
           tenant_id: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           active?: boolean | null
@@ -2122,6 +2250,7 @@ export type Database = {
           product_commission_percent?: number | null
           tenant_id?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -2967,8 +3096,12 @@ export type Database = {
           meta_fbc: string | null
           meta_fbp: string | null
           name: string
+          panel_pin_hash: string | null
           phone: string | null
           settings: Json | null
+          signup_completed_at: string | null
+          signup_ip: string | null
+          signup_user_agent: string | null
           slug: string
           subscription_status: string | null
           updated_at: string
@@ -2987,8 +3120,12 @@ export type Database = {
           meta_fbc?: string | null
           meta_fbp?: string | null
           name: string
+          panel_pin_hash?: string | null
           phone?: string | null
           settings?: Json | null
+          signup_completed_at?: string | null
+          signup_ip?: string | null
+          signup_user_agent?: string | null
           slug: string
           subscription_status?: string | null
           updated_at?: string
@@ -3007,8 +3144,12 @@ export type Database = {
           meta_fbc?: string | null
           meta_fbp?: string | null
           name?: string
+          panel_pin_hash?: string | null
           phone?: string | null
           settings?: Json | null
+          signup_completed_at?: string | null
+          signup_ip?: string | null
+          signup_user_agent?: string | null
           slug?: string
           subscription_status?: string | null
           updated_at?: string
@@ -3300,6 +3441,17 @@ export type Database = {
         }
         Relationships: []
       }
+      v_booking_operations_summary: {
+        Row: {
+          bookings_distintos: number | null
+          month: string | null
+          operation: string | null
+          qtd: number | null
+          reason_code: Database["public"]["Enums"]["booking_reason_code"] | null
+          tenant_id: string | null
+        }
+        Relationships: []
+      }
       v_booking_received_amount: {
         Row: {
           booking_id: string | null
@@ -3427,6 +3579,23 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_meta_funnel_metrics: {
+        Row: {
+          day: string | null
+          errors: number | null
+          event_name: string | null
+          success: number | null
+          total_events: number | null
+          unique_events: number | null
+          unique_tenants: number | null
+          with_email: number | null
+          with_external_id: number | null
+          with_fbc: number | null
+          with_fbp: number | null
+          with_phone: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_get_attribution_report: { Args: never; Returns: Json }
@@ -3457,14 +3626,25 @@ export type Database = {
         Args: { p_tenant_id: string; p_updates: Json }
         Returns: Json
       }
-      cancel_booking_with_refund: {
-        Args: {
-          p_booking_id: string
-          p_cancellation_min_hours?: number
-          p_tenant_id: string
-        }
-        Returns: Json
-      }
+      cancel_booking_with_refund:
+        | {
+            Args: {
+              p_booking_id: string
+              p_cancellation_min_hours?: number
+              p_tenant_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_booking_id: string
+              p_cancellation_min_hours?: number
+              p_reason_code?: string
+              p_reason_note?: string
+              p_tenant_id: string
+            }
+            Returns: Json
+          }
       check_booking_rate_limit: {
         Args: { customer_phone: string; tenant_uuid: string }
         Returns: boolean
@@ -3481,6 +3661,7 @@ export type Database = {
         }
         Returns: Json
       }
+      clear_tenant_pin: { Args: { p_tenant_id: string }; Returns: undefined }
       close_comanda_with_commissions:
         | {
             Args: {
@@ -3503,9 +3684,14 @@ export type Database = {
       conclude_unified_bookings: {
         Args: {
           p_booking_ids: string[]
+          p_commission_basis?: string
           p_discount_cents?: number
           p_notes?: string
           p_payment_method: string
+          p_reason_code?: string
+          p_reason_note?: string
+          p_tip_cents?: number
+          p_tip_payment_method?: string
         }
         Returns: Json
       }
@@ -3576,9 +3762,26 @@ export type Database = {
             }
             Returns: string
           }
+      current_user_is_staff_only: {
+        Args: { p_tenant_id: string }
+        Returns: boolean
+      }
+      current_user_staff_id: { Args: { p_tenant_id: string }; Returns: string }
       generate_subscription_commission_tokens: {
         Args: { p_booking_id: string; p_tenant_id: string }
         Returns: Json
+      }
+      get_booking_timeline: {
+        Args: { p_booking_id: string }
+        Returns: {
+          change_type: string
+          changed_at: string
+          changed_by_user_id: string
+          from_value: string
+          reason_code: Database["public"]["Enums"]["booking_reason_code"]
+          reason_note: string
+          to_value: string
+        }[]
       }
       get_booking_total: { Args: { p_booking_id: string }; Returns: Json }
       get_customer_covered_services: {
@@ -3690,14 +3893,25 @@ export type Database = {
         Args: { p_tenant_id: string; p_visitor_id: string }
         Returns: Json
       }
-      mark_booking_no_show: {
-        Args: {
-          p_booking_id: string
-          p_forfeit_override?: number
-          p_tenant_id: string
-        }
-        Returns: Json
-      }
+      mark_booking_no_show:
+        | {
+            Args: {
+              p_booking_id: string
+              p_forfeit_override?: number
+              p_tenant_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_booking_id: string
+              p_forfeit_override?: number
+              p_reason_code?: string
+              p_reason_note?: string
+              p_tenant_id: string
+            }
+            Returns: Json
+          }
       merge_customers: {
         Args: { p_keep_id: string; p_remove_id: string; p_tenant_id: string }
         Returns: Json
@@ -3767,6 +3981,20 @@ export type Database = {
         Args: { p_booking_id: string; p_tenant_id: string }
         Returns: Json
       }
+      reschedule_booking: {
+        Args: {
+          p_booking_id: string
+          p_new_ends_at: string
+          p_new_service_id?: string
+          p_new_staff_id?: string
+          p_new_starts_at: string
+          p_reason_code?: string
+          p_reason_note?: string
+          p_skip_conflict_check?: boolean
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       save_onboarding_questionnaire: {
         Args: {
           p_biggest_challenge: string
@@ -3811,6 +4039,10 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: undefined
       }
+      set_tenant_pin: {
+        Args: { p_new_pin: string; p_tenant_id: string }
+        Returns: undefined
+      }
       settle_all_subscription_commissions: {
         Args: {
           p_cash_session_id?: string
@@ -3833,6 +4065,7 @@ export type Database = {
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       skip_onboarding: { Args: never; Returns: Json }
+      tenant_has_pin: { Args: { p_tenant_id: string }; Returns: boolean }
       update_onboarding_step: {
         Args: { p_step: string; p_value?: boolean }
         Returns: Json
@@ -3841,9 +4074,29 @@ export type Database = {
         Args: { tenant_uuid: string }
         Returns: boolean
       }
+      verify_tenant_pin: {
+        Args: { p_pin: string; p_tenant_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      booking_reason_code:
+        | "cancel_client_requested"
+        | "cancel_client_no_response"
+        | "cancel_barber_unavailable"
+        | "cancel_scheduling_error"
+        | "cancel_health_issue"
+        | "cancel_weather_emergency"
+        | "cancel_other"
+        | "no_show_no_contact"
+        | "no_show_late_cancel"
+        | "no_show_client_unreachable"
+        | "no_show_other"
+        | "reschedule_client_requested"
+        | "reschedule_barber_requested"
+        | "reschedule_conflict_resolution"
+        | "reschedule_emergency"
+        | "reschedule_other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3970,6 +4223,25 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      booking_reason_code: [
+        "cancel_client_requested",
+        "cancel_client_no_response",
+        "cancel_barber_unavailable",
+        "cancel_scheduling_error",
+        "cancel_health_issue",
+        "cancel_weather_emergency",
+        "cancel_other",
+        "no_show_no_contact",
+        "no_show_late_cancel",
+        "no_show_client_unreachable",
+        "no_show_other",
+        "reschedule_client_requested",
+        "reschedule_barber_requested",
+        "reschedule_conflict_resolution",
+        "reschedule_emergency",
+        "reschedule_other",
+      ],
+    },
   },
 } as const

@@ -33,17 +33,20 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  User, 
+import {
+  Plus,
+  Edit,
+  Trash2,
+  User,
   Palette,
   Scissors,
   Settings,
   Clock,
   Camera,
-  Loader2
+  Loader2,
+  Mail,
+  ShieldCheck,
+  ShieldOff,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -94,6 +97,10 @@ export default function Staff() {
   const [extraConfirmOpen, setExtraConfirmOpen] = useState(false);
   const [extraCount, setExtraCount] = useState(0);
   const [updatingSubscription, setUpdatingSubscription] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteStaff, setInviteStaff] = useState<any>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
 
   const form = useForm<StaffFormData>({
     resolver: zodResolver(staffSchema),
@@ -447,6 +454,50 @@ export default function Staff() {
     }
   };
 
+  const openInvite = (staffMember: any) => {
+    setInviteStaff(staffMember);
+    setInviteEmail("");
+    setInviteOpen(true);
+  };
+
+  const handleSendInvite = async () => {
+    if (!inviteStaff) return;
+    const email = inviteEmail.trim();
+    if (!email) {
+      toast({ title: "E-mail obrigatório", variant: "destructive" });
+      return;
+    }
+    setInviteLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("invite-staff-user", {
+        body: { staff_id: inviteStaff.id, email },
+      });
+      if (error) {
+        // Edge function returns non-2xx with { error: '...' }; supabase-js bundles that into error.message or context
+        const msg = (data as any)?.error || error.message || "Falha ao enviar convite";
+        throw new Error(msg);
+      }
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      toast({
+        title: "Convite enviado",
+        description: `${inviteStaff.name} vai receber um link em ${email}.`,
+      });
+      setInviteOpen(false);
+      setInviteStaff(null);
+      setInviteEmail("");
+      loadData();
+    } catch (err: any) {
+      toast({
+        title: "Erro ao convidar",
+        description: err?.message ?? "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
   const getStaffServices = (staffMember: any) => {
     if (!staffMember.staff_services) return [];
     
@@ -528,11 +579,20 @@ export default function Staff() {
               <CardContent>
                 <div className="space-y-3">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-foreground">{staffMember.name}</h3>
                       {staffMember.is_owner && (
                         <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-400 border-amber-500/30">
                           Chefe
+                        </Badge>
+                      )}
+                      {staffMember.user_id ? (
+                        <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/30 inline-flex items-center gap-1">
+                          <ShieldCheck className="h-3 w-3" /> Tem login
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border inline-flex items-center gap-1">
+                          <ShieldOff className="h-3 w-3" /> Sem login
                         </Badge>
                       )}
                     </div>
@@ -609,6 +669,16 @@ export default function Staff() {
                     </div>
                     
                     <div className="flex items-center space-x-1">
+                      {!staffMember.user_id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openInvite(staffMember)}
+                          title="Convidar para o sistema"
+                        >
+                          <Mail className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -885,6 +955,52 @@ export default function Staff() {
           staffName={selectedStaffForSchedule.name}
         />
       )}
+
+      {/* Invite Staff User Dialog */}
+      <Dialog open={inviteOpen} onOpenChange={(open) => { if (!inviteLoading) setInviteOpen(open); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Convidar para o sistema</DialogTitle>
+            <DialogDescription>
+              {inviteStaff?.name
+                ? `Convide ${inviteStaff.name} para ter login próprio.`
+                : "Convide o profissional para ter login próprio."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="invite-email">E-mail do profissional</Label>
+              <Input
+                id="invite-email"
+                type="email"
+                autoComplete="email"
+                placeholder="ex: maria@email.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                disabled={inviteLoading}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              O profissional vai receber um link por e-mail para criar a senha
+              e acessar o sistema. Ele verá apenas a própria agenda e comissões.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setInviteOpen(false)}
+              disabled={inviteLoading}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleSendInvite} disabled={inviteLoading || !inviteEmail.trim()}>
+              {inviteLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Enviar convite
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
