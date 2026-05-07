@@ -28,6 +28,7 @@ import { PeriodComparisonChart } from "@/components/finance/PeriodComparisonChar
 import { BookingStatusChart } from "@/components/finance/BookingStatusChart";
 import { useCashRevenue } from "@/hooks/useCashRevenue";
 import { BusinessExpensesSection } from "@/components/finance/BusinessExpensesSection";
+import { ProtectedPageGuard } from "@/components/security/ProtectedPageGuard";
 
 const COLORS = ["#10B981", "#3B82F6", "#8B5CF6", "#F59E0B", "#EF4444"];
 
@@ -135,7 +136,7 @@ function ChartCard({ icon: Icon, iconColor, iconBg, title, description, children
   );
 }
 
-export default function Finance() {
+function FinanceContent() {
   usePageTitle("Financeiro");
   const { user } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
@@ -636,5 +637,13 @@ export default function Finance() {
         </ChartCard>
       </Section>
     </motion.div>
+  );
+}
+
+export default function Finance() {
+  return (
+    <ProtectedPageGuard pageSlug="financeiro">
+      <FinanceContent />
+    </ProtectedPageGuard>
   );
 }

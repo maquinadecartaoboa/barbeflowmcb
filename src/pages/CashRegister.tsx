@@ -29,6 +29,7 @@ import { format, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { ProtectedPageGuard } from "@/components/security/ProtectedPageGuard";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "Dinheiro", icon: Banknote, color: "text-emerald-400" },
@@ -113,7 +114,7 @@ type ProductItem = {
   photo_url: string | null;
 };
 
-export default function CashRegister() {
+function CashRegisterContent() {
   usePageTitle("Caixa");
   const { currentTenant, loading: tenantLoading } = useTenant();
   const { user } = useAuth();
@@ -1343,5 +1344,13 @@ export default function CashRegister() {
         </SheetContent>
       </Sheet>
     </div>
+  );
+}
+
+export default function CashRegister() {
+  return (
+    <ProtectedPageGuard pageSlug="financeiro">
+      <CashRegisterContent />
+    </ProtectedPageGuard>
   );
 }
