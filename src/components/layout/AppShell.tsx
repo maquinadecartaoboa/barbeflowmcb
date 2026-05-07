@@ -389,6 +389,22 @@ function AppSidebar() {
               <User className="h-4 w-4 mr-2" />
               Perfil
             </DropdownMenuItem>
+            {!isStaff && (
+              <>
+                <DropdownMenuItem asChild>
+                  <NavLink to={dashPath("/app/staff")} className="flex items-center cursor-pointer">
+                    <Users className="h-4 w-4 mr-2" />
+                    Gestão de Usuários
+                  </NavLink>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <NavLink to={dashPath("/app/settings?tab=security")} className="flex items-center cursor-pointer">
+                    <Shield className="h-4 w-4 mr-2" />
+                    Segurança
+                  </NavLink>
+                </DropdownMenuItem>
+              </>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut} className="focus:bg-destructive/10 focus:text-destructive">
               <LogOut className="h-4 w-4 mr-2" />
@@ -593,6 +609,7 @@ export default function AppShell() {
   const { openBookingModal } = useBookingModal();
   const { needsSubscription, loading: subLoading } = useSubscription();
   const location = useLocation();
+  const { isStaff } = useUserRole();
 
   // Redirect to onboarding if no subscription (except billing page)
   const isBillingPage = location.pathname.includes("/settings") && location.search.includes("tab=billing");
@@ -650,6 +667,22 @@ export default function AppShell() {
                       <User className="h-4 w-4 mr-2" />
                       Perfil
                     </DropdownMenuItem>
+                    {!isStaff && (
+                      <>
+                        <DropdownMenuItem asChild>
+                          <NavLink to={dashPath("/app/staff")} className="flex items-center cursor-pointer">
+                            <Users className="h-4 w-4 mr-2" />
+                            Gestão de Usuários
+                          </NavLink>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <NavLink to={dashPath("/app/settings?tab=security")} className="flex items-center cursor-pointer">
+                            <Shield className="h-4 w-4 mr-2" />
+                            Segurança
+                          </NavLink>
+                        </DropdownMenuItem>
+                      </>
+                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={signOut} className="focus:bg-destructive/10 focus:text-destructive">
                       <LogOut className="h-4 w-4 mr-2" />
