@@ -74,14 +74,16 @@ serve(async (req) => {
       throw new Error("SUBSCRIPTION_NOT_ACTIVE");
     }
 
-    // Plano Ilimitado não cobra por profissionais adicionais
+    // Plano Ilimitado não cobra por profissionais adicionais.
+    // Forçamos 0 no banco em vez de gravar o input do client — o número não tem
+    // significado financeiro neste plano e a UI lia esse campo como cobrança real.
     if (subData.plan_name === "ilimitado") {
-      logStep("Ilimitado plan - skipping Stripe quantity update");
+      logStep("Ilimitado plan - forcing additional_professionals=0");
       await supabaseAdmin
         .from("stripe_subscriptions")
-        .update({ additional_professionals: additional_count, updated_at: new Date().toISOString() })
+        .update({ additional_professionals: 0, updated_at: new Date().toISOString() })
         .eq("tenant_id", tenantId);
-      return new Response(JSON.stringify({ success: true, additional_count, unlimited: true }), {
+      return new Response(JSON.stringify({ success: true, additional_count: 0, unlimited: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

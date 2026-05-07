@@ -426,8 +426,8 @@ export default function Staff() {
         description: `Profissional ${willBeActive ? 'ativado' : 'desativado'} com sucesso.`,
       });
 
-      // If deactivating, reduce subscription quantity
-      if (!willBeActive && hasActiveSubscription) {
+      // If deactivating, reduce subscription quantity (não aplica ao plano ilimitado)
+      if (!willBeActive && hasActiveSubscription && !features.unlimitedStaff) {
         const futureCount = getActiveStaffCount(staffMember.id, false);
         const extras = Math.max(0, futureCount - 1);
         try {
