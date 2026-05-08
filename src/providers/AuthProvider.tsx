@@ -3,12 +3,16 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+interface AuthOptions {
+  captchaToken?: string;
+}
+
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, metadata?: Record<string, string>) => Promise<{ error: any; data: any }>;
+  signIn: (email: string, password: string, options?: AuthOptions) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, metadata?: Record<string, string>, options?: AuthOptions) => Promise<{ error: any; data: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -61,8 +65,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []); // No dependencies — runs once
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const signIn = useCallback(async (email: string, password: string, options?: AuthOptions) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: { captchaToken: options?.captchaToken },
+    });
     if (error) {
       toast({
         title: "Erro no login",
@@ -74,12 +82,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null };
   }, [toast]);
 
-  const signUp = useCallback(async (email: string, password: string, metadata?: Record<string, string>) => {
+  const signUp = useCallback(async (email: string, password: string, metadata?: Record<string, string>, options?: AuthOptions) => {
     const redirectUrl = `${window.location.origin}/`;
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: redirectUrl, data: metadata },
+      options: { emailRedirectTo: redirectUrl, data: metadata, captchaToken: options?.captchaToken },
     });
     if (error) {
       toast({

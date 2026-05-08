@@ -9,30 +9,53 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import logoBranca from "@/assets/modoGESTOR_branca.png";
 import { isDashboardDomain } from "@/lib/hostname";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
+import { useTurnstile } from "@/hooks/useTurnstile";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const { toast } = useToast();
+  const turnstile = useTurnstile();
 
   const dashPrefix = isDashboardDomain() ? '' : '/app';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!turnstile.token) {
+      toast({
+        title: "Verificação de segurança",
+        description: "Aguarde a verificação de segurança antes de continuar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}${dashPrefix}/reset-password`,
+        captchaToken: turnstile.token,
       });
 
       if (error) {
-        toast({
-          title: "Erro",
-          description: error.message,
-          variant: "destructive",
-        });
+        if (error.message?.toLowerCase().includes('captcha')) {
+          turnstile.reset();
+          toast({
+            title: "Verificação de segurança falhou",
+            description: "Tente novamente.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Erro",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
       } else {
         setSent(true);
         toast({
@@ -134,10 +157,12 @@ const ForgotPassword = () => {
                   </div>
                 </div>
 
+                <TurnstileWidget {...turnstile.widgetProps} mode="non-interactive" />
+
                 <Button
                   type="submit"
                   size="lg"
-                  disabled={isLoading}
+                  disabled={isLoading || !turnstile.token}
                   className="w-full h-12 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold"
                 >
                   {isLoading ? "Enviando..." : "Enviar link de recuperação"}
