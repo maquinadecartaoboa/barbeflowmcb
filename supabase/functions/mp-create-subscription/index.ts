@@ -77,15 +77,21 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // --- Find or create customer ---
+    // --- Find or create customer (filter by phone in DB to avoid 1000-row limit) ---
     const canonical = canonicalPhone(customer_phone);
+    const phoneVariants = [canonical];
+    if (canonical.length === 11) phoneVariants.push(canonical.slice(0, 2) + canonical.slice(3));
+    if (canonical.length === 10) phoneVariants.push(canonical.slice(0, 2) + '9' + canonical.slice(2));
     const { data: existingCustomers } = await supabase
       .from('customers')
       .select('id, phone')
-      .eq('tenant_id', tenant_id);
+      .eq('tenant_id', tenant_id)
+      .or(phoneVariants.map((p) => `phone.eq.${p}`).join(','))
+      .limit(5);
 
     let customerId: string;
-    const matched = (existingCustomers || []).find((c: any) => canonicalPhone(c.phone) === canonical);
+    const matched = (existingCustomers || []).find((c: any) => canonicalPhone(c.phone) === canonical)
+      || (existingCustomers && existingCustomers[0]);
 
     // Build customer update/insert data with CPF and address
     const customerData: any = {
@@ -138,29 +144,57 @@ serve(async (req) => {
       });
     }
 
-    // --- Check for existing active subscription ---
+    // --- Check for existing subscription ---
     const { data: existingSubs } = await supabase
       .from('customer_subscriptions')
-      .select('id, status')
+      .select('id, status, mp_preapproval_id, created_at')
       .eq('customer_id', customerId)
       .eq('tenant_id', tenant_id)
-      .in('status', ['active', 'authorized', 'pending']);
+      .in('status', ['active', 'authorized', 'pending'])
+      .order('created_at', { ascending: false });
 
+    // Block only if there is an active/authorized subscription, OR a recent pending that already
+    // reached MP (has mp_preapproval_id and is < 1h old). Otherwise reuse / mark stale as failed.
+    let subscription: any = null;
     if (existingSubs && existingSubs.length > 0) {
-      console.warn('Duplicate subscription blocked for customer:', customerId, 'existing:', existingSubs.map(s => s.id));
-      return new Response(JSON.stringify({ 
-        error: 'Cliente já possui uma assinatura ativa ou pendente. Cancele a existente antes de criar uma nova.' 
-      }), {
-        status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      const blocking = existingSubs.find((s: any) => {
+        if (s.status === 'active' || s.status === 'authorized') return true;
+        if (s.status === 'pending' && s.mp_preapproval_id) {
+          const ageMs = Date.now() - new Date(s.created_at).getTime();
+          return ageMs < 60 * 60 * 1000; // < 1 hour
+        }
+        return false;
       });
+
+      if (blocking) {
+        console.warn('Duplicate subscription blocked:', customerId, 'sub:', blocking.id, 'status:', blocking.status);
+        return new Response(JSON.stringify({
+          error: 'Você já possui uma assinatura ativa ou pendente neste estabelecimento. Acesse "Minhas Assinaturas" para gerenciar.',
+        }), {
+          status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Mark stale pending subs as failed and reuse the most recent one (clean retry)
+      const stalePendingIds = existingSubs
+        .filter((s: any) => s.status === 'pending')
+        .map((s: any) => s.id);
+      if (stalePendingIds.length > 0) {
+        await supabase
+          .from('customer_subscriptions')
+          .update({ status: 'failed', updated_at: new Date().toISOString() })
+          .in('id', stalePendingIds);
+        console.log('Marked stale pending subs as failed:', stalePendingIds);
+      }
     }
 
     // --- Create pending subscription ---
-    const { data: subscription, error: subErr } = await supabase
+    const { data: insertedSub, error: subErr } = await supabase
       .from('customer_subscriptions')
       .insert({ customer_id: customerId, plan_id, tenant_id, status: 'pending' })
       .select()
       .single();
+    subscription = insertedSub;
 
     if (subErr) {
       console.error('Error creating subscription:', subErr);
@@ -289,9 +323,22 @@ serve(async (req) => {
       });
     }
 
+    const markSubFailed = async (reason: string) => {
+      try {
+        await supabase
+          .from('customer_subscriptions')
+          .update({ status: 'failed', updated_at: new Date().toISOString() })
+          .eq('id', subscription.id);
+      } catch (e) {
+        console.error('Failed to mark sub as failed:', e);
+      }
+      console.error('Subscription marked as failed:', subscription.id, reason);
+    };
+
     if (mpResponse.status === 401) {
       console.error('MP 401:', JSON.stringify(mpData));
-      return new Response(JSON.stringify({ error: 'Token do Mercado Pago expirado.' }), {
+      await markSubFailed('mp_token_expired');
+      return new Response(JSON.stringify({ error: 'Token do Mercado Pago expirado. O estabelecimento precisa reconectar a conta.' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -301,6 +348,7 @@ serve(async (req) => {
       const causeMessage = Array.isArray(mpData?.cause) && mpData.cause[0]?.description
         ? String(mpData.cause[0].description) : undefined;
       const fallbackMessage = mpData?.message || mpData?.error || 'Falha ao criar assinatura no Mercado Pago';
+      await markSubFailed(causeMessage || fallbackMessage);
       return new Response(JSON.stringify({ error: causeMessage || fallbackMessage, details: mpData }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
