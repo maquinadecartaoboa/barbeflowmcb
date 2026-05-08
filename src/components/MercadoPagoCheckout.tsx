@@ -34,19 +34,30 @@ interface MercadoPagoCheckoutProps {
   originalAmountCents?: number;
 }
 
-const getFunctionErrorMessage = (error: any): string => {
+const getFunctionErrorMessage = async (error: any): Promise<string> => {
   if (!error) return 'Erro ao processar pagamento';
-  const context = error.context;
-  if (typeof context === 'string' && context.trim()) {
+  const ctx = error.context;
+
+  // @supabase/functions-js 2.95+: error.context é Response
+  if (ctx instanceof Response) {
     try {
-      const parsed = JSON.parse(context);
-      if (parsed?.error) return String(parsed.error);
-      if (parsed?.message) return String(parsed.message);
-      if (parsed?.details?.message) return String(parsed.details.message);
+      const body = await ctx.clone().json();
+      return body?.error || body?.message || body?.details?.message || error.message;
     } catch {
-      return context;
+      return error.message;
     }
   }
+
+  // Compat: alguns paths podem entregar string JSON
+  if (typeof ctx === 'string' && ctx.trim()) {
+    try {
+      const parsed = JSON.parse(ctx);
+      return parsed?.error || parsed?.message || parsed?.details?.message || error.message;
+    } catch {
+      return ctx;
+    }
+  }
+
   return error.message || 'Erro ao processar pagamento';
 };
 
@@ -325,7 +336,7 @@ export const MercadoPagoCheckout = ({
         }
       );
       if (!isMountedRef.current) return;
-      if (error) throw new Error(getFunctionErrorMessage(error));
+      if (error) throw new Error(await getFunctionErrorMessage(error));
       console.log('Payment result:', data);
 
       // Parse structured error/pending from backend
@@ -430,7 +441,7 @@ export const MercadoPagoCheckout = ({
         }
       );
       if (!isMountedRef.current) return;
-      if (error) throw new Error(getFunctionErrorMessage(error));
+      if (error) throw new Error(await getFunctionErrorMessage(error));
       console.log('PIX result:', data);
       if (data.pix) {
         setPixData(data.pix);

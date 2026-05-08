@@ -37,19 +37,30 @@ export interface SubscriptionCardPaymentProps {
 
 type Status = 'loading' | 'card-form' | 'ready' | 'processing' | 'success' | 'error';
 
-const getFunctionErrorMessage = (error: any): string => {
+const getFunctionErrorMessage = async (error: any): Promise<string> => {
   if (!error) return 'Erro ao processar assinatura';
-  const context = error.context;
-  if (typeof context === 'string' && context.trim()) {
+  const ctx = error.context;
+
+  // @supabase/functions-js 2.95+: error.context é Response
+  if (ctx instanceof Response) {
     try {
-      const parsed = JSON.parse(context);
-      if (parsed?.error) return String(parsed.error);
-      if (parsed?.message) return String(parsed.message);
-      if (parsed?.details?.message) return String(parsed.details.message);
+      const body = await ctx.clone().json();
+      return body?.error || body?.message || body?.details?.message || error.message;
     } catch {
-      return context;
+      return error.message;
     }
   }
+
+  // Compat: alguns paths podem entregar string JSON
+  if (typeof ctx === 'string' && ctx.trim()) {
+    try {
+      const parsed = JSON.parse(ctx);
+      return parsed?.error || parsed?.message || parsed?.details?.message || error.message;
+    } catch {
+      return ctx;
+    }
+  }
+
   return error.message || 'Erro ao processar assinatura';
 };
 
@@ -86,6 +97,8 @@ export function SubscriptionCardPayment({
   // Ref to always have latest turnstile token in Brick callback
   const turnstileTokenRef = useRef<string | null>(null);
   turnstileTokenRef.current = turnstileToken;
+  // Guard against double-fire of Brick onSubmit (React Strict Mode, fast double-click)
+  const inFlightRef = useRef(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -190,14 +203,20 @@ export function SubscriptionCardPayment({
           },
           onSubmit: async (formData: any) => {
             if (!isMountedRef.current) return;
-            // Use ref to get latest token (avoids stale closure)
-            const currentToken = turnstileTokenRef.current;
-            if (!currentToken) {
-              setErrorMessage('Aguarde a verificação de segurança antes de assinar.');
-              setTurnstileKey(k => k + 1);
-              return;
+            if (inFlightRef.current) return;
+            inFlightRef.current = true;
+            try {
+              // Use ref to get latest token (avoids stale closure)
+              const currentToken = turnstileTokenRef.current;
+              if (!currentToken) {
+                setErrorMessage('Aguarde a verificação de segurança antes de assinar.');
+                setTurnstileKey(k => k + 1);
+                return;
+              }
+              await handleCardSubmitWithToken(formData, currentToken);
+            } finally {
+              inFlightRef.current = false;
             }
-            await handleCardSubmitWithToken(formData, currentToken);
           },
           onError: (error: any) => {
             if (!isMountedRef.current) return;
@@ -244,7 +263,7 @@ export function SubscriptionCardPayment({
         },
       });
       if (!isMountedRef.current) return;
-      if (error) throw new Error(getFunctionErrorMessage(error));
+      if (error) throw new Error(await getFunctionErrorMessage(error));
 
       // Check structured error from backend
       const parsed = parsePaymentResult(data);

@@ -339,7 +339,7 @@ export function SubscriptionPurchaseFlow({ tenant, plans }: SubscriptionPurchase
                     planName={selectedPlan.name}
                     priceCents={selectedPlan.price_cents}
                     customerName={name.trim()}
-                    customerPhone={phone}
+                    customerPhone={phone.replace(/\D/g, '')}
                     customerEmail={email.trim()}
                     customerCpf={cpf.replace(/\D/g, '')}
                     addressCep={billingAddress.zip_code.replace(/\D/g, '')}
