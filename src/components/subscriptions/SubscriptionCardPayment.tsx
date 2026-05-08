@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, AlertCircle, Check, ChevronLeft, Shield, Lock, CreditCard } from 'lucide-react';
 import { TurnstileWidget } from '@/components/TurnstileWidget';
 import { PaymentErrorAlert, parsePaymentResult, type PaymentError } from '@/components/PaymentErrorAlert';
+import { useTurnstile } from '@/hooks/useTurnstile';
 
 declare global {
   interface Window {
@@ -89,14 +90,10 @@ export function SubscriptionCardPayment({
   const [status, setStatus] = useState<Status>('loading');
   const [errorMessage, setErrorMessage] = useState('');
   const [paymentError, setPaymentError] = useState<PaymentError | null>(null);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileKey, setTurnstileKey] = useState(0);
+  const turnstile = useTurnstile();
   const brickControllerRef = useRef<any>(null);
   const publicKeyRef = useRef<string | null>(null);
   const isMountedRef = useRef(true);
-  // Ref to always have latest turnstile token in Brick callback
-  const turnstileTokenRef = useRef<string | null>(null);
-  turnstileTokenRef.current = turnstileToken;
   // Guard against double-fire of Brick onSubmit (React Strict Mode, fast double-click)
   const inFlightRef = useRef(false);
 
@@ -207,10 +204,10 @@ export function SubscriptionCardPayment({
             inFlightRef.current = true;
             try {
               // Use ref to get latest token (avoids stale closure)
-              const currentToken = turnstileTokenRef.current;
+              const currentToken = turnstile.tokenRef.current;
               if (!currentToken) {
                 setErrorMessage('Aguarde a verificação de segurança antes de assinar.');
-                setTurnstileKey(k => k + 1);
+                turnstile.reset();
                 return;
               }
               await handleCardSubmitWithToken(formData, currentToken);
@@ -269,8 +266,7 @@ export function SubscriptionCardPayment({
       const parsed = parsePaymentResult(data);
       if (parsed.error) {
         setPaymentError(parsed.error);
-        setTurnstileToken(null);
-        setTurnstileKey(k => k + 1);
+        turnstile.reset();
         setStatus('ready');
         return;
       }
@@ -289,8 +285,7 @@ export function SubscriptionCardPayment({
     } catch (err: any) {
       if (!isMountedRef.current) return;
       console.error('Subscription payment error:', err);
-      setTurnstileToken(null);
-      setTurnstileKey(k => k + 1);
+      turnstile.reset();
       setPaymentError({
         message: err.message || 'Erro ao processar assinatura.',
         action: 'Verifique os dados e tente novamente.',
@@ -303,8 +298,7 @@ export function SubscriptionCardPayment({
   const retry = () => {
     setErrorMessage('');
     setPaymentError(null);
-    setTurnstileToken(null);
-    setTurnstileKey(k => k + 1);
+    turnstile.reset();
     if (brickControllerRef.current) {
       try { brickControllerRef.current.unmount(); } catch {}
     }
@@ -412,21 +406,7 @@ export function SubscriptionCardPayment({
       />
 
       {/* Turnstile - key for reset */}
-      <TurnstileWidget
-        key={turnstileKey}
-        onVerify={(token) => {
-          console.log('[TURNSTILE] Subscription token received');
-          setTurnstileToken(token);
-        }}
-        onExpire={() => {
-          console.log('[TURNSTILE] Subscription token expired');
-          setTurnstileToken(null);
-        }}
-        onError={() => {
-          console.log('[TURNSTILE] Subscription error');
-          setTurnstileToken(null);
-        }}
-      />
+      <TurnstileWidget key={turnstile.resetKey} {...turnstile.widgetProps} />
 
       {/* Security footer */}
       <div className="flex items-center justify-center gap-4 pt-1">

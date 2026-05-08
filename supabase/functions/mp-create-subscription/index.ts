@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getValidMpToken } from "../_shared/mp-token.ts";
+import { verifyTurnstile } from "../_shared/turnstile.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -54,23 +55,10 @@ serve(async (req) => {
       });
     }
 
-    // Validate Turnstile if card payment
-    if (card_token_id && cf_turnstile_token) {
-      const turnstileSecret = Deno.env.get('CLOUDFLARE_TURNSTILE_SECRET');
-      if (turnstileSecret) {
-        const tsRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: `secret=${turnstileSecret}&response=${cf_turnstile_token}`,
-        });
-        const tsData = await tsRes.json();
-        if (!tsData.success) {
-          console.error('Turnstile verification failed:', tsData);
-          return new Response(JSON.stringify({ error: 'Verificação de segurança falhou. Tente novamente.' }), {
-            status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-      }
+    // Validate Turnstile if card payment (soft: passes if token or secret missing)
+    if (card_token_id) {
+      const ts = await verifyTurnstile(cf_turnstile_token, corsHeaders);
+      if (!ts.ok && ts.errorResponse) return ts.errorResponse;
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
