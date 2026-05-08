@@ -7,6 +7,7 @@ import { toast } from '@/hooks/use-toast';
 import { TurnstileWidget } from '@/components/TurnstileWidget';
 import { BillingAddressForm, isBillingAddressComplete, type BillingAddress } from '@/components/BillingAddressForm';
 import { PaymentErrorAlert, parsePaymentResult, type PaymentError, type PaymentPending } from '@/components/PaymentErrorAlert';
+import { useTurnstile } from '@/hooks/useTurnstile';
 
 interface PayerInfo {
   email: string;
@@ -95,8 +96,7 @@ export const MercadoPagoCheckout = ({
   const [pixData, setPixData] = useState<{ qr_code: string; qr_code_base64: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [useCheckoutRedirect, setUseCheckoutRedirect] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileKey, setTurnstileKey] = useState(0);
+  const turnstile = useTurnstile();
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [billingAddress, setBillingAddress] = useState<BillingAddress>({
     zip_code: '', street_name: '', street_number: '',
@@ -107,8 +107,6 @@ export const MercadoPagoCheckout = ({
   const isMountedRef = useRef(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const cardSectionRef = useRef<HTMLDivElement>(null);
-  const turnstileTokenRef = useRef<string | null>(null);
-  turnstileTokenRef.current = turnstileToken;
   // Ref for billing address in Brick callback
   const billingAddressRef = useRef<BillingAddress>(billingAddress);
   billingAddressRef.current = billingAddress;
@@ -245,12 +243,12 @@ export const MercadoPagoCheckout = ({
             if (!isMountedRef.current) return;
             console.log('Payment form submitted:', formData);
             // Use refs to get latest values (avoids stale closure)
-            const currentToken = turnstileTokenRef.current;
+            const currentToken = turnstile.tokenRef.current;
             const currentAddress = billingAddressRef.current;
-            
+
             if (!currentToken) {
               setErrorMessage('Aguarde a verificação de segurança antes de pagar.');
-              setTurnstileKey(k => k + 1);
+              turnstile.reset();
               return;
             }
             if (!isBillingAddressComplete(currentAddress)) {
@@ -351,8 +349,7 @@ export const MercadoPagoCheckout = ({
         onPending?.(data);
       } else if (parsed.error) {
         setPaymentError(parsed.error);
-        setTurnstileToken(null);
-        setTurnstileKey(k => k + 1);
+        turnstile.reset();
         setStatus('ready');
       } else {
         throw new Error(getStatusMessage(data.status, data.status_detail));
@@ -360,8 +357,7 @@ export const MercadoPagoCheckout = ({
     } catch (error: any) {
       if (!isMountedRef.current) return;
       console.error('Payment error:', error);
-      setTurnstileToken(null);
-      setTurnstileKey(k => k + 1);
+      turnstile.reset();
       setPaymentError({
         message: error.message || 'Erro ao processar pagamento.',
         action: 'Verifique os dados e tente novamente.',
@@ -501,8 +497,7 @@ export const MercadoPagoCheckout = ({
     setPaymentPending(null);
     setPaymentMethod(null);
     setPixData(null);
-    setTurnstileToken(null);
-    setTurnstileKey(k => k + 1);
+    turnstile.reset();
     setCheckoutStep('address');
     if (brickControllerRef.current) { try { brickControllerRef.current.unmount(); } catch (e) {} }
     setStatus('method-select');
@@ -513,8 +508,7 @@ export const MercadoPagoCheckout = ({
     setPixData(null);
     setPaymentError(null);
     setPaymentPending(null);
-    setTurnstileToken(null);
-    setTurnstileKey(k => k + 1);
+    turnstile.reset();
     setCheckoutStep('address');
     if (brickControllerRef.current) { try { brickControllerRef.current.unmount(); } catch (e) {} }
     setStatus('method-select');
@@ -836,21 +830,7 @@ export const MercadoPagoCheckout = ({
           {checkoutStep === 'card' && (
             <>
               {/* Turnstile */}
-              <TurnstileWidget
-                key={turnstileKey}
-                onVerify={(token) => {
-                  console.log('[TURNSTILE] Token received');
-                  setTurnstileToken(token);
-                }}
-                onExpire={() => {
-                  console.log('[TURNSTILE] Token expired');
-                  setTurnstileToken(null);
-                }}
-                onError={() => {
-                  console.log('[TURNSTILE] Error');
-                  setTurnstileToken(null);
-                }}
-              />
+              <TurnstileWidget key={turnstile.resetKey} {...turnstile.widgetProps} />
 
               <Button onClick={goBackToMethodSelect} variant="ghost" className="w-full">Voltar e escolher outra forma de pagamento</Button>
             </>
