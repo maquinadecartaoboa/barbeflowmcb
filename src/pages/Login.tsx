@@ -12,6 +12,8 @@ import logoBranca from "@/assets/modoGESTOR_branca.png";
 import { trackCompleteRegistration, getTrackingData, trackLead } from "@/lib/tracking";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
+import { useTurnstile } from "@/hooks/useTurnstile";
 
 const Login = () => {
   usePageTitle("Login");
@@ -26,6 +28,7 @@ const Login = () => {
   const lastEmailFiredRef = useRef<string | null>(null);
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();
+  const turnstile = useTurnstile();
 
   function handleEmailBlur() {
     if (!isSignUp) return;
@@ -45,6 +48,16 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!turnstile.token) {
+      toast({
+        title: "Verificação de segurança",
+        description: "Aguarde a verificação de segurança antes de continuar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     if (isSignUp) {
@@ -72,10 +85,18 @@ const Login = () => {
           visitor_id: tracking.visitor_id,
           meta_fbp: tracking.fbp || '',
           meta_fbc: tracking.fbc || '',
-        });
+        }, { captchaToken: turnstile.token });
 
         if (result.error) {
           console.error('Auth failed:', result.error);
+          if (result.error.message?.toLowerCase().includes('captcha')) {
+            turnstile.reset();
+            toast({
+              title: "Verificação de segurança falhou",
+              description: "Tente novamente.",
+              variant: "destructive",
+            });
+          }
         } else if (result.data?.user) {
           const userId = result.data.user.id;
           trackCompleteRegistration({
@@ -113,9 +134,17 @@ const Login = () => {
           }, 2000);
         }
       } else {
-        const { error } = await signIn(email, password);
+        const { error } = await signIn(email, password, { captchaToken: turnstile.token });
         if (error) {
           console.error('Auth failed:', error);
+          if (error.message?.toLowerCase().includes('captcha')) {
+            turnstile.reset();
+            toast({
+              title: "Verificação de segurança falhou",
+              description: "Tente novamente.",
+              variant: "destructive",
+            });
+          }
         }
       }
     } catch (err) {
@@ -306,14 +335,16 @@ const Login = () => {
               </div>
             )}
 
+            <TurnstileWidget {...turnstile.widgetProps} mode="non-interactive" />
+
             <Button
               type="submit"
               size="lg"
-              disabled={isLoading || (isSignUp && !acceptedTerms)}
+              disabled={isLoading || !turnstile.token || (isSignUp && !acceptedTerms)}
               className="w-full h-12 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold"
             >
-              {isLoading 
-                ? (isSignUp ? "Criando conta..." : "Entrando...") 
+              {isLoading
+                ? (isSignUp ? "Criando conta..." : "Entrando...")
                 : (isSignUp ? "Criar conta" : "Entrar")
               }
             </Button>

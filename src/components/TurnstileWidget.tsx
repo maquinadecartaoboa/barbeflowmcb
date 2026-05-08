@@ -15,6 +15,16 @@ interface TurnstileWidgetProps {
   onVerify: (token: string) => void;
   onExpire?: () => void;
   onError?: () => void;
+  /**
+   * Visual mode hint — maps to Cloudflare's `appearance` option.
+   * - `'managed'` (default): widget always visible (current behavior).
+   * - `'non-interactive'`: only renders when interaction is required.
+   *
+   * Note: takes effect only when the underlying site key is configured
+   * as Non-Interactive or Invisible at Cloudflare. With a Managed site key,
+   * Cloudflare ignores the hint and the widget stays visible.
+   */
+  mode?: 'managed' | 'non-interactive';
 }
 
 export function TurnstileWidget({
@@ -22,6 +32,7 @@ export function TurnstileWidget({
   onVerify,
   onExpire,
   onError,
+  mode = 'managed',
 }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
@@ -46,6 +57,7 @@ export function TurnstileWidget({
         'error-callback': () => callbacksRef.current.onError?.(),
         theme: 'light',
         language: 'pt-br',
+        appearance: mode === 'non-interactive' ? 'interaction-only' : 'always',
       });
     };
 
@@ -67,7 +79,7 @@ export function TurnstileWidget({
         widgetIdRef.current = null;
       }
     };
-  }, [siteKey]);
+  }, [siteKey, mode]);
 
   return <div ref={containerRef} className="flex justify-center my-2" />;
 }
