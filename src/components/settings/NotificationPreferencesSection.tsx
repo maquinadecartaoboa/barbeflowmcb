@@ -8,9 +8,10 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { CalendarCheck, Clock, CreditCard, Scissors, AlertTriangle } from "lucide-react";
+import { CalendarCheck, Clock, CreditCard, Scissors, AlertTriangle, UserPlus } from "lucide-react";
 
 const DEFAULT_PREFS: Record<string, boolean> = {
+  welcome_message: true,
   booking_confirmed: true,
   booking_cancelled: true,
   booking_expired: true,
@@ -36,6 +37,13 @@ interface ToggleDef {
 }
 
 const CATEGORIES: { icon: typeof CalendarCheck; title: string; toggles: ToggleDef[] }[] = [
+  {
+    icon: UserPlus,
+    title: "👋 Cadastro",
+    toggles: [
+      { key: "welcome_message", label: "Mensagem de boas-vindas a novos clientes", description: "Envia WhatsApp automaticamente para clientes recém-cadastrados, com link de agendamento online" },
+    ],
+  },
   {
     icon: CalendarCheck,
     title: "📅 Agendamentos",
