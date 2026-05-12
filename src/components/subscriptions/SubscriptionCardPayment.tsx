@@ -195,9 +195,6 @@ export function SubscriptionCardPayment({
           paymentMethods: {
             minInstallments: 1,
             maxInstallments: 1,
-            // Restrict to card-only — prevents Brick from offering wallet/account_money
-            // which can reuse saved MP cards without re-capturing CVV
-            types: { included: ['credit_card', 'debit_card'] },
           },
           visual: {
             style: {
