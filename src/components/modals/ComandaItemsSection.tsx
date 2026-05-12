@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -65,7 +65,7 @@ export function ComandaItemsSection({ bookingId, tenantId, items, onItemsChange,
   const [swapServiceItemId, setSwapServiceItemId] = useState<string | null>(null);
   const [swapSearchOpen, setSwapSearchOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [staffServiceIds, setStaffServiceIds] = useState<string[] | null>(null);
+  const [staffServices, setStaffServices] = useState<{ staff_id: string; service_id: string }[]>([]);
   const [discountItemId, setDiscountItemId] = useState<string | null>(null);
   const [discountMode, setDiscountMode] = useState<"value" | "percent">("value");
   const [discountInput, setDiscountInput] = useState("");
@@ -83,29 +83,60 @@ export function ComandaItemsSection({ bookingId, tenantId, items, onItemsChange,
       setServices(svcRes.data || []);
       setStaffList(staffRes.data || []);
 
-      // Load staff_services to filter available services
-      if (bookingStaffId) {
+      // Tenant-wide staff_services so we can offer services any active
+      // staff performs, and pick a sensible default staff per service.
+      const staffIds = (staffRes.data || []).map((s) => s.id);
+      if (staffIds.length > 0) {
         const { data } = await supabase
           .from('staff_services')
-          .select('service_id')
-          .eq('staff_id', bookingStaffId);
-        setStaffServiceIds(data && data.length > 0 ? data.map(d => d.service_id) : null);
+          .select('staff_id, service_id')
+          .in('staff_id', staffIds);
+        setStaffServices(data || []);
+      } else {
+        setStaffServices([]);
       }
     };
     load();
-  }, [tenantId, bookingStaffId]);
+  }, [tenantId]);
 
   const fmt = (cents: number) => `R$ ${(cents / 100).toFixed(2)}`;
   const effectivePrice = (item: BookingItem) => item.total_price_cents - (item.discount_cents || 0);
   const getStaffName = (id: string | null): string | null =>
     staffList.find((s) => s.id === id)?.name ?? null;
 
-  const filteredServices = staffServiceIds
-    ? services.filter(s => staffServiceIds.includes(s.id))
-    : services;
+  // service_id -> list of staff_ids that perform it. Drives both the
+  // "service is offered" check and the smart-default staff per service.
+  const serviceStaffMap = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const ss of staffServices) {
+      const arr = m.get(ss.service_id) ?? [];
+      arr.push(ss.staff_id);
+      m.set(ss.service_id, arr);
+    }
+    return m;
+  }, [staffServices]);
+
+  // Show every active service that at least one active staff performs.
+  // Previously the list was filtered to the booking's host staff, which
+  // blocked the multi-staff comanda flow this section now supports.
+  const filteredServices = useMemo(
+    () => services.filter((s) => (serviceStaffMap.get(s.id)?.length ?? 0) > 0),
+    [services, serviceStaffMap]
+  );
+
+  // Priority: booking host > first active staff that does it > booking host fallback.
+  const pickStaffForService = (serviceId: string): string | null => {
+    const ids = serviceStaffMap.get(serviceId) ?? [];
+    if (bookingStaffId && ids.includes(bookingStaffId)) return bookingStaffId;
+    const firstActive = staffList.find((s) => ids.includes(s.id));
+    if (firstActive) return firstActive.id;
+    return bookingStaffId ?? null;
+  };
 
   const addItem = async (type: "product" | "extra_service", item: any) => {
     const unitPrice = type === "product" ? item.sale_price_cents : item.price_cents;
+    const itemStaffId =
+      type === "extra_service" ? pickStaffForService(item.id) : (bookingStaffId ?? null);
     const { error } = await supabase.from("booking_items").insert({
       tenant_id: tenantId,
       booking_id: bookingId,
@@ -116,7 +147,7 @@ export function ComandaItemsSection({ bookingId, tenantId, items, onItemsChange,
       unit_price_cents: unitPrice,
       total_price_cents: unitPrice,
       purchase_price_cents: type === "product" ? (item.purchase_price_cents || 0) : 0,
-      staff_id: bookingStaffId || null,
+      staff_id: itemStaffId,
       paid_status: "unpaid",
     });
     if (error) {
