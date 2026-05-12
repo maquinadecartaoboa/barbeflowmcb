@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import {
   AlertCircle,
-  Cake,
   Calendar,
   MessageCircle,
   TrendingDown,
@@ -19,16 +18,18 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { dashPath } from "@/lib/hostname";
 import { KPICard } from "./KPICard";
-import { HeatmapWeekHour } from "./HeatmapWeekHour";
 import { Avatar } from "./Avatar";
 import { ServiceImage } from "./ServiceImage";
 import { formatPeriodLabel } from "./formatters";
+import {
+  AniversariantesCompactCard,
+  MixReceitaCard,
+  TopClientesCard,
+} from "./Widgets";
 import type {
-  BookingAmanha,
+  AgendaAmanha,
   ClienteEmRisco,
   DashboardAdminPayload,
   ServicoRow,
@@ -63,7 +64,7 @@ export function DashboardAdmin({ data }: DashboardAdminProps) {
 
   return (
     <div className="space-y-6">
-      {/* 1. KPIs — visão geral */}
+      {/* Linha 1 — KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KPICard label="Faturamento" format="currency" data={data.kpis.faturamento_cents}  previousLabel={previousLabel} />
         <KPICard label="Atendimentos" format="integer"  data={data.kpis.atendimentos}       previousLabel={previousLabel} />
@@ -71,20 +72,16 @@ export function DashboardAdmin({ data }: DashboardAdminProps) {
         <KPICard label="Ocupação"     format="percent"  data={data.kpis.ocupacao_pct} />
       </div>
 
-      {/* 2. Clientes em risco — acionável */}
+      {/* Linha 2 — Clientes em risco (full width) */}
       <ClientesEmRiscoCard clientes={data.clientes_em_risco} />
 
-      {/* 3. Agenda de amanhã — acionável */}
+      {/* Linha 3 — Agenda de amanhã (compacta, full width) */}
       <AgendaAmanhaCard
-        total={data.agenda_amanha.total}
-        vagos={data.agenda_amanha.vagos}
-        semConfirmacao={data.agenda_amanha.sem_confirmacao}
-        revenueCents={data.agenda_amanha.total_revenue_estimado_cents}
-        bookings={data.agenda_amanha.bookings}
+        agenda={data.agenda_amanha}
         onOpenAgenda={() => navigate(dashPath("/app/bookings"))}
       />
 
-      {/* 4. Alertas operacionais */}
+      {/* Linha 4 — Alertas operacionais */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <AlertCardItem
           icon={<AlertCircle className="h-4 w-4 text-amber-400" />}
@@ -100,13 +97,13 @@ export function DashboardAdmin({ data }: DashboardAdminProps) {
         />
         <AlertCardItem
           icon={<TrendingDown className="h-4 w-4 text-orange-400" />}
-          label="Clientes sumidos > 90d"
-          value={data.alertas.clientes_sumidos_90d}
+          label="Clientes sumidos > 30 dias"
+          value={data.alertas.clientes_sumidos_30d}
           tone="orange"
         />
       </div>
 
-      {/* 5. Análise — receita + picos */}
+      {/* Linha 5 — Análise financeira: timeline (2/3) + mix (1/3) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
@@ -147,59 +144,20 @@ export function DashboardAdmin({ data }: DashboardAdminProps) {
           </CardContent>
         </Card>
 
-        <HeatmapWeekHour cells={data.heatmap} />
+        <MixReceitaCard items={data.mix_receita} />
       </div>
 
-      {/* 6. Análise — top serviços + ranking */}
+      {/* Linha 6 — Análise operacional: top serviços + ranking */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <TopServicosCard servicos={data.top_servicos} />
         <RankingStaffCard ranking={data.ranking_staff} />
       </div>
 
-      {/* 7. Aniversariantes */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Cake className="h-4 w-4 text-pink-400" /> Aniversariantes da semana
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {data.aniversariantes_semana.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum aniversariante esta semana.</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {data.aniversariantes_semana.map((b) => {
-                const href = whatsAppHref(
-                  b.phone,
-                  `Olá ${b.name.split(" ")[0]}, feliz aniversário! 🎂 Te esperamos pra comemorar.`
-                );
-                const label =
-                  b.days_until === 0
-                    ? "Hoje 🎂"
-                    : b.days_until === 1
-                    ? "Amanhã"
-                    : `Em ${b.days_until} dias`;
-                return (
-                  <div key={b.customer_id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/30">
-                    <Avatar name={b.name} size="sm" seed={b.customer_id} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{b.name}</p>
-                      <p className="text-[11px] text-muted-foreground">{label}</p>
-                    </div>
-                    {href && (
-                      <Button asChild size="icon" variant="ghost" className="h-8 w-8 text-emerald-400 shrink-0">
-                        <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${b.name}`}>
-                          <MessageCircle className="h-4 w-4" />
-                        </a>
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Linha 7 — Relacionamento: top clientes + aniversariantes */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <TopClientesCard clientes={data.top_clientes_periodo} />
+        <AniversariantesCompactCard aniversariantes={data.aniversariantes_semana} />
+      </div>
     </div>
   );
 }
@@ -339,20 +297,13 @@ function ClienteRiscoRow({ cliente }: { cliente: ClienteEmRisco }) {
 // ───────────────────────── Agenda amanhã ─────────────────────────
 
 function AgendaAmanhaCard({
-  total,
-  vagos,
-  semConfirmacao,
-  revenueCents,
-  bookings,
+  agenda,
   onOpenAgenda,
 }: {
-  total: number;
-  vagos: number | null;
-  semConfirmacao: number;
-  revenueCents: number;
-  bookings: BookingAmanha[];
+  agenda: AgendaAmanha;
   onOpenAgenda: () => void;
 }) {
+  const horasVagasStr = `${agenda.horas_vagas.toFixed(1).replace(/\.0$/, "")}h`;
   return (
     <Card>
       <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
@@ -364,78 +315,22 @@ function AgendaAmanhaCard({
           Abrir agenda
         </Button>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Compact counters */}
-        <div className="grid grid-cols-4 gap-2">
-          <CompactStat label="Agendados" value={total} />
-          <CompactStat label="Vagos" value={vagos} />
-          <CompactStat label="A confirmar" value={semConfirmacao} />
-          <CompactStat label="Receita est." valueText={formatBRL(revenueCents)} />
+      <CardContent>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <CompactStat label="Agendados" value={agenda.total} />
+          <CompactStat
+            label="Vagos"
+            valueText={horasVagasStr}
+            sub={`de ${agenda.horas_disponiveis}h disponíveis`}
+          />
+          <CompactStat label="A confirmar" value={agenda.sem_confirmacao} />
+          <CompactStat
+            label="Receita estimada"
+            valueText={formatBRL(agenda.total_revenue_estimado_cents)}
+          />
         </div>
-
-        {bookings.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            Sem agendamentos pra amanhã ainda.
-          </p>
-        ) : (
-          <ul className="relative space-y-0">
-            {/* Vertical timeline rail */}
-            <div className="absolute left-[42px] top-2 bottom-2 w-px bg-border" aria-hidden />
-            {bookings.map((b) => (
-              <BookingAmanhaRow key={b.booking_id} booking={b} onClick={onOpenAgenda} />
-            ))}
-          </ul>
-        )}
       </CardContent>
     </Card>
-  );
-}
-
-function BookingAmanhaRow({
-  booking,
-  onClick,
-}: {
-  booking: BookingAmanha;
-  onClick: () => void;
-}) {
-  const time = format(parseISO(booking.starts_at), "HH:mm", { locale: ptBR });
-  const expired = booking.status === "expired";
-
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={onClick}
-        className="relative flex items-center gap-3 py-2.5 w-full text-left rounded-lg hover:bg-muted/40 transition-colors px-2"
-      >
-        <span className="text-xs font-mono font-semibold text-foreground w-10 tabular-nums shrink-0">
-          {time}
-        </span>
-        <ServiceImage
-          name={booking.service_name}
-          photoUrl={booking.service_photo_url}
-          size="md"
-          rounded="full"
-          className="z-10"
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-medium truncate">{booking.customer_name}</p>
-            <span className="text-sm font-semibold text-emerald-400 tabular-nums shrink-0">
-              {formatBRL(booking.price_cents)}
-            </span>
-          </div>
-          <p className="text-[11px] text-muted-foreground truncate">
-            {booking.service_name}
-            {booking.staff_name && ` · com ${booking.staff_name}`}
-            {expired && " · "}
-            {expired && (
-              <span className="text-amber-400">aguardando confirmação</span>
-            )}
-          </p>
-        </div>
-      </button>
-    </li>
   );
 }
 
@@ -533,10 +428,12 @@ function CompactStat({
   label,
   value,
   valueText,
+  sub,
 }: {
   label: string;
   value?: number | null;
   valueText?: string;
+  sub?: string;
 }) {
   return (
     <div className="rounded-lg bg-muted/30 px-2.5 py-2 text-center">
@@ -544,6 +441,7 @@ function CompactStat({
       <p className="text-base font-bold tabular-nums truncate">
         {valueText ?? (value === null || value === undefined ? "—" : value)}
       </p>
+      {sub && <p className="text-[10px] text-muted-foreground/70 truncate">{sub}</p>}
     </div>
   );
 }
