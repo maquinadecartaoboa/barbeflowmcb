@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useDateRange } from "@/contexts/DateRangeContext";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -92,6 +93,7 @@ interface CommissionsTabProps {
 export function CommissionsTab({ subscriptionTotals }: CommissionsTabProps) {
   const { currentTenant } = useTenant();
   const { dateRange } = useDateRange();
+  const { isStaff } = useUserRole();
   const [details, setDetails] = useState<CommissionDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStaff, setSelectedStaff] = useState<StaffCommission | null>(null);
@@ -251,21 +253,23 @@ export function CommissionsTab({ subscriptionTotals }: CommissionsTabProps) {
         })}
       </div>
 
-      {/* Totals row */}
-      <div className="grid grid-cols-2 gap-3">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-violet-500/10 rounded-lg flex items-center justify-center">
-                <Users className="h-5 w-5 text-violet-400" />
+      {/* Totals row — staff users only see their own row, so the "Profissionais" count is hidden. */}
+      <div className={isStaff ? "grid grid-cols-1 gap-3" : "grid grid-cols-2 gap-3"}>
+        {!isStaff && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-violet-500/10 rounded-lg flex items-center justify-center">
+                  <Users className="h-5 w-5 text-violet-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Profissionais</p>
+                  <p className="text-lg font-bold">{commissions.length}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Profissionais</p>
-                <p className="text-lg font-bold">{commissions.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -273,7 +277,9 @@ export function CommissionsTab({ subscriptionTotals }: CommissionsTabProps) {
                 <DollarSign className="h-5 w-5 text-emerald-400" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Total Comissões</p>
+                <p className="text-xs text-muted-foreground">
+                  {isStaff ? "Suas Comissões" : "Total Comissões"}
+                </p>
                 <p className="text-lg font-bold text-emerald-400">{fmt(totalCommission)}</p>
               </div>
             </div>

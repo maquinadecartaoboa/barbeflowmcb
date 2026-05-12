@@ -8,12 +8,14 @@ import { SubscriptionCommissionHistory } from "@/components/subscriptions/Subscr
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, Ticket, History } from "lucide-react";
 import { format } from "date-fns";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export default function CommissionsPage() {
   usePageTitle("Comissões");
   const { dateRange, setPreset } = useDateRange();
   const [showHistory, setShowHistory] = useState(false);
   const [subscriptionTotals, setSubscriptionTotals] = useState<SubscriptionCommissionTotals | null>(null);
+  const { isStaff } = useUserRole();
 
   // Default to "Este Mês" when entering the commissions page
   useEffect(() => {
@@ -31,39 +33,47 @@ export default function CommissionsPage() {
     <div className="space-y-4 md:space-y-6 px-4 md:px-0">
       <DateRangeSelector className="overflow-x-auto" />
       <div>
-        <h1 className="text-xl md:text-2xl font-bold text-foreground">Comissões</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-foreground">
+          {isStaff ? "Minhas Comissões" : "Comissões"}
+        </h1>
         <p className="text-sm md:text-base text-muted-foreground">
-          Cálculo automático de comissões por profissional
+          {isStaff
+            ? "Suas comissões geradas no período"
+            : "Cálculo automático de comissões por profissional"}
         </p>
       </div>
       <CommissionsTab subscriptionTotals={subscriptionTotals} />
 
-      {/* Subscription Commissions Section */}
-      <div className="border-t border-border pt-6 space-y-4">
-        <div className="flex items-center gap-2">
-          <Ticket className="h-5 w-5 text-violet-400" />
-          <h2 className="text-lg font-bold text-foreground">Comissões de Assinaturas</h2>
-        </div>
-        <p className="text-sm text-muted-foreground -mt-2">
-          Fichas de atendimento e distribuição de comissões por assinatura
-        </p>
-        <SubscriptionCommissionDashboard
-          periodStart={periodStart}
-          periodEnd={periodEnd}
-          onTotalsChange={handleSubscriptionTotals}
-        />
+      {/* Subscription Commissions Section — admin-only.
+          Staff users can't settle commissions, and the history list reads from
+          subscription_commission_settlements which RLS blocks for staff entirely. */}
+      {!isStaff && (
+        <div className="border-t border-border pt-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Ticket className="h-5 w-5 text-violet-400" />
+            <h2 className="text-lg font-bold text-foreground">Comissões de Assinaturas</h2>
+          </div>
+          <p className="text-sm text-muted-foreground -mt-2">
+            Fichas de atendimento e distribuição de comissões por assinatura
+          </p>
+          <SubscriptionCommissionDashboard
+            periodStart={periodStart}
+            periodEnd={periodEnd}
+            onTotalsChange={handleSubscriptionTotals}
+          />
 
-        <Collapsible open={showHistory} onOpenChange={setShowHistory}>
-          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-2">
-            <History className="h-4 w-4" />
-            <span>Liquidações anteriores</span>
-            <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${showHistory ? "rotate-180" : ""}`} />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-2">
-            <SubscriptionCommissionHistory periodStart={periodStart} periodEnd={periodEnd} />
-          </CollapsibleContent>
-        </Collapsible>
-      </div>
+          <Collapsible open={showHistory} onOpenChange={setShowHistory}>
+            <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-2">
+              <History className="h-4 w-4" />
+              <span>Liquidações anteriores</span>
+              <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${showHistory ? "rotate-180" : ""}`} />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2">
+              <SubscriptionCommissionHistory periodStart={periodStart} periodEnd={periodEnd} />
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+      )}
     </div>
   );
 }
