@@ -90,6 +90,9 @@ export function SubscriptionCardPayment({
   const [status, setStatus] = useState<Status>('loading');
   const [errorMessage, setErrorMessage] = useState('');
   const [paymentError, setPaymentError] = useState<PaymentError | null>(null);
+  // Bumped on retry to force Brick remount — Brick's internal Pay button stays disabled
+  // after onSubmit resolves, so we recreate the whole instance.
+  const [brickKey, setBrickKey] = useState(0);
   const turnstile = useTurnstile();
   const brickControllerRef = useRef<any>(null);
   const publicKeyRef = useRef<string | null>(null);
@@ -108,6 +111,24 @@ export function SubscriptionCardPayment({
       }
     };
   }, []);
+
+  // Re-mount Brick when brickKey is bumped after a payment error.
+  // brickKey === 0 is the initial mount handled by loadSDKAndKey above.
+  useEffect(() => {
+    if (brickKey === 0) return;
+    if (!publicKeyRef.current) return;
+    if (!isMountedRef.current) return;
+    setStatus('card-form');
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        if (isMountedRef.current && !brickControllerRef.current) {
+          initializeCardBrick();
+        }
+      }, 50);
+    });
+    // initializeCardBrick is a stable useCallback (deps: priceCents, customerEmail)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brickKey]);
 
   const loadScript = (src: string): Promise<void> => {
     return new Promise((resolve, reject) => {
@@ -171,7 +192,13 @@ export function SubscriptionCardPayment({
           },
         },
         customization: {
-          paymentMethods: { minInstallments: 1, maxInstallments: 1 },
+          paymentMethods: {
+            minInstallments: 1,
+            maxInstallments: 1,
+            // Restrict to card-only — prevents Brick from offering wallet/account_money
+            // which can reuse saved MP cards without re-capturing CVV
+            types: { included: ['credit_card', 'debit_card'] },
+          },
           visual: {
             style: {
               theme: 'dark',
@@ -219,9 +246,18 @@ export function SubscriptionCardPayment({
             if (!isMountedRef.current) return;
             console.error('CardPayment Brick error:', error);
             const msg = error?.message || error?.cause?.[0]?.description || 'Erro ao processar cartão.';
+            const haystack = `${msg} ${JSON.stringify(error?.cause || '')}`.toLowerCase();
+            const isCvvError = haystack.includes('cvv')
+              || haystack.includes('security code')
+              || haystack.includes('código de segurança')
+              || haystack.includes('without cvv');
             setPaymentError({
-              message: msg,
-              action: 'Verifique os dados do cartão e tente novamente.',
+              message: isCvvError
+                ? 'Por motivos de segurança, precisamos capturar o CVV deste cartão.'
+                : msg,
+              action: isCvvError
+                ? 'Recarregue a página e digite os dados do cartão novamente, preenchendo o CVV.'
+                : 'Verifique os dados do cartão e tente novamente.',
               severity: 'retry',
             });
           },
@@ -285,13 +321,30 @@ export function SubscriptionCardPayment({
     } catch (err: any) {
       if (!isMountedRef.current) return;
       console.error('Subscription payment error:', err);
+      const errMsg = err?.message || 'Erro ao processar assinatura.';
+      const haystack = `${errMsg} ${JSON.stringify(err || '')}`.toLowerCase();
+      const isCvvError = haystack.includes('cvv')
+        || haystack.includes('security code')
+        || haystack.includes('código de segurança')
+        || haystack.includes('without cvv');
       turnstile.reset();
       setPaymentError({
-        message: err.message || 'Erro ao processar assinatura.',
-        action: 'Verifique os dados e tente novamente.',
+        message: isCvvError
+          ? 'Por motivos de segurança, precisamos capturar o CVV deste cartão.'
+          : errMsg,
+        action: isCvvError
+          ? 'Recarregue a página e digite os dados do cartão novamente, preenchendo o CVV.'
+          : 'Verifique os dados e tente novamente.',
         severity: 'retry',
       });
       setStatus('ready');
+      // Force remount of Brick — its internal Pay button stays disabled after
+      // onSubmit resolves, so we unmount and recreate to clear that state.
+      if (brickControllerRef.current) {
+        try { brickControllerRef.current.unmount(); } catch {}
+        brickControllerRef.current = null;
+      }
+      setBrickKey((k) => k + 1);
     }
   };
 
@@ -398,8 +451,10 @@ export function SubscriptionCardPayment({
         </div>
       )}
 
-      {/* Card form container */}
+      {/* Card form container — key forces React to recreate the node on retry,
+          which (together with brickControllerRef.unmount) gives the Brick a clean slate. */}
       <div
+        key={brickKey}
         id="subscriptionCardBrick_container"
         className="subscription-brick-wrapper"
         style={{ display: status === 'processing' ? 'none' : 'block' }}

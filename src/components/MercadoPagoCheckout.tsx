@@ -102,6 +102,9 @@ export const MercadoPagoCheckout = ({
     zip_code: '', street_name: '', street_number: '',
     neighborhood: '', city: '', federal_unit: '',
   });
+  // Bumped on retry to force Brick remount — Brick's internal Pay button stays disabled
+  // after onSubmit resolves, so we recreate the whole instance.
+  const [brickKey, setBrickKey] = useState(0);
   const brickControllerRef = useRef<any>(null);
   const publicKeyRef = useRef<string | null>(null);
   const isMountedRef = useRef(true);
@@ -110,6 +113,8 @@ export const MercadoPagoCheckout = ({
   // Ref for billing address in Brick callback
   const billingAddressRef = useRef<BillingAddress>(billingAddress);
   billingAddressRef.current = billingAddress;
+  // Guard against double-fire of Brick onSubmit (React Strict Mode, fast double-click)
+  const inFlightRef = useRef(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -122,6 +127,25 @@ export const MercadoPagoCheckout = ({
       }
     };
   }, []);
+
+  // Re-mount Brick when brickKey is bumped after a payment error.
+  // brickKey === 0 is the initial mount handled by handleSelectPaymentMethod.
+  useEffect(() => {
+    if (brickKey === 0) return;
+    if (!publicKeyRef.current) return;
+    if (!isMountedRef.current) return;
+    if (paymentMethod !== 'card') return;
+    setStatus('card-form');
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        if (isMountedRef.current && !brickControllerRef.current) {
+          initializeCardBrick();
+        }
+      }, 50);
+    });
+    // initializeCardBrick is a stable useCallback (deps: amount, payer.email)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brickKey]);
 
   const loadPublicKey = async () => {
     if (!isMountedRef.current) return;
@@ -211,7 +235,13 @@ export const MercadoPagoCheckout = ({
           },
         },
         customization: {
-          paymentMethods: { minInstallments: 1, maxInstallments: 1 },
+          paymentMethods: {
+            minInstallments: 1,
+            maxInstallments: 1,
+            // Restrict to card-only — prevents Brick from offering wallet/account_money
+            // which can reuse saved MP cards without re-capturing CVV
+            types: { included: ['credit_card', 'debit_card'] },
+          },
           visual: {
             style: {
               theme: 'dark',
@@ -241,29 +271,44 @@ export const MercadoPagoCheckout = ({
           },
           onSubmit: async (formData: any) => {
             if (!isMountedRef.current) return;
-            console.log('Payment form submitted:', formData);
-            // Use refs to get latest values (avoids stale closure)
-            const currentToken = turnstile.tokenRef.current;
-            const currentAddress = billingAddressRef.current;
+            if (inFlightRef.current) return;
+            inFlightRef.current = true;
+            try {
+              console.log('Payment form submitted:', formData);
+              // Use refs to get latest values (avoids stale closure)
+              const currentToken = turnstile.tokenRef.current;
+              const currentAddress = billingAddressRef.current;
 
-            if (!currentToken) {
-              setErrorMessage('Aguarde a verificação de segurança antes de pagar.');
-              turnstile.reset();
-              return;
+              if (!currentToken) {
+                setErrorMessage('Aguarde a verificação de segurança antes de pagar.');
+                turnstile.reset();
+                return;
+              }
+              if (!isBillingAddressComplete(currentAddress)) {
+                setErrorMessage('Preencha o endereço de cobrança completo.');
+                return;
+              }
+              await handleCardPaymentSubmitWithRefs(formData, currentToken, currentAddress);
+            } finally {
+              inFlightRef.current = false;
             }
-            if (!isBillingAddressComplete(currentAddress)) {
-              setErrorMessage('Preencha o endereço de cobrança completo.');
-              return;
-            }
-            await handleCardPaymentSubmitWithRefs(formData, currentToken, currentAddress);
           },
           onError: (error: any) => {
             if (!isMountedRef.current) return;
             console.error('CardPayment Brick error:', error);
             const msg = error?.message || error?.cause?.[0]?.description || 'Erro ao processar cartão.';
+            const haystack = `${msg} ${JSON.stringify(error?.cause || '')}`.toLowerCase();
+            const isCvvError = haystack.includes('cvv')
+              || haystack.includes('security code')
+              || haystack.includes('código de segurança')
+              || haystack.includes('without cvv');
             setPaymentError({
-              message: msg,
-              action: 'Verifique os dados do cartão e tente novamente.',
+              message: isCvvError
+                ? 'Por motivos de segurança, precisamos capturar o CVV deste cartão.'
+                : msg,
+              action: isCvvError
+                ? 'Recarregue a página e digite os dados do cartão novamente, preenchendo o CVV.'
+                : 'Verifique os dados do cartão e tente novamente.',
               severity: 'retry',
             });
           },
@@ -357,13 +402,30 @@ export const MercadoPagoCheckout = ({
     } catch (error: any) {
       if (!isMountedRef.current) return;
       console.error('Payment error:', error);
+      const errMsg = error?.message || 'Erro ao processar pagamento.';
+      const haystack = `${errMsg} ${JSON.stringify(error || '')}`.toLowerCase();
+      const isCvvError = haystack.includes('cvv')
+        || haystack.includes('security code')
+        || haystack.includes('código de segurança')
+        || haystack.includes('without cvv');
       turnstile.reset();
       setPaymentError({
-        message: error.message || 'Erro ao processar pagamento.',
-        action: 'Verifique os dados e tente novamente.',
+        message: isCvvError
+          ? 'Por motivos de segurança, precisamos capturar o CVV deste cartão.'
+          : errMsg,
+        action: isCvvError
+          ? 'Recarregue a página e digite os dados do cartão novamente, preenchendo o CVV.'
+          : 'Verifique os dados e tente novamente.',
         severity: 'retry',
       });
       setStatus('ready');
+      // Force remount of Brick — its internal Pay button stays disabled after
+      // onSubmit resolves, so we unmount and recreate to clear that state.
+      if (brickControllerRef.current) {
+        try { brickControllerRef.current.unmount(); } catch {}
+        brickControllerRef.current = null;
+      }
+      setBrickKey((k) => k + 1);
     }
   };
 
@@ -821,8 +883,11 @@ export const MercadoPagoCheckout = ({
             </div>
           )}
 
-          {/* Brick container — always in DOM, visibility controlled */}
+          {/* Brick container — always in DOM, visibility controlled.
+              key={brickKey} forces React to recreate the node on retry,
+              which (together with brickControllerRef.unmount) gives the Brick a clean slate. */}
           <div
+            key={brickKey}
             id="cardPaymentBrick_container"
             className={`mp-checkout-container ${checkoutStep !== 'card' ? 'h-0 overflow-hidden opacity-0 pointer-events-none' : 'mt-4'}`}
           />
