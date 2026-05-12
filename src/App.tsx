@@ -35,6 +35,7 @@ const TermosAgendamento = lazy(() => import("./pages/legal/TermosAgendamento"));
 
 // Admin pages — ALL lazy loaded (never needed by public visitors)
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const DashboardPreview = lazy(() => import("./pages/DashboardPreview"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Finance = lazy(() => import("./pages/Finance"));
 const CommissionsPage = lazy(() => import("./pages/CommissionsPage"));
@@ -181,6 +182,9 @@ const App = () => {
                       
                       <Route path={dashPrefix || '/'} element={<ProtectedAppShell />}>
                         <Route path={dashPrefix ? 'dashboard' : 'dashboard'} element={<RoleGuard requireAdmin><Dashboard /></RoleGuard>} />
+                        {/* Dashboard v2 preview — mock-only, gated to admins so staff can't stumble in.
+                            Will replace `dashboard` once Vitor's RPCs are wired up. */}
+                        <Route path="dashboard/preview" element={<RoleGuard requireAdmin><DashboardPreview /></RoleGuard>} />
                         <Route path="bookings" element={<Bookings />} />
                         <Route path="services" element={<RoleGuard requireAdmin><Services /></RoleGuard>} />
                         <Route path="packages" element={<RoleGuard requireAdmin><PackagesPage /></RoleGuard>} />
