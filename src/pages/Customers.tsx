@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useTenant } from "@/hooks/useTenant";
+import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import CustomersStaff from "@/pages/CustomersStaff";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CustomerBalanceTab } from "@/components/CustomerBalanceTab";
 import { CustomerPackagesTab } from "@/components/CustomerPackagesTab";
@@ -82,7 +84,16 @@ const normalizePhoneForCheck = (phone: string): string => {
 
 const PAGE_SIZE = 50;
 
+// Top-level wrapper: routes role decision before any admin-side hooks run.
+// Staff get a focused retention view; admin keeps the full CRUD below.
 export default function Customers() {
+  const { isStaff, isLoading: roleLoading } = useUserRole();
+  if (roleLoading) return null;
+  if (isStaff) return <CustomersStaff />;
+  return <CustomersAdmin />;
+}
+
+function CustomersAdmin() {
   usePageTitle("Clientes");
   const { currentTenant, loading: tenantLoading } = useTenant();
   const { toast } = useToast();
