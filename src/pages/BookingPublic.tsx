@@ -11,7 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PackagePurchaseFlow } from "@/components/public/PackagePurchaseFlow";
 import { BenefitBadge } from "@/components/public/BenefitBadge";
-import { OrderBumpSection, type OrderBumpProduct } from "@/components/public/OrderBumpSection";
+import {
+  PublicOrderBumpCard,
+  type PublicOrderBumpItem,
+} from "@/components/public/PublicOrderBumpCard";
 import { WhatsAppContactButton } from "@/components/public/WhatsAppContactButton";
 import InstallPWA from "@/components/InstallPWA";
 import { LoyaltyWidget } from "@/components/public/LoyaltyWidget";
@@ -194,7 +197,16 @@ const BookingPublic = () => {
   const [useLoyaltyReward, setUseLoyaltyReward] = useState(false);
 
   // Order Bump
-  const [orderBumpItems, setOrderBumpItems] = useState<OrderBumpProduct[]>([]);
+  const [orderBumpItems, setOrderBumpItems] = useState<PublicOrderBumpItem[]>([]);
+
+  // Switching off "Pagar online" must clear the order bump selection — keeping
+  // them around would silently inflate the local-payment booking with items
+  // the customer can't see anymore. The card itself resets on service change.
+  useEffect(() => {
+    if (paymentMethod !== 'online' && orderBumpItems.length > 0) {
+      setOrderBumpItems([]);
+    }
+  }, [paymentMethod]); // eslint-disable-line react-hooks/exhaustive-deps
   const [serviceSearch, setServiceSearch] = useState("");
   const [staffServices, setStaffServices] = useState<{staff_id: string; service_id: string}[]>([]);
   const [showCategories, setShowCategories] = useState(false);
@@ -2055,7 +2067,13 @@ END:VCALENDAR`;
           <div className="animate-in fade-in duration-300">
             <div className="text-center mb-8">
               <h2 className="text-xl font-semibold mb-2">Seus dados</h2>
-              <p className="text-zinc-500 text-sm">Para confirmar o agendamento</p>
+              <p className="text-zinc-500 text-sm">
+                {paymentMethod === 'online' &&
+                !subscriptionCoveredService &&
+                !packageCoveredService
+                  ? 'Para finalizar o pagamento'
+                  : 'Para confirmar o agendamento'}
+              </p>
             </div>
             
             {/* Summary */}
@@ -2278,14 +2296,22 @@ END:VCALENDAR`;
               )}
 
 
-              {/* Order Bump Section */}
-              {selectedService && tenant && (
-                <OrderBumpSection
-                  tenantId={tenant.id}
-                  serviceId={selectedService}
-                  onSelectionChange={setOrderBumpItems}
-                />
-              )}
+              {/* Order Bump — only renders when paying online and the
+                  booking isn't covered by a subscription/package benefit.
+                  The card itself returns null if the service has no
+                  recommendations, so this gating is purely UX-level. */}
+              {selectedService &&
+                tenant &&
+                paymentMethod === 'online' &&
+                !subscriptionCoveredService &&
+                !packageCoveredService && (
+                  <PublicOrderBumpCard
+                    tenantId={tenant.id}
+                    serviceId={selectedService}
+                    serviceName={selectedServiceData?.name || 'serviço'}
+                    onSelectionChange={setOrderBumpItems}
+                  />
+                )}
 
               {/* Total order value when order bump items are selected */}
               {orderBumpItems.length > 0 && !subscriptionCoveredService && !packageCoveredService && (() => {
@@ -2320,9 +2346,30 @@ END:VCALENDAR`;
                 );
               })()}
 
+              {(() => {
+                // Button copy + total reflect the real payment path so the
+                // customer doesn't think "Confirmar" closes the deal when the
+                // online checkout still needs a card/Pix completion.
+                const isBenefit =
+                  !!subscriptionCoveredService || !!packageCoveredService;
+                const isOnlinePay = paymentMethod === 'online' && !isBenefit;
+                const tenantSettings = (tenant?.settings || {}) as Record<string, any>;
+                const btnSvcCents = selectedServiceData?.price_cents || 0;
+                const btnDiscCents = isOnlinePay
+                  ? getOnlineDiscount(tenantSettings, btnSvcCents).discountCents
+                  : 0;
+                const btnBumpCents = orderBumpItems.reduce(
+                  (s, p) => s + p.sale_price_cents,
+                  0
+                );
+                const btnTotalCents = btnSvcCents - btnDiscCents + btnBumpCents;
+                const btnTotalLabel = `R$ ${(btnTotalCents / 100)
+                  .toFixed(2)
+                  .replace('.', ',')}`;
+                return (
               <div className="pt-4 space-y-3">
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={submitting || !customerName || !customerPhone || (!customerFound && (!customerEmail || !customerBirthday)) || (paymentMethod === 'online' && (!customerCpf || !isValidCpf(customerCpf)))}
                   className="w-full h-12 bg-white text-zinc-900 hover:bg-zinc-100 rounded-xl font-medium disabled:opacity-50"
                 >
@@ -2331,6 +2378,16 @@ END:VCALENDAR`;
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Confirmando...
                     </>
+                  ) : isBenefit ? (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Confirmar agendamento (incluso no plano)
+                    </>
+                  ) : isOnlinePay ? (
+                    <>
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Pagar {btnTotalLabel} →
+                    </>
                   ) : (
                     <>
                       <Check className="h-4 w-4 mr-2" />
@@ -2338,6 +2395,12 @@ END:VCALENDAR`;
                     </>
                   )}
                 </Button>
+
+                {isOnlinePay && !submitting && (
+                  <p className="text-center text-[11px] text-zinc-500">
+                    Seu horário fica reservado enquanto você paga
+                  </p>
+                )}
 
                 <p className="text-center text-[11px] text-zinc-600 leading-relaxed">
                   Ao confirmar, você concorda com os{" "}
@@ -2359,6 +2422,8 @@ END:VCALENDAR`;
                   Voltar
                 </button>
               </div>
+                );
+              })()}
             </form>
           </div>
         )}
@@ -2379,7 +2444,7 @@ END:VCALENDAR`;
               const discCents = disc.discountCents;
               const discPct = disc.discountPercent;
               const finalSvcCents = disc.final;
-              const bumpCents = orderBumpItems.reduce((s: number, p: OrderBumpProduct) => s + p.sale_price_cents, 0);
+              const bumpCents = orderBumpItems.reduce((s: number, p: PublicOrderBumpItem) => s + p.sale_price_cents, 0);
               
               return (
               <div className="p-4 bg-zinc-900/30 border border-zinc-800/50 rounded-xl mb-6">
@@ -2476,14 +2541,14 @@ END:VCALENDAR`;
                  ? (selectedPackage.price_cents / 100) 
                  : (() => {
                      const svcCents = (createdBooking.service?.price_cents || 0);
-                     const bumpCents = orderBumpItems.reduce((s: number, p: OrderBumpProduct) => s + p.sale_price_cents, 0);
+                     const bumpCents = orderBumpItems.reduce((s: number, p: PublicOrderBumpItem) => s + p.sale_price_cents, 0);
                      const tenantSettings = (tenant?.settings || {}) as Record<string, any>;
                      const disc = getOnlineDiscount(tenantSettings, svcCents);
                      return (disc.final + bumpCents) / 100;
                    })()
                }
                onlineDiscountPercent={getOnlineDiscount((tenant?.settings || {}) as Record<string, any>, createdBooking.service?.price_cents || 0).discountPercent}
-               originalAmountCents={selectedPackage ? selectedPackage.price_cents : ((createdBooking.service?.price_cents || 0) + orderBumpItems.reduce((s: number, p: OrderBumpProduct) => s + p.sale_price_cents, 0))}
+               originalAmountCents={selectedPackage ? selectedPackage.price_cents : ((createdBooking.service?.price_cents || 0) + orderBumpItems.reduce((s: number, p: PublicOrderBumpItem) => s + p.sale_price_cents, 0))}
               serviceName={selectedPackage 
                 ? selectedPackage.name 
                 : orderBumpItems.length > 0
