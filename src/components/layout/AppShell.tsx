@@ -124,6 +124,7 @@ const baseNavigationItems: NavItem[] = [
       { title: "Serviços", url: "/app/services", icon: Scissors },
       { title: "Pacotes", url: "/app/packages", icon: Gift },
       { title: "Produtos", url: "/app/products", icon: Package },
+      { title: "Order Bump", url: "/app/catalogo/order-bump", icon: Sparkles },
     ]
   },
   {
