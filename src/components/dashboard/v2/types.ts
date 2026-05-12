@@ -78,7 +78,31 @@ export interface AgendaAmanha {
   vagos: number | null; // RPC returns NULL until slot computation lands
   sem_confirmacao: number;
   total_revenue_estimado_cents: number;
+  /** Total schedulable hours (from staff schedules) */
+  horas_disponiveis: number;
+  /** Hours already booked */
+  horas_ocupadas: number;
+  /** Remaining available hours = disponiveis − ocupadas */
+  horas_vagas: number;
+  /** Occupancy 0–100 with one decimal */
+  ocupacao_estimada_pct: number;
   bookings: BookingAmanha[];
+}
+
+export interface TopClienteRow {
+  customer_id: string;
+  name: string;
+  phone: string | null;
+  visitas: number;
+  gasto_cents: number;
+  ticket_medio_cents: number;
+}
+
+export interface MixReceitaItem {
+  source: string;     // pt-BR label (eg. "Atendimentos")
+  source_key: string; // stable key for color palette (eg. "atendimentos")
+  value_cents: number;
+  pct: number;        // 0–100
 }
 
 export interface ServicoRow {
@@ -142,11 +166,13 @@ export interface DashboardAdminPayload {
   agenda_amanha: AgendaAmanha;
   top_servicos: ServicoRow[];
   ranking_staff: StaffRankingRow[];
+  top_clientes_periodo: TopClienteRow[];
+  mix_receita: MixReceitaItem[];
   aniversariantes_semana: AniversarianteRow[];
   alertas: {
     pagamentos_pendentes: number;
     bookings_cancelados_24h: number;
-    clientes_sumidos_90d: number;
+    clientes_sumidos_30d: number;
   };
   generated_at: string;
 }

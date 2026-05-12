@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Cake, Clock, MessageCircle, TrendingDown, Wallet } from "lucide-react";
+import { Clock, MessageCircle, TrendingDown, Wallet } from "lucide-react";
 import {
   CartesianGrid,
   Line,
@@ -20,6 +20,7 @@ import { HeatmapWeekHour } from "./HeatmapWeekHour";
 import { Avatar } from "./Avatar";
 import { ServiceImage } from "./ServiceImage";
 import { formatPeriodLabel } from "./formatters";
+import { AniversariantesCompactCard } from "./Widgets";
 import type {
   DashboardStaffPayload,
   MeuClienteEmRisco,
@@ -61,14 +62,14 @@ export function DashboardStaff({ data }: DashboardStaffProps) {
         <KPICard label="Retenção"       format="percent"  data={data.kpis.retencao_pct} />
       </div>
 
-      {/* 2. Meus clientes em risco — acionável */}
-      <MeusClientesEmRiscoCard clientes={data.meus_clientes_em_risco} />
-
-      {/* 3. Próximos atendimentos hoje — acionável */}
-      <ProximosHojeCard
-        proximos={data.proximos_hoje}
-        onOpenAgenda={() => navigate(dashPath("/app/bookings"))}
-      />
+      {/* 2. Acionáveis lado a lado: Meus clientes em risco + Próximos hoje */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <MeusClientesEmRiscoCard clientes={data.meus_clientes_em_risco} />
+        <ProximosHojeCard
+          proximos={data.proximos_hoje}
+          onOpenAgenda={() => navigate(dashPath("/app/bookings"))}
+        />
+      </div>
 
       {/* 4. Comissão projetada */}
       <Card className="border-primary/30 bg-primary/5">
@@ -150,53 +151,11 @@ export function DashboardStaff({ data }: DashboardStaffProps) {
       {/* 6. Análise — meus top serviços */}
       <MeusTopServicosCard servicos={data.meus_top_servicos} />
 
-      {/* 7. Aniversariantes */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Cake className="h-4 w-4 text-pink-400" /> Meus aniversariantes
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {data.aniversariantes_meus.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum aniversariante seu agora.</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {data.aniversariantes_meus.map((b) => {
-                const href = whatsAppHref(
-                  b.phone,
-                  `Olá ${b.name.split(" ")[0]}, feliz aniversário! 🎂 Te esperamos pra comemorar.`
-                );
-                const label =
-                  b.days_until === 0
-                    ? "Hoje 🎂"
-                    : b.days_until === 1
-                    ? "Amanhã"
-                    : `Em ${b.days_until} dias`;
-                return (
-                  <div
-                    key={b.customer_id}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/30"
-                  >
-                    <Avatar name={b.name} size="sm" seed={b.customer_id} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{b.name}</p>
-                      <p className="text-[11px] text-muted-foreground">{label}</p>
-                    </div>
-                    {href && (
-                      <Button asChild size="icon" variant="ghost" className="h-8 w-8 text-emerald-400 shrink-0">
-                        <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${b.name}`}>
-                          <MessageCircle className="h-4 w-4" />
-                        </a>
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* 7. Aniversariantes (compactos) */}
+      <AniversariantesCompactCard
+        aniversariantes={data.aniversariantes_meus}
+        title="Meus aniversariantes"
+      />
     </div>
   );
 }

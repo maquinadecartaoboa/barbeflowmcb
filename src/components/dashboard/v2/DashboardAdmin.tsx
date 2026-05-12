@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import {
   AlertCircle,
-  Cake,
   Calendar,
   MessageCircle,
   TrendingDown,
@@ -27,6 +26,11 @@ import { HeatmapWeekHour } from "./HeatmapWeekHour";
 import { Avatar } from "./Avatar";
 import { ServiceImage } from "./ServiceImage";
 import { formatPeriodLabel } from "./formatters";
+import {
+  AniversariantesCompactCard,
+  MixReceitaCard,
+  TopClientesCard,
+} from "./Widgets";
 import type {
   BookingAmanha,
   ClienteEmRisco,
@@ -63,7 +67,7 @@ export function DashboardAdmin({ data }: DashboardAdminProps) {
 
   return (
     <div className="space-y-6">
-      {/* 1. KPIs — visão geral */}
+      {/* Linha 1 — KPIs (4 cards) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KPICard label="Faturamento" format="currency" data={data.kpis.faturamento_cents}  previousLabel={previousLabel} />
         <KPICard label="Atendimentos" format="integer"  data={data.kpis.atendimentos}       previousLabel={previousLabel} />
@@ -71,20 +75,16 @@ export function DashboardAdmin({ data }: DashboardAdminProps) {
         <KPICard label="Ocupação"     format="percent"  data={data.kpis.ocupacao_pct} />
       </div>
 
-      {/* 2. Clientes em risco — acionável */}
-      <ClientesEmRiscoCard clientes={data.clientes_em_risco} />
+      {/* Linha 2 — Acionáveis (Clientes em risco + Agenda amanhã) lado a lado */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ClientesEmRiscoCard clientes={data.clientes_em_risco} />
+        <AgendaAmanhaCard
+          agenda={data.agenda_amanha}
+          onOpenAgenda={() => navigate(dashPath("/app/bookings"))}
+        />
+      </div>
 
-      {/* 3. Agenda de amanhã — acionável */}
-      <AgendaAmanhaCard
-        total={data.agenda_amanha.total}
-        vagos={data.agenda_amanha.vagos}
-        semConfirmacao={data.agenda_amanha.sem_confirmacao}
-        revenueCents={data.agenda_amanha.total_revenue_estimado_cents}
-        bookings={data.agenda_amanha.bookings}
-        onOpenAgenda={() => navigate(dashPath("/app/bookings"))}
-      />
-
-      {/* 4. Alertas operacionais */}
+      {/* Linha 3 — Alertas operacionais (faixa compacta) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <AlertCardItem
           icon={<AlertCircle className="h-4 w-4 text-amber-400" />}
@@ -100,13 +100,19 @@ export function DashboardAdmin({ data }: DashboardAdminProps) {
         />
         <AlertCardItem
           icon={<TrendingDown className="h-4 w-4 text-orange-400" />}
-          label="Clientes sumidos > 90d"
-          value={data.alertas.clientes_sumidos_90d}
+          label="Clientes sumidos > 30 dias"
+          value={data.alertas.clientes_sumidos_30d}
           tone="orange"
         />
       </div>
 
-      {/* 5. Análise — receita + picos */}
+      {/* Linha 4 — Relacionamento (Top clientes + Aniversariantes) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <TopClientesCard clientes={data.top_clientes_periodo} />
+        <AniversariantesCompactCard aniversariantes={data.aniversariantes_semana} />
+      </div>
+
+      {/* Linha 5 — Análise financeira (Receita timeline 2/3 + Mix 1/3) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
@@ -147,59 +153,15 @@ export function DashboardAdmin({ data }: DashboardAdminProps) {
           </CardContent>
         </Card>
 
-        <HeatmapWeekHour cells={data.heatmap} />
+        <MixReceitaCard items={data.mix_receita} />
       </div>
 
-      {/* 6. Análise — top serviços + ranking */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Linha 6 — Análise operacional (Top serviços + Ranking staff + Heatmap) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <TopServicosCard servicos={data.top_servicos} />
         <RankingStaffCard ranking={data.ranking_staff} />
+        <HeatmapWeekHour cells={data.heatmap} />
       </div>
-
-      {/* 7. Aniversariantes */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Cake className="h-4 w-4 text-pink-400" /> Aniversariantes da semana
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {data.aniversariantes_semana.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum aniversariante esta semana.</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {data.aniversariantes_semana.map((b) => {
-                const href = whatsAppHref(
-                  b.phone,
-                  `Olá ${b.name.split(" ")[0]}, feliz aniversário! 🎂 Te esperamos pra comemorar.`
-                );
-                const label =
-                  b.days_until === 0
-                    ? "Hoje 🎂"
-                    : b.days_until === 1
-                    ? "Amanhã"
-                    : `Em ${b.days_until} dias`;
-                return (
-                  <div key={b.customer_id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/30">
-                    <Avatar name={b.name} size="sm" seed={b.customer_id} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{b.name}</p>
-                      <p className="text-[11px] text-muted-foreground">{label}</p>
-                    </div>
-                    {href && (
-                      <Button asChild size="icon" variant="ghost" className="h-8 w-8 text-emerald-400 shrink-0">
-                        <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${b.name}`}>
-                          <MessageCircle className="h-4 w-4" />
-                        </a>
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
@@ -339,20 +301,16 @@ function ClienteRiscoRow({ cliente }: { cliente: ClienteEmRisco }) {
 // ───────────────────────── Agenda amanhã ─────────────────────────
 
 function AgendaAmanhaCard({
-  total,
-  vagos,
-  semConfirmacao,
-  revenueCents,
-  bookings,
+  agenda,
   onOpenAgenda,
 }: {
-  total: number;
-  vagos: number | null;
-  semConfirmacao: number;
-  revenueCents: number;
-  bookings: BookingAmanha[];
+  agenda: DashboardAdminPayload["agenda_amanha"];
   onOpenAgenda: () => void;
 }) {
+  // Show only first 6 bookings inline so the card doesn't stretch.
+  const MAX_INLINE = 6;
+  const bookings = agenda.bookings.slice(0, MAX_INLINE);
+  const extra = agenda.bookings.length - bookings.length;
   return (
     <Card>
       <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
@@ -365,12 +323,18 @@ function AgendaAmanhaCard({
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Compact counters */}
+        {/* Counters per latest spec: Agendados | Horas vagas | Ocupação | A confirmar */}
         <div className="grid grid-cols-4 gap-2">
-          <CompactStat label="Agendados" value={total} />
-          <CompactStat label="Vagos" value={vagos} />
-          <CompactStat label="A confirmar" value={semConfirmacao} />
-          <CompactStat label="Receita est." valueText={formatBRL(revenueCents)} />
+          <CompactStat label="Agendados" value={agenda.total} />
+          <CompactStat
+            label="Horas vagas"
+            valueText={`${agenda.horas_vagas.toFixed(1).replace(/\.0$/, "")}h`}
+          />
+          <CompactStat
+            label="Ocupação"
+            valueText={`${agenda.ocupacao_estimada_pct.toFixed(1).replace(/\.0$/, "")}%`}
+          />
+          <CompactStat label="A confirmar" value={agenda.sem_confirmacao} />
         </div>
 
         {bookings.length === 0 ? (
@@ -378,13 +342,31 @@ function AgendaAmanhaCard({
             Sem agendamentos pra amanhã ainda.
           </p>
         ) : (
-          <ul className="relative space-y-0">
-            {/* Vertical timeline rail */}
-            <div className="absolute left-[42px] top-2 bottom-2 w-px bg-border" aria-hidden />
-            {bookings.map((b) => (
-              <BookingAmanhaRow key={b.booking_id} booking={b} onClick={onOpenAgenda} />
-            ))}
-          </ul>
+          <>
+            <ul className="relative space-y-0">
+              {/* Vertical timeline rail */}
+              <div className="absolute left-[42px] top-2 bottom-2 w-px bg-border" aria-hidden />
+              {bookings.map((b) => (
+                <BookingAmanhaRow key={b.booking_id} booking={b} onClick={onOpenAgenda} />
+              ))}
+            </ul>
+            {extra > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-xs h-7"
+                onClick={onOpenAgenda}
+              >
+                Ver mais {extra} agendamento{extra !== 1 ? "s" : ""}
+              </Button>
+            )}
+            <div className="text-[11px] text-muted-foreground text-center">
+              Receita estimada:{" "}
+              <span className="font-semibold text-emerald-400 tabular-nums">
+                {formatBRL(agenda.total_revenue_estimado_cents)}
+              </span>
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
