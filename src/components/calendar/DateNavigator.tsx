@@ -40,6 +40,10 @@ export function DateNavigator({ date, onDateChange, viewMode, onViewModeChange, 
               mode="single"
               selected={date}
               onSelect={(d) => { if (d) { onDateChange(d); setCalendarOpen(false); } }}
+              // Open on the month of the currently selected date, not today.
+              // Radix Popover unmounts content on close, so defaultMonth is
+              // applied fresh every time the popover opens.
+              defaultMonth={date}
               className={cn("p-3 pointer-events-auto")}
               locale={ptBR}
             />
