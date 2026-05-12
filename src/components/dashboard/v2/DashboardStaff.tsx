@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import { Cake, Clock, MessageCircle, TrendingDown, Wallet } from "lucide-react";
 import {
   CartesianGrid,
@@ -11,11 +12,20 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { dashPath } from "@/lib/hostname";
 import { KPICard } from "./KPICard";
 import { HeatmapWeekHour } from "./HeatmapWeekHour";
-import type { DashboardStaffPayload } from "./types";
+import { Avatar } from "./Avatar";
+import { ServiceImage } from "./ServiceImage";
+import { formatPeriodLabel } from "./formatters";
+import type {
+  DashboardStaffPayload,
+  MeuClienteEmRisco,
+  ProximoHoje,
+  ServicoRow,
+} from "./types";
 
 interface DashboardStaffProps {
   data: DashboardStaffPayload;
@@ -34,22 +44,33 @@ function whatsAppHref(phone: string | null, message: string): string | null {
 }
 
 export function DashboardStaff({ data }: DashboardStaffProps) {
+  const navigate = useNavigate();
   const timelineData = data.receita_timeline.map((p) => ({
     date: p.date,
     valor: p.value_cents / 100,
   }));
+  const previousLabel = formatPeriodLabel(data.period.previous_from, data.period.previous_to);
 
   return (
     <div className="space-y-6">
-      {/* KPIs */}
+      {/* 1. KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPICard label="Minha comissão" format="currency" data={data.kpis.minha_comissao_cents} />
-        <KPICard label="Atendimentos"   format="integer"  data={data.kpis.atendimentos} />
-        <KPICard label="Ticket médio"   format="currency" data={data.kpis.ticket_medio_cents} />
+        <KPICard label="Minha comissão" format="currency" data={data.kpis.minha_comissao_cents} previousLabel={previousLabel} />
+        <KPICard label="Atendimentos"   format="integer"  data={data.kpis.atendimentos}         previousLabel={previousLabel} />
+        <KPICard label="Ticket médio"   format="currency" data={data.kpis.ticket_medio_cents}   previousLabel={previousLabel} />
         <KPICard label="Retenção"       format="percent"  data={data.kpis.retencao_pct} />
       </div>
 
-      {/* Comissão projetada */}
+      {/* 2. Meus clientes em risco — acionável */}
+      <MeusClientesEmRiscoCard clientes={data.meus_clientes_em_risco} />
+
+      {/* 3. Próximos atendimentos hoje — acionável */}
+      <ProximosHojeCard
+        proximos={data.proximos_hoje}
+        onOpenAgenda={() => navigate(dashPath("/app/bookings"))}
+      />
+
+      {/* 4. Comissão projetada */}
       <Card className="border-primary/30 bg-primary/5">
         <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -78,7 +99,7 @@ export function DashboardStaff({ data }: DashboardStaffProps) {
         </CardContent>
       </Card>
 
-      {/* Timeline + Heatmap */}
+      {/* 5. Análise — comissão diária + heatmap */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
@@ -126,131 +147,10 @@ export function DashboardStaff({ data }: DashboardStaffProps) {
         />
       </div>
 
-      {/* Próximos hoje + Top serviços */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Clock className="h-4 w-4 text-primary" /> Próximos atendimentos hoje
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {data.proximos_hoje.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Sem atendimentos restantes hoje.</p>
-            ) : (
-              data.proximos_hoje.map((p) => {
-                const href = whatsAppHref(
-                  p.customer_phone,
-                  `Olá ${p.customer_name.split(" ")[0]}, confirmando seu horário hoje. Até já!`
-                );
-                return (
-                  <div
-                    key={p.booking_id}
-                    className="flex items-center justify-between py-1.5 border-b border-border last:border-0"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{p.customer_name}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">{p.service_name}</p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs font-mono text-foreground">
-                        {format(new Date(p.starts_at), "HH:mm", { locale: ptBR })}
-                      </span>
-                      <Badge
-                        className={
-                          p.status === "confirmed"
-                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-[10px]"
-                            : "bg-amber-500/10 text-amber-400 border-amber-500/30 text-[10px]"
-                        }
-                      >
-                        {p.status === "confirmed" ? "Confirmado" : "Aguardando"}
-                      </Badge>
-                      {href ? (
-                        <Button asChild size="icon" variant="ghost" className="h-7 w-7 text-emerald-400">
-                          <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${p.customer_name}`}>
-                            <MessageCircle className="h-4 w-4" />
-                          </a>
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </CardContent>
-        </Card>
+      {/* 6. Análise — meus top serviços */}
+      <MeusTopServicosCard servicos={data.meus_top_servicos} />
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Meus top serviços</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {data.meus_top_servicos.map((s) => (
-              <div key={s.service_id} className="flex items-center justify-between text-sm">
-                <span className="truncate">{s.name}</span>
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="text-muted-foreground tabular-nums">{s.qtd}×</span>
-                  <span className="font-medium tabular-nums">{formatBRL(s.receita_cents)}</span>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Meus clientes em risco */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <TrendingDown className="h-4 w-4 text-red-400" /> Meus clientes em risco
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">Chame de volta antes que esfrie</p>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {data.meus_clientes_em_risco.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sem clientes em risco no período.</p>
-          ) : (
-            data.meus_clientes_em_risco.map((c) => {
-              const href = whatsAppHref(
-                c.phone,
-                `Olá ${c.name.split(" ")[0]}, sentimos sua falta — vamos marcar?`
-              );
-              return (
-                <div
-                  key={c.customer_id}
-                  className="flex items-center justify-between gap-2 py-1.5 border-b border-border last:border-0"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{c.name}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {c.dias_sem_visita}d sem visita · costuma a cada {c.freq_dias}d · {c.total_visitas} visitas
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge className="bg-red-500/10 text-red-400 border-red-500/30 text-[10px] tabular-nums">
-                      {c.ratio.toFixed(1)}×
-                    </Badge>
-                    {href ? (
-                      <Button
-                        asChild
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-emerald-400 hover:text-emerald-300"
-                      >
-                        <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${c.name}`}>
-                          <MessageCircle className="h-4 w-4" />
-                        </a>
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Aniversariantes */}
+      {/* 7. Aniversariantes */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -276,19 +176,20 @@ export function DashboardStaff({ data }: DashboardStaffProps) {
                 return (
                   <div
                     key={b.customer_id}
-                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-muted/30"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/30"
                   >
-                    <div className="min-w-0">
+                    <Avatar name={b.name} size="sm" seed={b.customer_id} />
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">{b.name}</p>
                       <p className="text-[11px] text-muted-foreground">{label}</p>
                     </div>
-                    {href ? (
-                      <Button asChild size="icon" variant="ghost" className="h-7 w-7 text-emerald-400">
+                    {href && (
+                      <Button asChild size="icon" variant="ghost" className="h-8 w-8 text-emerald-400 shrink-0">
                         <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${b.name}`}>
                           <MessageCircle className="h-4 w-4" />
                         </a>
                       </Button>
-                    ) : null}
+                    )}
                   </div>
                 );
               })}
@@ -297,5 +198,231 @@ export function DashboardStaff({ data }: DashboardStaffProps) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// ───────────────────────── Meus clientes em risco ─────────────────────────
+
+function MeusClientesEmRiscoCard({ clientes }: { clientes: MeuClienteEmRisco[] }) {
+  const critical = clientes.filter((c) => c.ratio >= 3);
+  const attention = clientes.filter((c) => c.ratio < 3);
+  const shouldGroup = clientes.length >= 6;
+
+  return (
+    <Card className="border-red-500/20">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <TrendingDown className="h-4 w-4 text-red-400" /> Meus clientes em risco
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">Chame de volta antes que esfrie</p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {clientes.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Sem clientes em risco no período.</p>
+        ) : shouldGroup ? (
+          <>
+            {critical.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold mb-2 pb-1 border-b text-red-300 border-red-500/30">
+                  🚨 Crítico ({critical.length})
+                </p>
+                <ul className="space-y-2">
+                  {critical.map((c) => <MeuClienteRiscoRow key={c.customer_id} cliente={c} />)}
+                </ul>
+              </div>
+            )}
+            {attention.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold mb-2 pb-1 border-b text-orange-300 border-orange-500/30">
+                  ⚠️ Atenção ({attention.length})
+                </p>
+                <ul className="space-y-2">
+                  {attention.map((c) => <MeuClienteRiscoRow key={c.customer_id} cliente={c} />)}
+                </ul>
+              </div>
+            )}
+          </>
+        ) : (
+          <ul className="space-y-2">
+            {clientes.map((c) => <MeuClienteRiscoRow key={c.customer_id} cliente={c} />)}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MeuClienteRiscoRow({ cliente }: { cliente: MeuClienteEmRisco }) {
+  const critical = cliente.ratio >= 3;
+  const severityClass = critical
+    ? "bg-red-500/15 text-red-300 border-red-500/40"
+    : "bg-orange-500/15 text-orange-300 border-orange-500/40";
+  const severityLabel = critical ? "🚨 crítico" : "⚠️ atenção";
+
+  const href = whatsAppHref(
+    cliente.phone,
+    `Olá ${cliente.name.split(" ")[0]}, sentimos sua falta — vamos marcar?`
+  );
+
+  return (
+    <li className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-muted/30 transition-colors">
+      <Avatar name={cliente.name} size="md" seed={cliente.customer_id} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-semibold text-foreground truncate">{cliente.name}</p>
+          <Badge className={`${severityClass} text-[10px] font-medium border`}>{severityLabel}</Badge>
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Vem a cada {cliente.freq_dias} dias · sumido há {cliente.dias_sem_visita} dias ·{" "}
+          {cliente.total_visitas} visitas
+        </p>
+      </div>
+      {href ? (
+        <Button
+          asChild
+          size="sm"
+          className="bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/25 hover:text-emerald-200 gap-1.5 shrink-0"
+        >
+          <a href={href} target="_blank" rel="noopener noreferrer">
+            <MessageCircle className="h-4 w-4" />
+            WhatsApp
+          </a>
+        </Button>
+      ) : (
+        <Button size="sm" variant="outline" disabled className="gap-1.5 shrink-0">
+          <MessageCircle className="h-4 w-4" />
+          Sem fone
+        </Button>
+      )}
+    </li>
+  );
+}
+
+// ───────────────────────── Próximos hoje ─────────────────────────
+
+function ProximosHojeCard({
+  proximos,
+  onOpenAgenda,
+}: {
+  proximos: ProximoHoje[];
+  onOpenAgenda: () => void;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+        <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <Clock className="h-4 w-4 text-primary" /> Próximos atendimentos hoje
+        </CardTitle>
+        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onOpenAgenda}>
+          Abrir agenda
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {proximos.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            Sem atendimentos restantes hoje.
+          </p>
+        ) : (
+          <ul className="relative">
+            {/* Timeline rail */}
+            <div className="absolute left-[42px] top-2 bottom-2 w-px bg-border" aria-hidden />
+            {proximos.map((p) => (
+              <ProximoHojeRow key={p.booking_id} proximo={p} onClick={onOpenAgenda} />
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProximoHojeRow({
+  proximo,
+  onClick,
+}: {
+  proximo: ProximoHoje;
+  onClick: () => void;
+}) {
+  const time = format(parseISO(proximo.starts_at), "HH:mm", { locale: ptBR });
+  const expired = proximo.status === "expired";
+  const waHref = whatsAppHref(
+    proximo.customer_phone,
+    `Olá ${proximo.customer_name.split(" ")[0]}, confirmando seu horário hoje. Até já!`
+  );
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onClick}
+        className="relative flex items-center gap-3 py-2.5 w-full text-left rounded-lg hover:bg-muted/40 transition-colors px-2"
+      >
+        <span className="text-xs font-mono font-semibold text-foreground w-10 tabular-nums shrink-0">
+          {time}
+        </span>
+        <ServiceImage
+          name={proximo.service_name}
+          photoUrl={proximo.service_photo_url}
+          size="md"
+          rounded="full"
+          className="z-10"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium truncate">{proximo.customer_name}</p>
+          <p className="text-[11px] text-muted-foreground truncate">
+            {proximo.service_name}
+            {expired && " · "}
+            {expired && <span className="text-amber-400">aguardando confirmação</span>}
+          </p>
+        </div>
+        {waHref && (
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              window.open(waHref, "_blank", "noopener,noreferrer");
+            }}
+            role="button"
+            aria-label={`WhatsApp ${proximo.customer_name}`}
+            className="h-8 w-8 inline-flex items-center justify-center rounded-md text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 shrink-0"
+          >
+            <MessageCircle className="h-4 w-4" />
+          </span>
+        )}
+      </button>
+    </li>
+  );
+}
+
+// ───────────────────────── Meus top serviços ─────────────────────────
+
+function MeusTopServicosCard({ servicos }: { servicos: ServicoRow[] }) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-semibold">Meus top serviços</CardTitle>
+        <p className="text-xs text-muted-foreground">Por receita gerada no período</p>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {servicos.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Sem serviços no período.</p>
+        ) : (
+          servicos.map((s, i) => (
+            <div
+              key={`${s.service_id ?? s.name}-${i}`}
+              className="flex items-center gap-3 py-1.5 border-b border-border last:border-0"
+            >
+              <ServiceImage name={s.name} photoUrl={s.photo_url} size="md" rounded="full" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">{s.name}</p>
+                <p className="text-[11px] text-muted-foreground">{s.qtd} atendimentos</p>
+              </div>
+              <span className="text-sm font-semibold tabular-nums shrink-0">
+                {formatBRL(s.receita_cents)}
+              </span>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
   );
 }

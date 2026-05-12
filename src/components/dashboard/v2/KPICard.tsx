@@ -10,6 +10,12 @@ interface KPICardProps {
   invertDelta?: boolean; // true when "lower is better" (e.g. no-show count)
   hint?: string;
   loading?: boolean;
+  /**
+   * Human-readable period label for the comparison ("01–12 abr").
+   * Rendered as a faint legend below the delta. Hidden when previous
+   * is null (KPIs without history like ocupacao/retencao).
+   */
+  previousLabel?: string;
 }
 
 function formatValue(value: number, kind: KPICardProps["format"]): string {
@@ -32,7 +38,15 @@ function formatDelta(pct: number): string {
   return `${sign}${pct.toFixed(1)}%`;
 }
 
-export function KPICard({ label, data, format, invertDelta = false, hint, loading }: KPICardProps) {
+export function KPICard({
+  label,
+  data,
+  format,
+  invertDelta = false,
+  hint,
+  loading,
+  previousLabel,
+}: KPICardProps) {
   if (loading) {
     return (
       <Card>
@@ -70,12 +84,13 @@ export function KPICard({ label, data, format, invertDelta = false, hint, loadin
         <div className={cn("flex items-center gap-1 text-xs font-medium", deltaClass)}>
           <Icon className="h-3.5 w-3.5" />
           <span>{hasDelta ? formatDelta(delta!) : "—"}</span>
-          {data.previous !== null && (
-            <span className="text-muted-foreground/70 font-normal">
-              vs {formatValue(data.previous, format)}
-            </span>
-          )}
         </div>
+        {data.previous !== null && (
+          <p className="text-[10px] text-muted-foreground/70 font-normal leading-tight">
+            vs {formatValue(data.previous, format)}
+            {previousLabel ? ` em ${previousLabel}` : ""}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

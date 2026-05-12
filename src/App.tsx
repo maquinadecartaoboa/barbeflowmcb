@@ -35,8 +35,9 @@ const TermosAgendamento = lazy(() => import("./pages/legal/TermosAgendamento"));
 
 // Admin pages — ALL lazy loaded (never needed by public visitors)
 // NOTE: legacy ./pages/Dashboard kept on disk for easy rollback. The route
-// below points at DashboardV2 (mock-driven) until backend RPCs land.
+// below points at DashboardV2 (wired to RPCs) until the legacy file is removed.
 const Dashboard = lazy(() => import("./pages/DashboardV2"));
+const DashboardPreview = lazy(() => import("./pages/DashboardPreview"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Finance = lazy(() => import("./pages/Finance"));
 const CommissionsPage = lazy(() => import("./pages/CommissionsPage"));
@@ -182,10 +183,12 @@ const App = () => {
                       <Route path={`${dashPrefix}/onboarding-wizard`} element={<ProtectedRoute><OnboardingWizard /></ProtectedRoute>} />
                       
                       <Route path={dashPrefix || '/'} element={<ProtectedAppShell />}>
-                        {/* Dashboard v2 (mock-driven). Both admin and staff land here;
-                            DashboardV2 handles the role split internally. Role guard
-                            removed temporarily until real RPC data is wired up. */}
+                        {/* Dashboard v2 — both admin and staff land here; the page
+                            handles role split internally and calls the RPCs. */}
                         <Route path="dashboard" element={<Dashboard />} />
+                        {/* QA-only mock playground. Admin-gated so staff can't
+                            stumble in by URL. */}
+                        <Route path="dashboard/preview" element={<RoleGuard requireAdmin><DashboardPreview /></RoleGuard>} />
                         <Route path="bookings" element={<Bookings />} />
                         <Route path="services" element={<RoleGuard requireAdmin><Services /></RoleGuard>} />
                         <Route path="packages" element={<RoleGuard requireAdmin><PackagesPage /></RoleGuard>} />
