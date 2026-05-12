@@ -97,6 +97,8 @@ export function ComandaItemsSection({ bookingId, tenantId, items, onItemsChange,
 
   const fmt = (cents: number) => `R$ ${(cents / 100).toFixed(2)}`;
   const effectivePrice = (item: BookingItem) => item.total_price_cents - (item.discount_cents || 0);
+  const getStaffName = (id: string | null): string | null =>
+    staffList.find((s) => s.id === id)?.name ?? null;
 
   const filteredServices = staffServiceIds
     ? services.filter(s => staffServiceIds.includes(s.id))
@@ -393,6 +395,14 @@ export function ComandaItemsSection({ bookingId, tenantId, items, onItemsChange,
                     <span className="text-[10px] text-muted-foreground ml-1">(principal)</span>
                   )}
                 </span>
+                {/* Show "com [Staff]" when the item's staff differs from the
+                    booking's host staff — helps the cashier spot multi-staff
+                    comandas at a glance. */}
+                {item.staff_id && bookingStaffId && item.staff_id !== bookingStaffId && (
+                  <Badge className="text-[10px] px-1.5 py-0 bg-violet-500/10 text-violet-300 border-violet-500/30 flex-shrink-0">
+                    com {getStaffName(item.staff_id) ?? "outro profissional"}
+                  </Badge>
+                )}
                 <span className="text-xs font-semibold text-foreground flex-shrink-0">
                   {hasDiscount ? (
                     <span className="flex items-center gap-1">
