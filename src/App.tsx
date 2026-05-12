@@ -34,8 +34,9 @@ const DPA = lazy(() => import("./pages/legal/AcordoProcessamento"));
 const TermosAgendamento = lazy(() => import("./pages/legal/TermosAgendamento"));
 
 // Admin pages — ALL lazy loaded (never needed by public visitors)
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const DashboardPreview = lazy(() => import("./pages/DashboardPreview"));
+// NOTE: legacy ./pages/Dashboard kept on disk for easy rollback. The route
+// below points at DashboardV2 (mock-driven) until backend RPCs land.
+const Dashboard = lazy(() => import("./pages/DashboardV2"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Finance = lazy(() => import("./pages/Finance"));
 const CommissionsPage = lazy(() => import("./pages/CommissionsPage"));
@@ -181,10 +182,10 @@ const App = () => {
                       <Route path={`${dashPrefix}/onboarding-wizard`} element={<ProtectedRoute><OnboardingWizard /></ProtectedRoute>} />
                       
                       <Route path={dashPrefix || '/'} element={<ProtectedAppShell />}>
-                        <Route path={dashPrefix ? 'dashboard' : 'dashboard'} element={<RoleGuard requireAdmin><Dashboard /></RoleGuard>} />
-                        {/* Dashboard v2 preview — mock-only, gated to admins so staff can't stumble in.
-                            Will replace `dashboard` once Vitor's RPCs are wired up. */}
-                        <Route path="dashboard/preview" element={<RoleGuard requireAdmin><DashboardPreview /></RoleGuard>} />
+                        {/* Dashboard v2 (mock-driven). Both admin and staff land here;
+                            DashboardV2 handles the role split internally. Role guard
+                            removed temporarily until real RPC data is wired up. */}
+                        <Route path="dashboard" element={<Dashboard />} />
                         <Route path="bookings" element={<Bookings />} />
                         <Route path="services" element={<RoleGuard requireAdmin><Services /></RoleGuard>} />
                         <Route path="packages" element={<RoleGuard requireAdmin><PackagesPage /></RoleGuard>} />

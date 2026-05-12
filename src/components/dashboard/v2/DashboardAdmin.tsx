@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, AlertTriangle, Cake, Calendar, MessageCircle, TrendingDown } from "lucide-react";
+import { AlertCircle, AlertTriangle, Cake, Calendar, MessageCircle, TrendingDown, XCircle } from "lucide-react";
 import {
   CartesianGrid,
   Line,
@@ -56,9 +56,9 @@ export function DashboardAdmin({ data }: DashboardAdminProps) {
           tone="amber"
         />
         <AlertCardItem
-          icon={<AlertTriangle className="h-4 w-4 text-red-400" />}
-          label="No-shows nas próximas 24h"
-          value={data.alertas.no_shows_24h}
+          icon={<XCircle className="h-4 w-4 text-red-400" />}
+          label="Cancelamentos nas últimas 24h"
+          value={data.alertas.bookings_cancelados_24h}
           tone="red"
         />
         <AlertCardItem
@@ -127,6 +127,9 @@ export function DashboardAdmin({ data }: DashboardAdminProps) {
               <Stat label="Vagos" value={data.agenda_amanha.vagos} />
               <Stat label="A confirmar" value={data.agenda_amanha.sem_confirmacao} />
             </div>
+            {data.agenda_amanha.total === 0 && (
+              <p className="text-xs text-muted-foreground mb-2">Sem agendamentos pra amanhã ainda.</p>
+            )}
             <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 text-sm">
               <span className="text-muted-foreground">Receita estimada: </span>
               <span className="font-semibold text-emerald-400">
@@ -164,34 +167,39 @@ export function DashboardAdmin({ data }: DashboardAdminProps) {
             <p className="text-xs text-muted-foreground">Ordenados por urgência (ratio = dias sem visita / freq.)</p>
           </CardHeader>
           <CardContent className="space-y-2">
-            {data.clientes_em_risco.map((c) => {
-              const href = whatsAppHref(
-                c.phone,
-                `Olá ${c.name.split(" ")[0]}, sentimos sua falta — vamos marcar?`
-              );
-              return (
-                <div key={c.customer_id} className="flex items-center justify-between gap-2 py-1.5 border-b border-border last:border-0">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{c.name}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {c.dias_sem_visita}d sem visita · costuma vir a cada {c.freq_dias}d
-                    </p>
+            {data.clientes_em_risco.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum cliente em risco no momento.</p>
+            ) : (
+              data.clientes_em_risco.map((c) => {
+                const href = whatsAppHref(
+                  c.phone,
+                  `Olá ${c.name.split(" ")[0]}, sentimos sua falta — vamos marcar?`
+                );
+                return (
+                  <div key={c.customer_id} className="flex items-center justify-between gap-2 py-1.5 border-b border-border last:border-0">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{c.name}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {c.dias_sem_visita}d sem visita · costuma a cada {c.freq_dias}d · {c.total_visitas} visitas
+                        {c.last_staff_name && ` · com ${c.last_staff_name}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge className="bg-red-500/10 text-red-400 border-red-500/30 text-[10px] tabular-nums">
+                        {c.ratio.toFixed(1)}×
+                      </Badge>
+                      {href ? (
+                        <Button asChild size="icon" variant="ghost" className="h-7 w-7 text-emerald-400 hover:text-emerald-300">
+                          <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${c.name}`}>
+                            <MessageCircle className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge className="bg-red-500/10 text-red-400 border-red-500/30 text-[10px] tabular-nums">
-                      {c.ratio.toFixed(1)}×
-                    </Badge>
-                    {href ? (
-                      <Button asChild size="icon" variant="ghost" className="h-7 w-7 text-emerald-400 hover:text-emerald-300">
-                        <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${c.name}`}>
-                          <MessageCircle className="h-4 w-4" />
-                        </a>
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </CardContent>
         </Card>
 
@@ -200,18 +208,24 @@ export function DashboardAdmin({ data }: DashboardAdminProps) {
             <CardTitle className="text-sm font-semibold">Ranking de profissionais</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {data.ranking_staff.map((s, i) => (
-              <div key={s.staff_id} className="flex items-center justify-between text-sm py-1.5 border-b border-border last:border-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-xs font-mono text-muted-foreground w-5">{i + 1}.</span>
-                  <span className="truncate">{s.name}</span>
+            {data.ranking_staff.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum atendimento no período.</p>
+            ) : (
+              data.ranking_staff.map((s, i) => (
+                <div key={s.staff_id} className="flex items-center justify-between text-sm py-1.5 border-b border-border last:border-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-mono text-muted-foreground w-5">{i + 1}.</span>
+                    <span className="truncate">{s.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="text-muted-foreground tabular-nums">
+                      {s.atendimentos} atend.
+                    </span>
+                    <span className="font-medium tabular-nums">{formatBRL(s.receita_cents)}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="text-muted-foreground tabular-nums">{Math.round(s.ocupacao * 100)}%</span>
-                  <span className="font-medium tabular-nums">{formatBRL(s.receita_cents)}</span>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
@@ -233,11 +247,17 @@ export function DashboardAdmin({ data }: DashboardAdminProps) {
                   b.phone,
                   `Olá ${b.name.split(" ")[0]}, feliz aniversário! 🎂 Te esperamos pra comemorar.`
                 );
+                const label =
+                  b.days_until === 0
+                    ? "Hoje 🎂"
+                    : b.days_until === 1
+                    ? "Amanhã"
+                    : `Em ${b.days_until} dias`;
                 return (
                   <div key={b.customer_id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-muted/30">
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{b.name}</p>
-                      <p className="text-[11px] text-muted-foreground">{b.data}</p>
+                      <p className="text-[11px] text-muted-foreground">{label}</p>
                     </div>
                     {href ? (
                       <Button asChild size="icon" variant="ghost" className="h-7 w-7 text-emerald-400">
@@ -257,11 +277,11 @@ export function DashboardAdmin({ data }: DashboardAdminProps) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value }: { label: string; value: number | null }) {
   return (
     <div className="rounded-lg bg-muted/30 px-3 py-2 text-center">
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="text-xl font-bold tabular-nums">{value}</p>
+      <p className="text-xl font-bold tabular-nums">{value === null ? "—" : value}</p>
     </div>
   );
 }

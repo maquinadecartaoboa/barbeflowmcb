@@ -104,7 +104,7 @@ interface NavItem {
 }
 
 const baseNavigationItems: NavItem[] = [
-  { title: "Dashboard", url: "/app/dashboard", icon: Home, adminOnly: true },
+  { title: "Dashboard", url: "/app/dashboard", icon: Home },
   { title: "Agendamentos", url: "/app/bookings", icon: FileText },
   {
     title: "Clientes",
@@ -175,7 +175,7 @@ const baseNavigationItems: NavItem[] = [
 ];
 
 const baseBottomTabItems: NavItem[] = [
-  { title: "Home", url: "/app/dashboard", icon: Home, adminOnly: true },
+  { title: "Home", url: "/app/dashboard", icon: Home },
   { title: "Agenda", url: "/app/bookings", icon: CalendarCheck },
   { title: "Clientes", url: "/app/customers", icon: User },
   { title: "Financeiro", url: "/app/finance", icon: Wallet, adminOnly: true },
