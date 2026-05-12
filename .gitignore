@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Lovable scratch — local plans/notes that shouldn't be versioned
+.lovable/
