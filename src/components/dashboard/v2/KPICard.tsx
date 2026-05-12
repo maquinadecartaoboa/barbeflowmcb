@@ -46,8 +46,9 @@ export function KPICard({ label, data, format, invertDelta = false, hint, loadin
   }
 
   const delta = data.delta_pct;
-  const isPositive = invertDelta ? delta < 0 : delta > 0;
-  const isNeutral = delta === 0 || !Number.isFinite(delta);
+  const hasDelta = delta !== null && Number.isFinite(delta);
+  const isPositive = hasDelta && (invertDelta ? delta! < 0 : delta! > 0);
+  const isNeutral = !hasDelta || delta === 0;
   const Icon = isNeutral ? Minus : isPositive ? ArrowUpRight : ArrowDownRight;
 
   const deltaClass = isNeutral
@@ -68,10 +69,12 @@ export function KPICard({ label, data, format, invertDelta = false, hint, loadin
         </div>
         <div className={cn("flex items-center gap-1 text-xs font-medium", deltaClass)}>
           <Icon className="h-3.5 w-3.5" />
-          <span>{formatDelta(delta)}</span>
-          <span className="text-muted-foreground/70 font-normal">
-            vs {formatValue(data.previous, format)}
-          </span>
+          <span>{hasDelta ? formatDelta(delta!) : "—"}</span>
+          {data.previous !== null && (
+            <span className="text-muted-foreground/70 font-normal">
+              vs {formatValue(data.previous, format)}
+            </span>
+          )}
         </div>
       </CardContent>
     </Card>

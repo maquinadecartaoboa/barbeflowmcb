@@ -138,31 +138,44 @@ export function DashboardStaff({ data }: DashboardStaffProps) {
             {data.proximos_hoje.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sem atendimentos restantes hoje.</p>
             ) : (
-              data.proximos_hoje.map((p) => (
-                <div
-                  key={p.booking_id}
-                  className="flex items-center justify-between py-1.5 border-b border-border last:border-0"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{p.customer_name}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{p.service_name}</p>
+              data.proximos_hoje.map((p) => {
+                const href = whatsAppHref(
+                  p.customer_phone,
+                  `Olá ${p.customer_name.split(" ")[0]}, confirmando seu horário hoje. Até já!`
+                );
+                return (
+                  <div
+                    key={p.booking_id}
+                    className="flex items-center justify-between py-1.5 border-b border-border last:border-0"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{p.customer_name}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{p.service_name}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs font-mono text-foreground">
+                        {format(new Date(p.starts_at), "HH:mm", { locale: ptBR })}
+                      </span>
+                      <Badge
+                        className={
+                          p.status === "confirmed"
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-[10px]"
+                            : "bg-amber-500/10 text-amber-400 border-amber-500/30 text-[10px]"
+                        }
+                      >
+                        {p.status === "confirmed" ? "Confirmado" : "Aguardando"}
+                      </Badge>
+                      {href ? (
+                        <Button asChild size="icon" variant="ghost" className="h-7 w-7 text-emerald-400">
+                          <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${p.customer_name}`}>
+                            <MessageCircle className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs font-mono text-foreground">
-                      {format(new Date(p.starts_at), "HH:mm", { locale: ptBR })}
-                    </span>
-                    <Badge
-                      className={
-                        p.status === "confirmed"
-                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-[10px]"
-                          : "bg-amber-500/10 text-amber-400 border-amber-500/30 text-[10px]"
-                      }
-                    >
-                      {p.status === "confirmed" ? "Confirmado" : "Aguardando"}
-                    </Badge>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </CardContent>
         </Card>
@@ -210,7 +223,7 @@ export function DashboardStaff({ data }: DashboardStaffProps) {
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{c.name}</p>
                     <p className="text-[11px] text-muted-foreground">
-                      {c.dias_sem_visita}d sem visita · costuma vir a cada {c.freq_dias}d
+                      {c.dias_sem_visita}d sem visita · costuma a cada {c.freq_dias}d · {c.total_visitas} visitas
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -254,6 +267,12 @@ export function DashboardStaff({ data }: DashboardStaffProps) {
                   b.phone,
                   `Olá ${b.name.split(" ")[0]}, feliz aniversário! 🎂 Te esperamos pra comemorar.`
                 );
+                const label =
+                  b.days_until === 0
+                    ? "Hoje 🎂"
+                    : b.days_until === 1
+                    ? "Amanhã"
+                    : `Em ${b.days_until} dias`;
                 return (
                   <div
                     key={b.customer_id}
@@ -261,7 +280,7 @@ export function DashboardStaff({ data }: DashboardStaffProps) {
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{b.name}</p>
-                      <p className="text-[11px] text-muted-foreground">{b.data}</p>
+                      <p className="text-[11px] text-muted-foreground">{label}</p>
                     </div>
                     {href ? (
                       <Button asChild size="icon" variant="ghost" className="h-7 w-7 text-emerald-400">
