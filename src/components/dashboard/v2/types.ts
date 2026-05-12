@@ -39,6 +39,7 @@ export interface ClienteEmRisco {
   phone: string | null;
   last_staff_id: string | null;
   last_staff_name: string | null;
+  last_staff_photo_url: string | null;
   freq_dias: number;
   dias_sem_visita: number;
   ratio: number;
@@ -58,16 +59,32 @@ export interface MeuClienteEmRisco {
   total_visitas: number;
 }
 
+export interface BookingAmanha {
+  booking_id: string;
+  starts_at: string; // ISO
+  customer_name: string;
+  customer_phone: string | null;
+  staff_id: string | null;
+  staff_name: string | null;
+  staff_photo_url: string | null;
+  service_name: string;
+  service_photo_url: string | null;
+  price_cents: number;
+  status: string;
+}
+
 export interface AgendaAmanha {
   total: number;
   vagos: number | null; // RPC returns NULL until slot computation lands
   sem_confirmacao: number;
   total_revenue_estimado_cents: number;
+  bookings: BookingAmanha[];
 }
 
 export interface ServicoRow {
   service_id: string | null;
   name: string;
+  photo_url: string | null;
   qtd: number;
   receita_cents: number;
 }
@@ -75,6 +92,7 @@ export interface ServicoRow {
 export interface StaffRankingRow {
   staff_id: string;
   name: string;
+  photo_url: string | null;
   atendimentos: number;
   receita_cents: number;
 }
@@ -98,6 +116,7 @@ export interface ProximoHoje {
   customer_name: string;
   customer_phone: string | null;
   service_name: string;
+  service_photo_url: string | null;
   starts_at: string; // ISO timestamp
   status: string;
 }
