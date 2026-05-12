@@ -7,8 +7,14 @@
 // is zero (avoids divide-by-zero).
 
 export interface Period {
-  from: string;          // 'YYYY-MM-DD'
-  to: string;            // 'YYYY-MM-DD'
+  from: string;          // 'YYYY-MM-DD' — start of the requested range
+  to: string;            // 'YYYY-MM-DD' — end of the requested range
+  /**
+   * Effective end of the range with data: capped at today's date so the
+   * comparison period matches the actual elapsed days, not the full month
+   * that hasn't happened yet.
+   */
+  actual_to: string;     // 'YYYY-MM-DD'
   days: number;
   previous_from: string; // 'YYYY-MM-DD'
   previous_to: string;   // 'YYYY-MM-DD'

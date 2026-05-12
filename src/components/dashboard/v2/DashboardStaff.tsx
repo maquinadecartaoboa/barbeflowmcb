@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { KPICard } from "./KPICard";
 import { HeatmapWeekHour } from "./HeatmapWeekHour";
+import { formatPeriodLabel } from "./formatters";
 import type { DashboardStaffPayload } from "./types";
 
 interface DashboardStaffProps {
@@ -38,14 +39,15 @@ export function DashboardStaff({ data }: DashboardStaffProps) {
     date: p.date,
     valor: p.value_cents / 100,
   }));
+  const previousLabel = formatPeriodLabel(data.period.previous_from, data.period.previous_to);
 
   return (
     <div className="space-y-6">
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPICard label="Minha comissão" format="currency" data={data.kpis.minha_comissao_cents} />
-        <KPICard label="Atendimentos"   format="integer"  data={data.kpis.atendimentos} />
-        <KPICard label="Ticket médio"   format="currency" data={data.kpis.ticket_medio_cents} />
+        <KPICard label="Minha comissão" format="currency" data={data.kpis.minha_comissao_cents} previousLabel={previousLabel} />
+        <KPICard label="Atendimentos"   format="integer"  data={data.kpis.atendimentos}         previousLabel={previousLabel} />
+        <KPICard label="Ticket médio"   format="currency" data={data.kpis.ticket_medio_cents}   previousLabel={previousLabel} />
         <KPICard label="Retenção"       format="percent"  data={data.kpis.retencao_pct} />
       </div>
 

@@ -44,9 +44,10 @@ function buildHeatmap(weekdayPeaks: number[], hourPeaks: number[]): HeatmapCell[
 const PERIOD = {
   from: "2026-05-01",
   to: "2026-05-31",
+  actual_to: "2026-05-12", // capped at "today" so the comparison range matches elapsed days
   days: 31,
-  previous_from: "2026-03-31",
-  previous_to: "2026-04-30",
+  previous_from: "2026-04-01",
+  previous_to: "2026-04-12",
 };
 
 export const MOCK_ADMIN: DashboardAdminPayload = {
