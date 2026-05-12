@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Mail, Lock, User, Building2, Phone } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Building2, Phone, Eye, EyeOff } from "lucide-react";
 import { getPublicUrl, isDashboardDomain } from "@/lib/hostname";
 import { useState, useRef } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -14,6 +14,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { TurnstileWidget } from "@/components/TurnstileWidget";
 import { useTurnstile } from "@/hooks/useTurnstile";
+import { PasswordRequirements } from "@/components/auth/PasswordRequirements";
+import { validatePassword } from "@/lib/auth/passwordValidation";
+import { translateSupabaseAuthError } from "@/lib/auth/supabaseErrors";
 
 const Login = () => {
   usePageTitle("Login");
@@ -23,8 +26,11 @@ const Login = () => {
   const [businessName, setBusinessName] = useState("");
   const [phone, setPhone] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const passwordValidation = validatePassword(password);
+  const passwordOkForMode = isSignUp ? passwordValidation.isValid : password.length > 0;
   const lastEmailFiredRef = useRef<string | null>(null);
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();
@@ -96,6 +102,12 @@ const Login = () => {
               description: "Tente novamente.",
               variant: "destructive",
             });
+          } else {
+            toast({
+              title: "Erro ao criar conta",
+              description: translateSupabaseAuthError(result.error),
+              variant: "destructive",
+            });
           }
         } else if (result.data?.user) {
           const userId = result.data.user.id;
@@ -142,6 +154,12 @@ const Login = () => {
             toast({
               title: "Verificação de segurança falhou",
               description: "Tente novamente.",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Erro ao entrar",
+              description: translateSupabaseAuthError(error),
               variant: "destructive",
             });
           }
@@ -289,17 +307,33 @@ const Login = () => {
                 Senha
               </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600 pointer-events-none" />
                 <Input
                   id="password"
-                  type="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete={isSignUp ? "new-password" : "current-password"}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="h-12 pl-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 placeholder:text-zinc-600 focus:border-primary/50 focus:ring-primary/20"
+                  className="h-12 pl-11 pr-11 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 placeholder:text-zinc-600 focus:border-primary/50 focus:ring-primary/20"
+                  // Safari only — informs iCloud Keychain about the rules the generated password must satisfy.
+                  // Lowercase attribute is pass-through to native <input>; cast keeps TS quiet.
+                  {...(isSignUp
+                    ? ({ passwordrules: "minlength: 8; required: [a-zA-Z]; required: digit;" } as Record<string, string>)
+                    : {})}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
+              {isSignUp && <PasswordRequirements password={password} />}
             </div>
 
             {!isSignUp && (
@@ -340,8 +374,8 @@ const Login = () => {
             <Button
               type="submit"
               size="lg"
-              disabled={isLoading || !turnstile.token || (isSignUp && !acceptedTerms)}
-              className="w-full h-12 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold"
+              disabled={isLoading || !turnstile.token || !passwordOkForMode || (isSignUp && !acceptedTerms)}
+              className="w-full h-12 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading
                 ? (isSignUp ? "Criando conta..." : "Entrando...")

@@ -11,6 +11,7 @@ import logoBranca from "@/assets/modoGESTOR_branca.png";
 import { isDashboardDomain } from "@/lib/hostname";
 import { TurnstileWidget } from "@/components/TurnstileWidget";
 import { useTurnstile } from "@/hooks/useTurnstile";
+import { translateSupabaseAuthError } from "@/lib/auth/supabaseErrors";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -52,7 +53,7 @@ const ForgotPassword = () => {
         } else {
           toast({
             title: "Erro",
-            description: error.message,
+            description: translateSupabaseAuthError(error),
             variant: "destructive",
           });
         }
