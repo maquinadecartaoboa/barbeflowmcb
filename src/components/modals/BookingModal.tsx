@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useTenant } from "@/hooks/useTenant";
 import { useBookingModal } from "@/hooks/useBookingModal";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useCurrentStaff } from "@/hooks/useCurrentStaff";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
@@ -99,6 +101,10 @@ export function BookingModal() {
   const { currentTenant } = useTenant();
   const { isOpen, closeBookingModal, initialStaffId, initialDate, initialTime, customerPackageId, customerSubscriptionId, allowedServiceIds, preselectedCustomerId } = useBookingModal();
   const { toast } = useToast();
+  const { isStaff } = useUserRole();
+  const { staff: currentStaff } = useCurrentStaff();
+  const currentStaffId = currentStaff?.id ?? null;
+  const currentStaffName = currentStaff?.name ?? "";
   const [services, setServices] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
   const [formLoading, setFormLoading] = useState(false);
@@ -162,7 +168,12 @@ export function BookingModal() {
       loadFormData();
       // Apply pre-fill values
       if (initialDate) form.setValue("date", initialDate);
-      if (initialStaffId) form.setValue("staff_id", initialStaffId);
+      // Staff users can only book for themselves — own id overrides any prefill.
+      if (isStaff && currentStaffId) {
+        form.setValue("staff_id", currentStaffId);
+      } else if (initialStaffId) {
+        form.setValue("staff_id", initialStaffId);
+      }
       if (initialTime) form.setValue("time", initialTime);
     }
     if (!isOpen) {
@@ -175,6 +186,14 @@ export function BookingModal() {
       setAdditionalServices([]);
     }
   }, [isOpen, currentTenant]);
+
+  // Staff users: lock staff_id to their own id, even if currentStaff resolves
+  // after the initial pre-fill effect above.
+  useEffect(() => {
+    if (isOpen && isStaff && currentStaffId) {
+      form.setValue("staff_id", currentStaffId);
+    }
+  }, [isOpen, isStaff, currentStaffId]);
 
   // Pre-fill customer when opened via package/subscription
   useEffect(() => {
@@ -923,30 +942,39 @@ export function BookingModal() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="staff_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Profissional</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Qualquer profissional" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {staff.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>
-                            {member.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {isStaff ? (
+                <FormItem>
+                  <FormLabel>Profissional</FormLabel>
+                  <div className="flex h-10 items-center rounded-xl border border-border bg-muted/30 px-3 text-sm text-muted-foreground">
+                    {currentStaffName || "Você"}
+                  </div>
+                </FormItem>
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="staff_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Profissional</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Qualquer profissional" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {staff.map((member) => (
+                            <SelectItem key={member.id} value={member.id}>
+                              {member.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             {/* Benefit detection banner */}
