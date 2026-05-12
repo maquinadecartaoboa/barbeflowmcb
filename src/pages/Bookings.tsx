@@ -70,6 +70,8 @@ import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { useBookingsByDate, type BookingData } from "@/hooks/useBookingsByDate";
 import { useBookingModal } from "@/hooks/useBookingModal";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useCurrentStaff } from "@/hooks/useCurrentStaff";
 import { DateNavigator } from "@/components/calendar/DateNavigator";
 import { ScheduleGrid } from "@/components/calendar/ScheduleGrid";
 import { BlockDialog } from "@/components/calendar/BlockDialog";
@@ -81,6 +83,9 @@ export default function Bookings() {
   const { toast } = useToast();
   const { isOpen: modalIsOpen } = useBookingModal();
   const queryClient = useQueryClient();
+  const { isStaff } = useUserRole();
+  const { staff: currentStaff } = useCurrentStaff();
+  const currentStaffId = currentStaff?.id ?? null;
 
   // View state
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -127,6 +132,11 @@ export default function Bookings() {
     : null;
   useEffect(() => {
     if (staff.length === 0) return;
+    // Staff users see only their own row — ignore stored preferences.
+    if (isStaff && currentStaffId) {
+      setVisibleStaffIds([currentStaffId]);
+      return;
+    }
     const validIds = new Set(staff.map((s) => s.id));
     let next: string[] | null = null;
     if (staffFilterStorageKey) {
@@ -143,7 +153,7 @@ export default function Bookings() {
       }
     }
     setVisibleStaffIds(next && next.length > 0 ? next : staff.map((s) => s.id));
-  }, [staff, staffFilterStorageKey]);
+  }, [staff, staffFilterStorageKey, isStaff, currentStaffId]);
 
   const persistVisibleStaff = (ids: string[]) => {
     if (!staffFilterStorageKey) return;
@@ -604,8 +614,14 @@ export default function Bookings() {
     <div className="space-y-4 px-4 md:px-0">
       {/* Header */}
       <div>
-        <h1 className="text-xl md:text-2xl font-bold text-foreground">Agendamentos</h1>
-        <p className="text-sm text-muted-foreground">Grade visual de agendamentos por profissional</p>
+        <h1 className="text-xl md:text-2xl font-bold text-foreground">
+          {isStaff ? "Minha agenda" : "Agendamentos"}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {isStaff
+            ? "Visualize seus próprios agendamentos"
+            : "Grade visual de agendamentos por profissional"}
+        </p>
       </div>
 
       {/* Navigation bar */}
@@ -624,7 +640,7 @@ export default function Bookings() {
       {/* Main content */}
       {viewMode === "grid" ? (
         <div className="space-y-3">
-          {staff.length > 1 && (
+          {staff.length > 1 && !isStaff && (
             <StaffFilterChips
               staff={staff}
               visibleStaffIds={visibleStaffIds}
@@ -899,7 +915,11 @@ export default function Bookings() {
               )}
               <div>
                 <Label className="text-sm font-medium">Profissional</Label>
-                <Select value={editForm.staff_id} onValueChange={(v) => setEditForm((f) => ({ ...f, staff_id: v }))}>
+                <Select
+                  value={editForm.staff_id}
+                  onValueChange={(v) => setEditForm((f) => ({ ...f, staff_id: v }))}
+                  disabled={isStaff}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Qualquer profissional</SelectItem>
