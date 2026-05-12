@@ -55,6 +55,7 @@ const Staff = lazy(() => import("./pages/Staff"));
 const Customers = lazy(() => import("./pages/Customers"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Products = lazy(() => import("./pages/Products"));
+const OrderBumpAdmin = lazy(() => import("./pages/OrderBumpAdmin"));
 const RecurringClients = lazy(() => import("./pages/RecurringClients"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Questionnaire = lazy(() => import("./pages/Questionnaire"));
@@ -206,6 +207,7 @@ const App = () => {
 
                         <Route path="caixa" element={<RoleGuard requireAdmin><CashRegister /></RoleGuard>} />
                         <Route path="products" element={<RoleGuard requireAdmin><Products /></RoleGuard>} />
+                        <Route path="catalogo/order-bump" element={<RoleGuard requireAdmin><OrderBumpAdmin /></RoleGuard>} />
                         <Route path="reports" element={<RoleGuard requireAdmin><Reports /></RoleGuard>} />
                         <Route path="alta-performance" element={<RoleGuard requireAdmin><HighPerformance /></RoleGuard>} />
                         <Route path="settings" element={<RoleGuard requireAdmin><Settings /></RoleGuard>} />
