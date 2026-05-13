@@ -152,8 +152,8 @@ export function useBookingsByDate(tenantId: string | undefined, date: Date) {
           .eq("tenant_id", tenantId)
           .gte("starts_at", dayStart)
           .lte("starts_at", dayEnd)
-          .neq("status", "cancelled"),
-        // Fetch ALL bookings (including cancelled) to check if a recurring slot was already materialized
+          .not("status", "in", "(expired,cancelled)"),
+        // Fetch ALL bookings (including cancelled/expired) to check if a recurring slot was already materialized
         supabase
           .from("bookings")
           .select("id, staff_id, customer_id, starts_at, status")
@@ -186,7 +186,7 @@ export function useBookingsByDate(tenantId: string | undefined, date: Date) {
           .eq("staff_role", "secondary")
           .gte("starts_at", dayStart)
           .lte("starts_at", dayEnd)
-          .neq("status", "cancelled"),
+          .not("status", "in", "(expired,cancelled)"),
       ]);
 
       const primaryBookings = (bookingsRes.data as any) || [];
